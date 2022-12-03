@@ -1,0 +1,112 @@
+version: '3.7'
+
+x-kong-config: &kong-env
+  KONG_DATABASE: postgres
+  KONG_PG_DATABASE: ${KONG_PG_DATABASE:-kong}
+  KONG_PG_HOST: db
+  KONG_PG_USER: ${KONG_PG_USER:-kong}
+  KONG_PG_PASSWORD_FILE: /run/secrets/kong_postgres_password
+
+networks:
+  kong-net:
+    driver: overlay
+    attachable: true
+  internal:
+    
+secrets:
+  konga-kong:
+    external: true
+  konga-users:
+    external: true
+
+services:
+
+  konga:
+    image: pantsel/konga:latest
+    environment:
+      NODE_ENV: production
+      TOKEN_SECRET: <token-secret>
+      KONGA_SEED_USER_DATA_SOURCE_FILE: /run/secrets/konga-users
+      KONGA_SEED_KONG_NODE_DATA_SOURCE_FILE: /run/secrets/konga-kong
+    secrets:
+      - konga-kong
+      - konga-users
+    networks:
+      - kong-net
+
+  kong-migrations:
+    image: kong:alpine
+    command: kong migrations bootstrap
+    depends_on:
+    - db
+    environment:
+      <<: *kong-env
+    secrets:
+      - kong_postgres_password
+    networks:
+      - internal
+
+  kong-migrations-up:
+    image: kong:alpine
+    command: kong migrations up && kong migrations finish
+    depends_on:
+    - db
+    environment:
+      <<: *kong-env
+    secrets:
+      - kong_postgres_password
+    networks:
+      - internal
+
+  kong:
+    image: kong:alpine
+    user: root
+    depends_on:
+    - db
+    environment:
+      <<: *kong-env
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: '0.0.0.0:8001'
+      KONG_LUA_SSL_TRUSTED_CERTIFICATE: /etc/ssl/certs/ca-certificates.crt
+    secrets:
+      - kong_postgres_password
+    networks:
+      - kong-net
+      - internal
+    ports:
+      - target: 8000
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 8443
+        published: 443
+        protocol: tcp
+        mode: host
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    
+  db:
+    image: postgres:14
+    environment:
+      KONG_PG_DATABASE: ${KONG_PG_DATABASE:-kong}
+      KONG_PG_USER: ${KONG_PG_USER:-kong}
+      POSTGRES_PASSWORD_FILE: /run/secrets/kong_postgres_password
+    secrets:
+      - kong_postgres_password
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "kong"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    stdin_open: true
+    tty: true
+    networks:
+      - internal
+    volumes:
+      - /var/apps/kong/postgres:/var/lib/postgresql/data
