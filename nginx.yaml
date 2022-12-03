@@ -4,9 +4,7 @@ services:
   nginx:
     image: nginx:alpine
     volumes:
-      - /var/apps/nginx/html:/usr/share/nginx/html
-      - /var/apps/nginx/sites:/sites
-      - /var/apps/nginx/conf:/etc/nginx/conf.d
+      - /var/apps/nginx/html:/var/www/html
     networks:
       - kong-net
 
