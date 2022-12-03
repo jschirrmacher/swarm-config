@@ -18,6 +18,8 @@ secrets:
     external: true
   konga-users:
     external: true
+  kong_postgres_password:
+    external: true
 
 services:
 
