@@ -1,10 +1,5 @@
 version: '3.7'
 
-networks:
-  kong-net:
-    driver: overlay
-    attachable: true
-    
 services:
 
   kong:
@@ -37,4 +32,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
-    
+
+networks:
+  kong-net:
+    external: true
