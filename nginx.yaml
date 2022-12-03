@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   nginx:
-    image: nginx
+    image: nginx:alpine
     volumes:
       - /var/apps/nginx/html:/usr/share/nginx/html
       - /var/apps/nginx/sites:/sites
