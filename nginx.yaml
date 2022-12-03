@@ -1,0 +1,15 @@
+version: '3.9'
+
+services:
+  nginx:
+    image: nginx
+    volumes:
+      - /var/apps/nginx/html:/usr/share/nginx/html
+      - /var/apps/nginx/sites:/sites
+      - /var/apps/nginx/conf:/etc/nginx/conf.d
+    networks:
+      - kong-net
+
+networks:
+  kong-net:
+    external: true
