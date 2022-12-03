@@ -17,6 +17,7 @@ services:
     volumes:
       - /var/apps/kong:/config
     networks:
+      - internal
       - kong-net
     ports:
       - target: 8000
@@ -33,6 +34,18 @@ services:
       timeout: 10s
       retries: 10
 
+redis:
+    image: redis:alpine
+    command: redis-server --requirepass sOmE_sEcUrE_pAsS
+    environment:
+     - REDIS_REPLICATION_MODE=master
+    volumes:
+      - /var/apps/kong/redis-data:/var/lib/redis
+      - /var/apps/kong/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - internal
+
 networks:
+  internal:
   kong-net:
     external: true
