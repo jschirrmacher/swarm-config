@@ -34,7 +34,7 @@ services:
       timeout: 10s
       retries: 10
 
-redis:
+  redis:
     image: redis:alpine
     command: redis-server
     environment:
