@@ -38,4 +38,4 @@ networks:
   
 secrets:
    wiki_password:
-     file: wiki_password
+     file: wiki_password.txt
