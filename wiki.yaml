@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: wiki
       POSTGRES_PASSWORD_FILE: /run/secrets/wiki_postgres_password
-      POSTGRES_USER: wiki
+      POSTGRES_USER: wikijs
     secrets:
       - wiki_postgres_password
     volumes:
@@ -22,7 +22,7 @@ services:
       DB_TYPE: postgres
       DB_HOST: db
       DB_PORT: 5432
-      DB_USER: wiki
+      DB_USER: wikijs
       DB_PASS_FILE: /run/secrets/wiki_postgres_password
       DB_NAME: wiki
       # LOGLEVEL: debug
