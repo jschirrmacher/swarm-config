@@ -42,4 +42,4 @@ networks:
   
 secrets:
    wiki_postgres_password:
-     file: wiki_postgres_password
+     external: true
