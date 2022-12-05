@@ -3,7 +3,7 @@ services:
   test:
     image: alpine
     entrypoint: sleep 100000
-  secrets:
+    secrets:
       - wiki_postgres_password
       
   db:
