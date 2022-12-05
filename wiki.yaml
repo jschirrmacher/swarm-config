@@ -36,3 +36,6 @@ networks:
   kong-net:
     external: true
   
+secrets:
+   wiki_password:
+     file: wiki_password
