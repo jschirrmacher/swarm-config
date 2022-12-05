@@ -1,5 +1,11 @@
 version: '3.9'
 services:
+  test:
+    image: alpine
+    entrypoint: sleep 100000
+  secrets:
+      - wiki_postgres_password
+      
   db:
     image: postgres:13-alpine
     environment:
