@@ -23,7 +23,7 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: wiki
-      DB_PASS_FILE: /run/secrets/wiki_password
+      DB_PASS_FILE: /run/secrets/wiki_postgres_password
       DB_NAME: wiki
       # LOGLEVEL: debug
     secrets:
