@@ -1,0 +1,62 @@
+version: "3.9"
+services:
+  exporter:
+    image: prom/node-exporter:latest
+    volumes:
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /proc:/host/proc:ro
+    deploy:
+      mode: global
+    networks:
+      - monitoring
+
+  cadvisor:
+    image: google/cadvisor:latest
+    volumes:
+      - /var/lib/docker/:/var/lib/docker
+      - /dev/disk/:/dev/disk
+      - /sys:/sys
+      - /var/run:/var/run
+      - /:/rootfs
+    deploy:
+      mode: global
+    networks:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=1y'
+      - '--web.enable-lifecycle'
+    volumes:
+      - /var/apps/monitoring/prometheus.data:/prometheus:rw
+      - /var/apps/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    deploy:
+      mode: replicated
+      replicas: 1
+    networks:
+      - kong-net
+      - monitoring
+
+  grafana:
+    image: grafana/grafana
+    user: 1003:1003
+    volumes:
+      - /var/apps/monitoring/grafana-data:/var/lib/grafana:rw
+    deploy:
+      mode: replicated
+      replicas: 1
+    networks:
+      - kong-net
+      - monitoring
+
+networks:
+  monitoring:
+  kong-net:
+    external: true
+    
