@@ -34,7 +34,7 @@ services:
       - '--storage.tsdb.retention.time=1y'
       - '--web.enable-lifecycle'
     volumes:
-      - /var/apps/monitoring/prometheus.data:/prometheus:rw
+      - /var/apps/monitoring/prometheus-data:/prometheus:rw
       - /var/apps/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     deploy:
       mode: replicated
