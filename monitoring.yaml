@@ -57,6 +57,7 @@ services:
 
 networks:
   monitoring:
+    external: true
   kong-net:
     external: true
     
