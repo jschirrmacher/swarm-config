@@ -48,6 +48,9 @@ services:
     user: 1003:1003
     volumes:
       - /var/apps/monitoring/grafana-data:/var/lib/grafana:rw
+      - /var/apps/monitoring:/tmp/grafana-conf
+    environment:
+      - GF_PATHS_CONFIG: /tmp/grafana-conf
     deploy:
       mode: replicated
       replicas: 1
