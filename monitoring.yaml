@@ -50,6 +50,7 @@ services:
       - /var/apps/monitoring/grafana-data:/var/lib/grafana:rw
     environment:
       GF_LIVE_ALLOWED_ORIGINS: https://grafana.justso.de
+      GF_LOG_LEVEL: debug
     deploy:
       mode: replicated
       replicas: 1
