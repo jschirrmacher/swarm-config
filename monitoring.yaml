@@ -48,9 +48,8 @@ services:
     user: 1003:1003
     volumes:
       - /var/apps/monitoring/grafana-data:/var/lib/grafana:rw
-      - /var/apps/monitoring/grafana-conf:/tmp/grafana-conf
     environment:
-      GF_PATHS_CONFIG: /tmp/grafana-conf/grafana.ini
+      GF_LIVE_ALLOWED_ORIGINS: https://grafana.justso.de
     deploy:
       mode: replicated
       replicas: 1
