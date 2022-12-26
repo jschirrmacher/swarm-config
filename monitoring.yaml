@@ -12,7 +12,7 @@ services:
       - monitoring
 
   cadvisor:
-    image: google/cadvisor:latest
+    image: gcr.io/cadvisor/cadvisor
     volumes:
       - /var/lib/docker/:/var/lib/docker
       - /dev/disk/:/dev/disk
