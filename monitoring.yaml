@@ -49,6 +49,7 @@ services:
     volumes:
       - /var/apps/monitoring/grafana-data:/var/lib/grafana:rw
     environment:
+      GF_SERVER_DOMAIN: grafana.justso.de
       GF_LIVE_ALLOWED_ORIGINS: https://grafana.justso.de
       GF_LOG_LEVEL: debug
     deploy:
