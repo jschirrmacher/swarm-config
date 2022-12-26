@@ -44,13 +44,10 @@ services:
       - monitoring
 
   grafana:
-    image: grafana/grafana:sha256:99169ddb2b0b0aa0d1d675ca991320817a374ba52c5c8d212b9238a4e01abeee 
+    image: grafana/grafana-oss
     user: 1003:1003
     volumes:
       - /var/apps/monitoring/grafana-data:/var/lib/grafana:rw
-    environment:
-      GF_SERVER_DOMAIN: grafana.justso.de
-      GF_LOG_LEVEL: debug
     deploy:
       mode: replicated
       replicas: 1
