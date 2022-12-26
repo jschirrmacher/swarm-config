@@ -50,7 +50,7 @@ services:
       - /var/apps/monitoring/grafana-data:/var/lib/grafana:rw
       - /var/apps/monitoring:/tmp/grafana-conf
     environment:
-      GF_PATHS_CONFIG: /tmp/grafana-conf
+      GF_PATHS_CONFIG: /tmp/grafana-conf/grafana.ini
     deploy:
       mode: replicated
       replicas: 1
