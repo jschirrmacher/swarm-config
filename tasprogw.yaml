@@ -1,0 +1,37 @@
+version: "3.9"
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    volumes:
+      - /var/apps/mosquitto/config:/mosquitto/config
+      - /var/apps/mosquitto/log:/mosquitto/log
+      - /var/apps/mosquitto/data:/mosquitto/data
+    networks:
+      - internal
+    ports:
+      - "1883:1883"
+    deploy:
+      replicas: 1
+ 
+  tasprogw:
+    image: node:18-alpine
+    hostname: tasprogw
+    volumes:
+      - /var/apps/tasprogw:/app
+    networks:
+      - monitoring
+      - internal
+    working_dir: /app
+    command:
+      - node
+      - -r
+      - ts-node/register
+      - src
+    deploy:
+      replicas: 1
+ 
+networks:
+  monitoring:
+    external: true
+  internal:
+ 
