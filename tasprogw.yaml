@@ -3,9 +3,9 @@ services:
   mosquitto:
     image: eclipse-mosquitto
     volumes:
-      - /var/apps/mosquitto/config:/mosquitto/config
-      - /var/apps/mosquitto/log:/mosquitto/log
-      - /var/apps/mosquitto/data:/mosquitto/data
+      - /var/apps/home-automation/mosquitto/config:/mosquitto/config
+      - /var/apps/home-automation/mosquitto/log:/mosquitto/log
+      - /var/apps/home-automation/mosquitto/data:/mosquitto/data
     networks:
       - internal
     ports:
@@ -17,7 +17,7 @@ services:
     image: node:18-alpine
     hostname: tasprogw
     volumes:
-      - /var/apps/tasprogw:/app
+      - /var/apps/home-automation/tasprogw:/app
     networks:
       - monitoring
       - internal
