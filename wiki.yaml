@@ -2,6 +2,7 @@ version: '3.9'
 services:
   db:
     image: postgres:13-alpine
+    user: 1001:1001
     environment:
       POSTGRES_DB: wiki
       POSTGRES_PASSWORD_FILE: /run/secrets/wiki_postgres_password
@@ -16,6 +17,7 @@ services:
 
   wiki:
     image: requarks/wiki:2
+    user: 1001:1001
     depends_on:
       - db
     environment:
