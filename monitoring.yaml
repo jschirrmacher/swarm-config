@@ -26,6 +26,7 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
+    user: 1001:1001
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -45,7 +46,7 @@ services:
 
   grafana:
     image: grafana/grafana-oss
-    user: 1003:1003
+    user: 1001:1001
     volumes:
       - /var/apps/monitoring/grafana-data:/var/lib/grafana:rw
     deploy:
