@@ -2,6 +2,7 @@ version: "3.9"
 services:
   mosquitto:
     image: eclipse-mosquitto
+    user: 1001:1001
     volumes:
       - /var/apps/home-automation/mosquitto/config:/mosquitto/config
       - /var/apps/home-automation/mosquitto/log:/mosquitto/log
@@ -15,6 +16,7 @@ services:
  
   tasprogw:
     image: node:18-alpine
+    user: 1001:1001
     hostname: tasprogw
     volumes:
       - /var/apps/home-automation/tasprogw:/app
