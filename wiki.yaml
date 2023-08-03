@@ -33,6 +33,7 @@ services:
     volumes:
       - /var/apps/wiki/config.yml:/var/wiki/config.yml
       - /var/apps/wiki/repo:/var/wiki/repo
+      - /var/apps/wiki/data:/wiki/data
     networks:
       - internal
       - kong-net
