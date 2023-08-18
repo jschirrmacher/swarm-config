@@ -14,42 +14,20 @@ services:
     deploy:
       replicas: 1
  
-  tasprogw:
-    image: node:18-alpine
-    user: 1001:1001
-    hostname: tasprogw
-    volumes:
-      - /var/apps/home-automation/tasprogw:/app
-    networks:
-      - monitoring
-      - internal
-    working_dir: /app
-    command:
-      - node
-      - -r
-      - ts-node/register
-      - src
-    deploy:
-      replicas: 1
- 
   gateway:
     image: joschi64/mqtt-prometheus-gateway:main
     hostname: gateway
     networks:
       - monitoring
       - internal
-      - kong-net
     volumes:
       - /var/apps/home-automation/config.yaml:/config.yaml
       - /var/apps/home-automation/.env:/app/.env
     working_dir: /app
-    command: ["npm", "start"]
     deploy:
       replicas: 1
      
 networks:
-  kong-net:
-    external: true
   monitoring:
     external: true
   internal:
