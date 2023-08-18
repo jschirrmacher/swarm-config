@@ -32,8 +32,24 @@ services:
     deploy:
       replicas: 1
  
+  gateway:
+    image: joschi64/mqtt-prometheus-gateway
+    user: 1001:1001
+    hostname: gateway
+    networks:
+      - monitoring
+      - internal
+      - kong-net
+    volumes:
+      - /var/apps/home-automation/config.yaml:/config.yaml
+      - /var/apps/home-automation/.env:/app/.env
+    command: ["npm", "start"]
+    deploy:
+      replicas: 1
+     
 networks:
+  kong-net:
+    external: true
   monitoring:
     external: true
   internal:
- 
