@@ -43,6 +43,7 @@ services:
     volumes:
       - /var/apps/home-automation/config.yaml:/config.yaml
       - /var/apps/home-automation/.env:/app/.env
+    working_dir: /app
     command: ["npm", "start"]
     deploy:
       replicas: 1
