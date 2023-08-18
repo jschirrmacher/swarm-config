@@ -33,7 +33,7 @@ services:
       replicas: 1
  
   gateway:
-    image: joschi64/mqtt-prometheus-gateway:latest
+    image: joschi64/mqtt-prometheus-gateway:main
     user: 1001:1001
     hostname: gateway
     networks:
