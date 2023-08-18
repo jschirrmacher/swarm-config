@@ -34,7 +34,6 @@ services:
  
   gateway:
     image: joschi64/mqtt-prometheus-gateway:main
-    user: 1001:1001
     hostname: gateway
     networks:
       - monitoring
