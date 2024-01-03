@@ -15,7 +15,7 @@ services:
       KONG_ADMIN_LISTEN: '0.0.0.0:8001'
       KONG_LUA_SSL_TRUSTED_CERTIFICATE: /etc/ssl/certs/ca-certificates.crt
     volumes:
-      - /var/apps/kong:/config
+      - /var/apps/swarm-config/generated:/config
     networks:
       - internal
       - kong-net
@@ -41,8 +41,8 @@ services:
     environment:
      - REDIS_REPLICATION_MODE=master
     volumes:
-      - /var/apps/kong/redis-data:/data
-      - /var/apps/kong/redis.conf:/usr/local/etc/redis/redis.conf
+      - /var/apps/swarm-config/redis-data:/data
+      - /var/apps/swarm-config/redis.conf:/usr/local/etc/redis/redis.conf
     networks:
       - internal
 
