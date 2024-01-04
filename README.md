@@ -78,6 +78,38 @@ service ssh restart
 
 After that, you can log in with your new username and ssh key and use `sudo` to do administrative things.
 
+## More than one node in your cluster
+
+A cluster makes more sense, if you have more than one node in it. Docker containers will be distributed between nodes, to distribute compute power, when updating a service, you can use rolling updates to prevent downtimes.
+
+However, docker volumes will be only placed on the node the container is running on. When the service is scaled to more than one node, or when services are updated, the volume will be created on the next node as well, while previous data will not be available any more (but still will be available on the first node).
+
+To circumvent this, I use GlusterFS. It is a kind of network file system, which allows access from a set of servers.
+
+A prerequisite is to have all those server nodes in the same network and to know the nodes by name: Each node should have each other node in its `/etc/hosts` file. I number my nodes like `server-1`, `server-2` and so on and they have unique IP addresses in `10.0.0.0/24` network.
+
+To activate GlusterFS (we already installed it at the beginning of this tutorial) we use the following commands:
+
+```bash
+sudo service glusterd start
+sudo systemctl enable glusterd
+sudo ufw allow from 10.0.0.0/24
+sudo gluster volume create storage-vol1 transport tcp server-1:/mnt/HC_Volume_3749475/brick server-2:/mnt/HC_Volume_3749480/brick
+sudo gluster volume start storage-vol1
+```
+
+`/mnt/HC_Volume_3749475/brick` is the physical storage. It can now be mounted as GlusterFS volume on each of them:
+
+```bash
+sudo mkdir /var/volumes
+sudo mount -t glusterfs server-1:/storage-vol1 /var/volumes
+echo 'server-1:/storage-vol1 /var/volumes glusterfs defaults,_netdev 0 0' | sudo tee -a /etc/fstab
+```
+
+The last line ensures that the volume is mounted each time the server is restarted.
+
+If you define docker volumes on this directory, data will be shared across the nodes making it possible to run services using this data independent of the node.
+
 ### Portainer and other services
 
 A prerequisite is to have git installed. My setup assumes that it is installed under `/var/apps`. If you want to change that, remember to change the yaml files for the docker stacks as well.
