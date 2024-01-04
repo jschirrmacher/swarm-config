@@ -1,0 +1,22 @@
+{
+  "name": "swarm-config",
+  "version": "1.0.0",
+  "description": "A collection of docker-compose files to setup several services by importing them in my portainer.",
+  "scripts": {
+    "kong:generate": "tsx src/generate-kong-config.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Joachim Schirrmacher<joachim@justso.de>",
+  "license": "Apache-2.0",
+  "type": "module",
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.10.6",
+    "prettier": "^3.1.1",
+    "tsx": "^4.7.0"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
