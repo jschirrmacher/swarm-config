@@ -93,7 +93,7 @@ export function createStack(stack: string) {
         },
 
         addRedirection(host: string, dest: string, options?: RouteOptions) {
-          const access = `kong.response.exit(301,'Page moved - redirecting to ${dest}/',{['Location']='${dest}' .. kong.request.get_path_with_query()})`
+          const access = [`kong.response.exit(301,'Page moved - redirecting to ${dest}/',{['Location']='${dest}' .. kong.request.get_path_with_query()})`]
           const preFunction = createPlugin("pre-function", { access })
           options = {
             ...options,
