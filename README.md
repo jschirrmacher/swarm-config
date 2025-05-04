@@ -147,6 +147,12 @@ npm run kong:generate
 
 The result is the file `generated/kong.yaml`, which will be used by Kong, if it is setup correctly.
 
+Before running the kong stack, you need to create a 'kong-net' network in docker:
+
+```bash
+docker network create --scope=swarm --attachable -d overlay kong-net
+```
+
 You can now use the Portainer UI to set up the Kong service. Under 'Stacks' use the 'Add stack' button (in the upper right), select 'Repository' and enter the URL of this repository. As the "compose path" specify `kong.yaml`.
 
 This creates the Kong stack containing the kong API gateway and a redis instance which stores the Letsencrypt TLS certificates for your services that Kong requests for you in the background.
