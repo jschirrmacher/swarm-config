@@ -49,5 +49,5 @@ services:
 networks:
   internal:
   kong-net:
-    external: true
-
+    driver: overlay
+    attachable: true
