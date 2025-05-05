@@ -21,7 +21,7 @@ services:
       - monitoring
       - internal
     volumes:
-      - /var/apps/home-automation/config.yaml:/config.yaml
+      - /var/apps/home-automation/config.yaml:/app/config.yaml
       - /var/apps/home-automation/.env:/app/.env
     working_dir: /app
     deploy:
