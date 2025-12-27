@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A collection of docker-compose files to setup several services by importing them in my portainer.",
   "scripts": {
-    "kong:generate": "tsx src/generate-kong-config.ts",
+    "start": "tsx src/generate-kong-config.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

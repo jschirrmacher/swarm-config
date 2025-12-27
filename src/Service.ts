@@ -92,13 +92,13 @@ export function createStack(stack: string) {
           return result
         },
 
-        addRedirection(host: string, dest: string, options?: RouteOptions) {
-          const access = [`kong.response.exit(301,'Page moved - redirecting to ${dest}/',{['Location']='${dest}' .. kong.request.get_path_with_query()})`]
+        addRedirection(host: string, dest: string, options?: RouteOptions, code = 301) {
+          const access = [`local path = kong.request.get_path_with_query(); if path:sub(-1) == '/' then path = path:sub(1, -2); end; kong.response.exit(${code}, 'Page moved - redirecting to ${dest}' .. path, {['Location'] = '${dest}' .. path})`]
           const preFunction = createPlugin("pre-function", { access })
           options = {
             ...options,
             hosts: (options?.hosts || []).concat(host),
-            https_redirect_status_code: 301,
+            https_redirect_status_code: code,
           }
           const routeName = `${stack}_${host.replaceAll(".", "-")}_redirect`
           const route = createRoute(routeName, options, [preFunction])

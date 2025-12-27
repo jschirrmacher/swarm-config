@@ -13,4 +13,5 @@ const config = {
   basicauth_credentials: consumers,
 }
 
+console.log("Generating kong.yaml")
 await writeFile(resolve(process.cwd(), "generated", "kong.yaml"), dump(config))

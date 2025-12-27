@@ -20,7 +20,6 @@ services:
       - /var/apps/portainer:/data
     networks:
       - agent_network
-      - kong-net
     deploy:
       mode: replicated
       replicas: 1
