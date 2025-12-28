@@ -200,8 +200,24 @@ else
 fi
 echo ""
 
-# Step 9: Optional GlusterFS installation
-echo "💾 Step 9: GlusterFS installation (optional)..."
+# Step 9: Generate Kong configuration and deploy stack
+echo "🦍 Step 9: Generating Kong configuration and deploying Kong stack..."
+
+cd /var/apps/swarm-config
+
+# Generate Kong configuration
+echo "  Generating Kong configuration..."
+npm run kong:generate
+
+# Deploy Kong stack
+echo "  Deploying Kong stack..."
+docker stack deploy -c config/stacks/kong.yaml kong
+
+echo "✅ Kong stack deployed"
+echo ""
+
+# Step 10: Optional GlusterFS installation
+echo "💾 Step 10: GlusterFS installation (optional)..."
 echo "GlusterFS is needed for multi-node clusters with distributed storage."
 echo "For single-node setups, you can skip this."
 echo ""
@@ -223,9 +239,9 @@ echo ""
 # Final instructions
 echo "✅ Initial setup complete!"
 echo ""
+echo "Kong API Gateway is now running!"
 echo "Next steps:"
-echo "1. Review your configuration: nano /var/apps/swarm-config/.swarm-config"
-echo "2. Configure Kong services: cd /var/apps/swarm-config"
-echo "3. Generate Kong configuration: npm run kong:generate"
-echo "4. Deploy Kong stack via Portainer or: docker stack deploy -c config/stacks/kong.yaml kong"
-echo "  - GlusterFS (if needed)"
+echo "1. Access Portainer (if deployed): https://your-domain:9000"
+echo "2. Configure additional services in: /var/apps/swarm-config/config/services/"
+echo "3. Regenerate Kong config after changes: cd /var/apps/swarm-config && npm run kong:generate"
+echo "4. View Kong service status: docker service ls | grep kong"

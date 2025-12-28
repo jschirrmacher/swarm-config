@@ -38,17 +38,22 @@ Das Skript führt folgende Schritte automatisch aus:
 - ✅ npm Dependencies installieren
 - ✅ Team-Benutzer erstellen (basierend auf SSH authorized_keys)
 - ✅ SSH-Sicherheit konfigurieren (deaktiviert Root-Login und Password-Auth)
-
-**Alternative (manuell):** Falls Sie die Schritte einzeln durchführen möchten, siehe Abschnitt "Manuelle Installation" am Ende dieses Dokuments.
+- ✅ Kong Network erstellen
+- ✅ Kong Stack deployen
 
 **Hinweis:** Das initial-setup.sh Skript:
 - Fragt interaktiv nach Ihrer Domain und erstellt die `.swarm-config` Datei
 - Erstellt das Kong Network (`kong-net`)
+- Generiert die Kong-Konfiguration und deployt den Kong Stack automatisch
 - Fragt optional nach GlusterFS Installation (für Multi-Node Cluster)
 
-### Schritt 2: Kong Gateway konfigurieren
+Nach dem Setup ist Kong bereits einsatzbereit!
 
-Nach dem Setup können Sie direkt mit der Kong-Konfiguration fortfahren:
+**Alternative (manuell):** Falls Sie die Schritte einzeln durchführen möchten, siehe Abschnitt "Manuelle Installation" am Ende dieses Dokuments.
+
+### Schritt 2: Zusätzliche Services konfigurieren (Optional)
+
+Kong läuft bereits! Sie können nun zusätzliche Services konfigurieren:
 
 ### Kong-Konfiguration anpassen
 
