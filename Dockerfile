@@ -17,6 +17,9 @@ RUN npm run build
 # Production stage
 FROM node:24-alpine
 
+# Install wget for health checks
+RUN apk add --no-cache wget
+
 WORKDIR /app
 
 # Copy built application
@@ -30,9 +33,9 @@ ENV HOST=0.0.0.0
 # Expose port
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s \
-  CMD node -e "require('http').get('http://localhost:3000/api/repositories', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+# Health check - simple HTTP check that the server is responding
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
 # Run application
 CMD ["node", ".output/server/index.mjs"]
