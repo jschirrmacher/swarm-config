@@ -80,9 +80,32 @@ cd /var/apps
 if [ -d "swarm-config" ]; then
   echo "⚠️  swarm-config directory already exists, updating..."
   cd swarm-config
+  
+  # Backup config directories to preserve local-only files
+  BACKUP_DIR=$(mktemp -d)
+  echo "  📦 Backing up local configuration..."
+  cp -r config "$BACKUP_DIR/" 2>/dev/null || true
+  
+  # Update repository
   git fetch origin next
   git reset --hard origin/next
-  echo "✅ Repository updated to latest version"
+  
+  # Restore only files that don't exist in the repository
+  echo "  📝 Restoring local-only configuration files..."
+  if [ -d "$BACKUP_DIR/config" ]; then
+    cd "$BACKUP_DIR/config"
+    find . -type f -name "*.ts" | while read -r file; do
+      TARGET_FILE="/var/apps/swarm-config/config/$file"
+      # Only restore if file doesn't exist after git reset (= not in repo)
+      if [ ! -f "$TARGET_FILE" ]; then
+        cp --parents "$file" "/var/apps/swarm-config/config/" 2>/dev/null || true
+        echo "    Restored: config/$file"
+      fi
+    done
+  fi
+  rm -rf "$BACKUP_DIR"
+  
+  echo "  ✅ Updated to latest version (local-only files preserved)"
 else
   echo "Cloning swarm-config repository (branch: next)..."
   git clone -b next https://github.com/jschirrmacher/swarm-config.git
