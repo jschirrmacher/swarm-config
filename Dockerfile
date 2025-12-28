@@ -1,12 +1,12 @@
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
 # Copy root package files
 COPY package*.json ./
 
-# Install all dependencies
-RUN npm ci
+# Install all dependencies (skip postinstall hooks for Docker build)
+RUN npm ci --ignore-scripts
 
 # Copy entire project (including web-ui)
 COPY . .
@@ -15,7 +15,7 @@ COPY . .
 RUN npm run ui:build
 
 # Production stage
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
