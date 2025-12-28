@@ -80,10 +80,18 @@ cd /var/apps
 if [ -d "swarm-config" ]; then
   echo "⚠️  swarm-config directory already exists, updating..."
   cd swarm-config
+  
+  # Stash local changes if any exist
   git stash -u
+  STASH_RESULT=$?
+  
   git fetch origin next
   git reset --hard origin/next
-  git stash pop
+  
+  # Only pop stash if something was stashed
+  if [ $STASH_RESULT -eq 0 ] && git stash list | grep -q "stash@{0}"; then
+    git stash pop || echo "⚠️  Could not apply stashed changes"
+  fi
   
   echo "✅ Repository updated to latest version"
 else
