@@ -4,6 +4,7 @@
   "description": "Complete Docker Swarm infrastructure with Kong API Gateway and Git-based CI/CD deployment platform.",
   "scripts": {
     "kong:generate": "tsx src/generate-kong-config.ts",
+    "kong:reload": "tsx src/reload-kong.ts",
     "init-repo": "tsx src/init-repo.ts",
     "install-hooks": "tsx src/install-hooks.ts",
     "postinstall": "npm run install-hooks",

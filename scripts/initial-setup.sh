@@ -78,14 +78,27 @@ mkdir -p /var/apps
 cd /var/apps
 
 if [ -d "swarm-config" ]; then
-  echo "⚠️  swarm-config directory already exists, skipping clone"
+  echo "⚠️  swarm-config directory already exists, updating..."
+  cd swarm-config
+  
+  # Fetch latest changes
+  git fetch origin next
+  
+  # Check if there are uncommitted changes
+  if git diff-index --quiet HEAD --; then
+    # No uncommitted changes, safe to pull
+    git reset --hard origin/next
+    echo "✅ Repository updated to latest version"
+  else
+    echo "⚠️  Local changes detected, skipping update"
+    echo "  To update manually: cd /var/apps/swarm-config && git stash && git pull"
+  fi
 else
   echo "Cloning swarm-config repository (branch: next)..."
   git clone -b next https://github.com/jschirrmacher/swarm-config.git
+  cd swarm-config
   echo "✅ Repository cloned from next branch"
 fi
-
-cd swarm-config
 
 # Step 4: Create config file if it doesn't exist
 if [ ! -f ".swarm-config" ]; then
@@ -248,7 +261,28 @@ npm run kong:generate
 echo "  Deploying Kong stack..."
 docker stack deploy -c config/stacks/kong.yaml kong
 
-echo "✅ Kong stack deployed"
+# Wait for Kong to be ready
+echo "  Waiting for Kong to start..."
+sleep 5
+
+# Check if Kong service is running
+RETRY_COUNT=0
+MAX_RETRIES=30
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  if docker service ls --filter name=kong_kong --format "{{.Replicas}}" | grep -q "1/1"; then
+    echo "✅ Kong stack deployed and running"
+    break
+  fi
+  
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+  if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+    echo "  Kong still starting... ($RETRY_COUNT/$MAX_RETRIES)"
+    sleep 2
+  else
+    echo "⚠️  Kong deployment initiated but taking longer than expected"
+    echo "  Check status with: docker service ls | grep kong"
+  fi
+done
 echo ""
 
 # Step 10: Optional GlusterFS installation

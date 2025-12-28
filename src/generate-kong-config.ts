@@ -56,37 +56,5 @@ console.log("")
 
 await writeFile(resolve(process.cwd(), "generated", "kong.yaml"), dump(config))
 console.log("✓ Generated: generated/kong.yaml")
-
-// Reload Kong
 console.log("")
-console.log("Reloading Kong...")
-
-const { exec } = await import("child_process")
-const { promisify } = await import("util")
-const execAsync = promisify(exec)
-
-try {
-  // Find Kong container
-  const { stdout: containerName } = await execAsync(
-    'docker ps --format "{{.Names}}" | grep _kong.1',
-  )
-  const kong = containerName.trim()
-
-  if (!kong) {
-    console.error("✗ Kong container not found")
-    process.exit(1)
-  }
-
-  // Validate configuration
-  console.log("  Validating configuration...")
-  await execAsync(`docker exec ${kong} kong config parse /config/kong.yaml`)
-  console.log("  ✓ Configuration valid")
-
-  // Reload Kong
-  console.log("  Reloading Kong...")
-  await execAsync(`docker exec ${kong} kong reload`)
-  console.log("✓ Kong reloaded successfully")
-} catch (error) {
-  console.error("✗ Failed to reload Kong:", error instanceof Error ? error.message : String(error))
-  process.exit(1)
-}
+console.log("ℹ To reload Kong with the new configuration, run: npm run kong:reload")
