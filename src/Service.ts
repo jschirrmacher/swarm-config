@@ -1,5 +1,5 @@
 import { getDomains, registerDomain } from "./DomainRegister.js"
-import { createPlugin, Plugin, PluginFactory } from "./Plugin.js"
+import { createPlugin, type Plugin, type PluginFactory } from "./Plugin.js"
 
 interface Route {
   name: string
@@ -93,7 +93,9 @@ export function createStack(stack: string) {
         },
 
         addRedirection(host: string, dest: string, options?: RouteOptions, code = 301) {
-          const access = [`local path = kong.request.get_path_with_query(); if path:sub(-1) == '/' then path = path:sub(1, -2); end; kong.response.exit(${code}, 'Page moved - redirecting to ${dest}' .. path, {['Location'] = '${dest}' .. path})`]
+          const access = [
+            `local path = kong.request.get_path_with_query(); if path:sub(-1) == '/' then path = path:sub(1, -2); end; kong.response.exit(${code}, 'Page moved - redirecting to ${dest}' .. path, {['Location'] = '${dest}' .. path})`,
+          ]
           const preFunction = createPlugin("pre-function", { access })
           options = {
             ...options,

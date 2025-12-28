@@ -101,6 +101,9 @@ if [ ! -f ".swarm-config" ]; then
   # Ask for domain name - redirect from /dev/tty to work with curl | bash
   read -p "Enter your base domain (e.g., example.com): " DOMAIN < /dev/tty
   
+  # Ask for technical contact email for Let's Encrypt
+  read -p "Enter technical contact email for SSL certificates: " TECH_EMAIL < /dev/tty
+  
   # Create .swarm-config with user input
   cat > .swarm-config << EOF
 # Swarm Config - Server Configuration
@@ -108,12 +111,29 @@ if [ ! -f ".swarm-config" ]; then
 # Base domain for your server
 # Apps will be available at <appname>.<DOMAIN>
 DOMAIN=${DOMAIN}
+
+# Technical contact email for Let's Encrypt SSL certificates
+TECH_EMAIL=${TECH_EMAIL}
 EOF
   
-  echo "✅ Created .swarm-config with domain: ${DOMAIN}"
+  echo "✅ Created .swarm-config with domain: ${DOMAIN} and email: ${TECH_EMAIL}"
   echo ""
 else
   echo "✅ .swarm-config already exists"
+  
+  # Load existing configuration
+  source .swarm-config
+  echo "  Using existing domain: ${DOMAIN}"
+  
+  # Check if TECH_EMAIL is set, if not ask for it
+  if [ -z "$TECH_EMAIL" ]; then
+    echo ""
+    read -p "Technical contact email not found. Enter email for SSL certificates: " TECH_EMAIL < /dev/tty
+    echo "" >> .swarm-config
+    echo "# Technical contact email for Let's Encrypt SSL certificates" >> .swarm-config
+    echo "TECH_EMAIL=${TECH_EMAIL}" >> .swarm-config
+    echo "  Updated .swarm-config with email: ${TECH_EMAIL}"
+  fi
 fi
 
 # Step 5: Install npm dependencies
@@ -164,6 +184,14 @@ if [ -f "/root/.ssh/authorized_keys" ]; then
     chmod 0440 /etc/sudoers.d/team
     echo "  ✅ Passwordless sudo configured for team group"
     
+    # Prepare Kong consumers directory and data directory for passwords
+    CONSUMERS_DIR="/var/apps/swarm-config/config/consumers"
+    DATA_DIR="/var/apps/swarm-config/data"
+    mkdir -p "$DATA_DIR"
+    PASSWORDS_FILE="$DATA_DIR/.passwords.txt"
+    > "$PASSWORDS_FILE"  # Clear passwords file
+    chmod 600 "$PASSWORDS_FILE"
+    
     for USERNAME in $USERNAMES; do
       # Double-check normalization (should already be normalized)
       USERNAME=$(echo "$USERNAME" | sed 's/[^a-zA-Z0-9_]//g' | tr '[:upper:]' '[:lower:]')
@@ -188,10 +216,32 @@ if [ -f "/root/.ssh/authorized_keys" ]; then
       chmod 600 "/home/$USERNAME/.ssh/authorized_keys"
       chown -R "$USERNAME:team" "/home/$USERNAME/.ssh"
       
-      echo "  ✅ User $USERNAME configured"
+      # Generate Kong consumer with secure password
+      PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
+      CONSUMER_FILE="$CONSUMERS_DIR/${USERNAME}.ts"
+      
+      cat > "$CONSUMER_FILE" <<EOF
+import type { Consumer } from "../../src/Consumer.js"
+
+// Auto-generated consumer for SSH user: ${USERNAME}
+// Generated on: $(date -Iseconds)
+const consumer: Consumer = {
+  username: "${USERNAME}",
+  consumerName: "${USERNAME}",
+  password: "${PASSWORD}"
+}
+
+export default consumer
+EOF
+      
+      # Save password to reference file
+      echo "${USERNAME}: ${PASSWORD}" >> "$PASSWORDS_FILE"
+      
+      echo "  ✅ User $USERNAME configured (OS + Kong consumer)"
     done
     
-    echo "✅ Team users created"
+    echo "✅ Team users and Kong consumers created"
+    echo "📋 Passwords saved to: $PASSWORDS_FILE"
   else
     echo "⚠️  No usernames found in authorized_keys"
   fi
@@ -278,8 +328,34 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 done
 echo ""
 
-# Step 10: Optional GlusterFS installation
-echo "💾 Step 10: GlusterFS installation (optional)..."
+# Step 10: Build and Deploy Web UI
+echo "🎨 Step 10: Building and deploying Swarm Config Web UI..."
+cd /var/apps/swarm-config
+
+echo "  Building Web UI Docker image..."
+docker build -t swarm-config-ui:latest -f web-ui/Dockerfile . || {
+  echo "⚠️  Web UI build failed, but continuing..."
+  echo "  You can build it manually later with:"
+  echo "  cd /var/apps/swarm-config && docker build -t swarm-config-ui:latest -f web-ui/Dockerfile ."
+}
+
+if docker images | grep -q swarm-config-ui; then
+  echo "  Deploying Web UI stack..."
+  export DOMAIN="$DOMAIN"
+  docker stack deploy -c web-ui/docker-compose.yml swarm-config-ui
+  
+  echo "  Regenerating Kong configuration with Web UI route..."
+  npm run kong:generate
+  
+  echo "✅ Web UI deployed"
+  echo "  Access at: https://config.$DOMAIN"
+else
+  echo "⚠️  Web UI image not available, skipping deployment"
+fi
+echo ""
+
+# Step 11: Optional GlusterFS installation
+echo "💾 Step 11: GlusterFS installation (optional)..."
 echo "GlusterFS is needed for multi-node clusters with distributed storage."
 echo "For single-node setups, you can skip this."
 echo ""
@@ -301,9 +377,16 @@ echo ""
 # Final instructions
 echo "✅ Initial setup complete!"
 echo ""
-echo "Kong API Gateway is now running!"
+echo "🎉 Services are now running:"
+echo "  • Kong API Gateway: https://$DOMAIN"
+echo "  • Web UI (Repository Management): https://config.$DOMAIN"
+echo ""
 echo "Next steps:"
-echo "1. Access Portainer (if deployed): https://your-domain:9000"
-echo "2. Configure additional services in: /var/apps/swarm-config/config/services/"
-echo "3. Regenerate Kong config after changes: cd /var/apps/swarm-config && npm run kong:generate"
-echo "4. View Kong service status: docker service ls | grep kong"
+echo "1. Create repositories via Web UI: https://config.$DOMAIN"
+echo "2. Or manually: cd /var/apps/swarm-config && npm run init-repo <app-name>"
+echo "3. View all services: docker service ls"
+echo "4. View Kong routes: docker exec \$(docker ps -q -f name=kong) kong routes list"
+echo ""
+echo "📚 Documentation:"
+echo "  • For app developers: /var/apps/swarm-config/docs/APP-DEVELOPER.md"
+echo "  • For administrators: /var/apps/swarm-config/docs/ADMIN-SETUP.md"

@@ -12,7 +12,7 @@
  *   npm run server-setup myapp
  *
  * This script:
- * - Creates a bare Git repository in /opt/git/
+ * - Creates a bare Git repository in /home/<user>/
  * - Sets up post-receive hook for CI/CD
  * - Creates working directory in /var/apps/
  * - Configures automatic deployment on git push
@@ -30,7 +30,7 @@ import { config } from "./config.ts"
 const execAsync = promisify(exec)
 
 const BRANCH = "main"
-const GIT_BASE_DIR = "/opt/git"
+const GIT_BASE_DIR = "/home"
 const APP_BASE_DIR = "/var/apps"
 const SWARM_CONFIG_DIR = "/var/apps/swarm-config"
 
@@ -216,7 +216,7 @@ async function main() {
     console.log("")
 
     console.log("2. On your local machine, add the remote:")
-    console.log(`   git remote add production git@${config.DOMAIN}:/opt/git/${appName}.git`)
+    console.log(`   git remote add production git@${config.DOMAIN}:~/${appName}.git`)
     console.log("")
     console.log("3. Push your code to trigger deployment:")
     console.log(`   git push production ${BRANCH}`)

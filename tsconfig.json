@@ -1,8 +1,10 @@
 {
+  "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
     "module": "NodeNext",
     "target": "ESNext",
     "lib": ["ESNext"],
+    "types": ["node"],
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
     "noEmit": true,
@@ -10,8 +12,10 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true
   },
-  "include": ["./src/**/*.ts"],
-  "exclude": ["./src/**/*.test.ts", "./dist/**/*"]
+  "include": ["./src/**/*.ts", "./config/**/*.ts", "./scripts/**/*.ts", "./**/*.vue", "./app.vue"],
+  "exclude": ["./src/**/*.test.ts", "./dist/**/*", "./.nuxt/**/*", "./.output/**/*", "./node_modules", "./nuxt.config.ts"]
 }

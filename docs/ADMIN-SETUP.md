@@ -40,36 +40,71 @@ Das Skript führt folgende Schritte automatisch aus:
 - ✅ SSH-Sicherheit konfigurieren (deaktiviert Root-Login und Password-Auth)
 - ✅ Kong Network erstellen
 - ✅ Kong Stack deployen
+- ✅ Web UI bauen und deployen
 
 **Hinweis:** Das initial-setup.sh Skript:
 - Fragt interaktiv nach Ihrer Domain und erstellt die `.swarm-config` Datei
 - Erstellt das Kong Network (`kong-net`)
 - Generiert die Kong-Konfiguration und deployt den Kong Stack automatisch
+- Baut und deployt die Web UI für Repository-Management
 - Fragt optional nach GlusterFS Installation (für Multi-Node Cluster)
 
-Nach dem Setup ist Kong bereits einsatzbereit!
+Nach dem Setup sind Kong und die Web UI bereits einsatzbereit!
 
 **Alternative (manuell):** Falls Sie die Schritte einzeln durchführen möchten, siehe Abschnitt "Manuelle Installation" am Ende dieses Dokuments.
 
-### Schritt 2: Zusätzliche Services konfigurieren (Optional)
+### Schritt 2: Web UI für Self-Service Repository-Management
 
-Kong läuft bereits! Sie können nun zusätzliche Services konfigurieren:
+Die Web UI wurde automatisch durch das initial-setup.sh Skript installiert und ist verfügbar unter:
 
-### Kong-Konfiguration anpassen
+**`https://config.your-domain.com`**
+
+Entwickler können dort Self-Service Repositories erstellen, ohne SSH-Zugriff oder Admin-Rechte zu benötigen.
+
+#### Web UI manuell neu deployen (falls nötig)
+
+Falls die Web UI neu gebaut werden muss:
 
 ```bash
 cd /var/apps/swarm-config
 
-# Beispiel-Konfigurationen kopieren und anpassen
-cp config/plugins/acme.ts.example config/plugins/acme.ts
-cp config/plugins/prometheus.ts.example config/plugins/prometheus.ts
-cp config/infrastructure/acme.ts.example config/infrastructure/acme.ts
-cp config/infrastructure/portainer.ts.example config/infrastructure/portainer.ts
+# Web UI neu bauen
+docker build -t swarm-config-ui:latest -f web-ui/Dockerfile .
 
-# E-Mail-Adresse für Let's Encrypt anpassen
-nano config/plugins/acme.ts
-# Domains anpassen
-nano config/infrastructure/portainer.ts
+# Stack neu deployen
+export DOMAIN=your-domain.com
+docker stack deploy -c web-ui/docker-compose.yml swarm-config-ui
+
+# Kong-Config neu generieren
+npm run kong:generate
+```
+
+### Schritt 3: Weitere Services konfigurieren (Optional)
+
+Sie können weitere optionale Services konfigurieren:
+
+#### Kong-Konfiguration anpassen (Optional)
+
+Sie können optionale Kong-Plugins und Service-Beispiele konfigurieren:
+
+```bash
+cd /var/apps/swarm-config
+
+# Beispiel-Plugins (optional)
+cp config/plugins/prometheus.ts.example config/plugins/prometheus.ts
+cp config/plugins/bot-detection.ts.example config/plugins/bot-detection.ts
+cp config/plugins/request-size-limiting.ts.example config/plugins/request-size-limiting.ts
+
+# Beispiel-Services (optional)
+cp config/services/portainer.ts.example config/services/portainer.ts
+cp config/services/monitoring.ts.example config/services/monitoring.ts
+
+# Beispiel-Consumer für Authentifizierung (optional)
+cp config/consumers/joachim.ts.example config/consumers/your-username.ts
+
+# Konfigurationen anpassen
+nano config/plugins/prometheus.ts
+nano config/services/portainer.ts
 ```
 
 ### Kong YAML generieren
@@ -141,6 +176,10 @@ npm run kong:generate
 Kong lädt die Konfiguration automatisch neu.
 
 ### Git Repository für neue App einrichten
+
+**Primär:** Verwenden Sie die Web UI unter `https://config.your-domain.com`
+
+**Alternativ (Command Line):**
 
 ```bash
 cd /var/apps/swarm-config
@@ -298,7 +337,7 @@ dpkg-reconfigure -plow unattended-upgrades
 
 ```
 /var/apps/                      # App-Daten und .env Dateien
-/opt/git/                       # Bare Git Repositories
+/home/<user>/<repo>.git/        # Bare Git Repositories in User Home
 /var/volumes/                   # GlusterFS Mount (bei Multi-Node)
 /var/apps/swarm-config/         # Zentrale Konfiguration
 ```

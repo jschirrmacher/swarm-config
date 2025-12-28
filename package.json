@@ -7,7 +7,11 @@
     "kong:reload": "tsx src/reload-kong.ts",
     "init-repo": "tsx src/init-repo.ts",
     "install-hooks": "tsx src/install-hooks.ts",
-    "postinstall": "npm run install-hooks",
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "npm run install-hooks && nuxt prepare",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,12 +19,18 @@
   "license": "Apache-2.0",
   "type": "module",
   "devDependencies": {
+    "@nuxt/devtools": "^1.5.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.10.6",
+    "@types/node": "^22.0.0",
     "prettier": "^3.1.1",
-    "tsx": "^4.7.0"
+    "tsx": "^4.7.0",
+    "typescript": "^5.6.0"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nuxt": "^3.14.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
   }
 }

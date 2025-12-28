@@ -1,0 +1,181 @@
+import { exec } from "node:child_process"
+import { promisify } from "node:util"
+import { access, mkdir, writeFile, readFile } from "node:fs/promises"
+import { join } from "node:path"
+import { constants } from "node:fs"
+import { getCookie } from "h3"
+
+const execAsync = promisify(exec)
+
+export interface RepoConfig {
+  name: string
+  port: number
+  enableKong: boolean
+  owner: string
+  createdAt: string
+}
+
+export async function createGitRepository(
+  name: string,
+  owner: string,
+  baseDir: string,
+): Promise<string> {
+  const repoPath = join(baseDir, owner, `${name}.git`)
+
+  // Create parent directory if needed
+  await mkdir(join(baseDir, owner), { recursive: true, mode: 0o755 })
+
+  // Initialize bare git repository
+  await execAsync(`git init --bare "${repoPath}"`)
+
+  // Copy post-receive hook from swarm-config
+  const hookSource = "/var/apps/swarm-config/hooks/post-receive"
+  const hookDest = join(repoPath, "hooks", "post-receive")
+
+  try {
+    await access(hookSource, constants.R_OK)
+    await execAsync(`cp "${hookSource}" "${hookDest}"`)
+    await execAsync(`chmod +x "${hookDest}"`)
+  } catch (error) {
+    console.warn("Could not copy post-receive hook:", error)
+  }
+
+  return repoPath
+}
+
+export async function createWorkspace(
+  name: string,
+  owner: string,
+  baseDir: string,
+  config: RepoConfig,
+): Promise<string> {
+  const workspaceDir = join(baseDir, owner, name)
+
+  // Create workspace directory structure
+  await mkdir(workspaceDir, { recursive: true, mode: 0o755 })
+  await mkdir(join(workspaceDir, "data"), { recursive: true, mode: 0o755 })
+
+  // Create .env file
+  const envContent = `# Environment variables for ${name}
+NODE_ENV=production
+PORT=${config.port}
+`
+  await writeFile(join(workspaceDir, ".env"), envContent, { mode: 0o600 })
+
+  // Save repo config
+  const configPath = join(workspaceDir, ".repo-config.json")
+  await writeFile(configPath, JSON.stringify(config, null, 2), { mode: 0o644 })
+
+  return workspaceDir
+}
+
+export async function createKongService(name: string, port: number, domain: string): Promise<void> {
+  const servicesDir = "/var/apps/swarm-config/config/services"
+  const serviceFile = join(servicesDir, `${name}.ts`)
+
+  const serviceContent = `import { createStack } from "../../src/Service.js"
+
+export default createStack("${name}")
+  .addService("${name}", ${port})
+  .addRoute("${name}.${domain}")
+`
+
+  await mkdir(servicesDir, { recursive: true })
+  await writeFile(serviceFile, serviceContent)
+
+  // Regenerate Kong configuration
+  try {
+    await execAsync("cd /var/apps/swarm-config && npm run kong:generate")
+  } catch (error) {
+    console.error("Failed to regenerate Kong config:", error)
+    throw error
+  }
+}
+
+export async function listRepositories(
+  owner: string,
+  gitBaseDir: string,
+  workspaceBaseDir: string,
+): Promise<RepoConfig[]> {
+  const ownerGitDir = join(gitBaseDir, owner)
+  const ownerWorkspaceDir = join(workspaceBaseDir, owner)
+
+  const repos: RepoConfig[] = []
+
+  try {
+    const { stdout } = await execAsync(
+      `find "${ownerWorkspaceDir}" -maxdepth 1 -type d -name ".repo-config.json" 2>/dev/null || true`,
+    )
+    const configFiles = stdout.trim().split("\n").filter(Boolean)
+
+    for (const configPath of configFiles) {
+      try {
+        const content = await readFile(configPath, "utf-8")
+        const config = JSON.parse(content) as RepoConfig
+        repos.push(config)
+      } catch (error) {
+        console.warn(`Failed to read config ${configPath}:`, error)
+      }
+    }
+  } catch (error) {
+    // Directory doesn't exist or other error - return empty array
+  }
+
+  return repos
+}
+
+export async function getCurrentUser(event?: any): Promise<string> {
+  // Try to get user from JWT token (Argus authentication)
+  if (event) {
+    try {
+      const cookie = getCookie(event, "argus-token")
+      if (cookie) {
+        const payload = await verifyJWT(cookie)
+        if (payload && payload.username) {
+          return payload.username
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to parse JWT token:", error)
+    }
+  }
+
+  // Fallback to whoami for development
+  try {
+    const { stdout } = await execAsync("whoami")
+    return stdout.trim()
+  } catch (error) {
+    return "unknown"
+  }
+}
+
+async function verifyJWT(token: string): Promise<{ username: string } | null> {
+  // Import jwt verification - requires jsonwebtoken package
+  try {
+    const jwt = await import("jsonwebtoken")
+    const secret = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production"
+    const decoded = jwt.verify(token, secret) as any
+    return { username: decoded.username }
+  } catch (error) {
+    return null
+  }
+}
+
+export async function validateRepoName(name: string): Promise<{ valid: boolean; error?: string }> {
+  // Repository name validation
+  if (!/^[a-z0-9-]+$/.test(name)) {
+    return {
+      valid: false,
+      error: "Repository name must contain only lowercase letters, numbers, and hyphens",
+    }
+  }
+
+  if (name.length < 3 || name.length > 50) {
+    return {
+      valid: false,
+      error: "Repository name must be between 3 and 50 characters",
+    }
+  }
+
+  return { valid: true }
+}

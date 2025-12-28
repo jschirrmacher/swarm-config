@@ -13,9 +13,33 @@ Das CI/CD-System bietet:
 
 ## Schnellstart
 
-### 1. Server-Repository einrichten
+### Web UI (Standard-Methode)
 
-Kontaktiere den Administrator oder führe auf dem Server aus:
+Öffne die Swarm Config Web UI und erstelle dein Repository mit wenigen Klicks:
+
+**URL:** `https://config.justso.de` (oder deine konfigurierte Domain)
+
+1. **Repository erstellen**
+   - Name eingeben (z.B. `myapp`)
+   - Port festlegen (z.B. `3000`)
+   - Kong Gateway aktivieren ✓
+   - "Create Repository" klicken
+
+2. **Git URL kopieren**
+   - Die URL wird automatisch angezeigt
+   - Mit Button "Copy Git URL" in Zwischenablage kopieren
+
+3. **In deinem Projekt deployen**
+   ```bash
+   git remote add production <kopierte-git-url>
+   git push production main
+   ```
+
+**Fertig!** Deine App läuft unter `https://myapp.justso.de`
+
+### Alternative: Command Line
+
+Falls die Web UI nicht verfügbar ist, kontaktiere den Administrator oder führe auf dem Server aus:
 
 ```bash
 ssh justso.de
@@ -24,7 +48,7 @@ npm run init-repo myapp
 ```
 
 Dies erstellt:
-- Git Repository: `/opt/git/myapp.git`
+- Git Repository: `/home/<user>/myapp.git`
 - Arbeitsverzeichnis: `/var/apps/myapp/`
 - Kong Route: `https://myapp.justso.de`
 
@@ -33,7 +57,7 @@ Dies erstellt:
 In deinem lokalen Projekt:
 
 ```bash
-git remote add production git@justso.de:/opt/git/myapp.git
+git remote add production git@justso.de:~/myapp.git
 ```
 
 ### 3. Dockerfile erstellen

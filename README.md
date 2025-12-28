@@ -14,15 +14,21 @@ Complete Docker Swarm infrastructure with Kong API Gateway and Git-based CI/CD d
 ## 📚 Documentation by Role
 
 ### 👨‍💼 [Administrator Setup Guide](./docs/ADMIN-SETUP.md)
+
 For **system administrators** setting up and managing the infrastructure.
+
 - Automated server setup with one command
+- Web UI deployment for developer self-service
 - Kong Gateway configuration
-- Portainer and Monitoring deployment
+- Portainer and Monitoring deployment (optional)
 - Multi-node cluster setup ([MULTI-NODE-SETUP.md](./docs/MULTI-NODE-SETUP.md))
 - Troubleshooting and maintenance
 
 ### 👨‍💻 [App Developer Guide](./docs/APP-DEVELOPER.md)
+
 For **developers** deploying applications to the platform.
+
+- Create repositories via Web UI (Self-Service)
 - Deploy with `git push production main`
 - Dockerfile configuration
 - Environment variables management
@@ -30,7 +36,9 @@ For **developers** deploying applications to the platform.
 - Logs and debugging
 
 ### 🔧 [Contributing Guide](./docs/CONTRIBUTING.md)
+
 For **contributors** developing and extending swarm-config.
+
 - Architecture and code structure
 - Development environment setup
 - TypeScript patterns and best practices
@@ -42,11 +50,22 @@ For **contributors** developing and extending swarm-config.
 curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/initial-setup.sh | sudo bash
 ```
 
-This automated script sets up everything: Docker Swarm, firewall, Node.js, users, SSH security, and Kong Gateway.
+This automated script sets up everything: Docker Swarm, firewall, Node.js, users, SSH security, Kong Gateway, and Web UI.
 
 **→ See [ADMIN-SETUP.md](./docs/ADMIN-SETUP.md) for complete instructions**
 
 ## Quick Start for App Developers
+
+### Web UI (Primary Method)
+
+Visit `https://config.your-domain.com` and create your repository with a few clicks:
+
+1. Enter repository name
+2. Set port number
+3. Enable Kong Gateway
+4. Get your Git URL instantly
+
+### Alternative: Command Line
 
 ```bash
 # On server (done by admin)
@@ -54,7 +73,7 @@ cd /var/apps/swarm-config
 npm run init-repo myapp
 
 # In your local project
-git remote add production git@your-server:/opt/git/myapp.git
+git remote add production git@your-server:~/myapp.git
 git push production main
 ```
 
@@ -83,6 +102,12 @@ swarm-config/
 │   ├── install-hooks.ts
 │   ├── utils/              # Utility functions
 │   └── Service.ts, Plugin.ts, etc.
+│
+├── web-ui/                 # Self-service Web Interface (Nuxt 4)
+│   ├── pages/              # Vue 3 pages
+│   ├── server/             # API endpoints
+│   ├── Dockerfile          # Container image
+│   └── README.md           # Web UI documentation
 │
 ├── scripts/                # Setup and deployment scripts
 │   └── initial-setup.sh   # Automated server setup
@@ -113,6 +138,7 @@ Developer → git push → Git Hook → Docker Build → Swarm Deploy → Kong G
 ```
 
 When you push code:
+
 1. Post-receive hook triggers on server
 2. Code is built in temporary directory
 3. Tests run automatically
@@ -124,19 +150,22 @@ When you push code:
 
 ## Kong Configuration
 
-### Automatic Service Setup
+### Automatic Service Setup via Web UI
+
+Visit `https://config.your-domain.com` to create repositories with automatic Kong configuration.
+
+### Manual Configuration
 
 ```bash
 npm run init-repo myapp
 ```
 
 Creates `config/services/myapp.ts`:
+
 ```typescript
 import { createStack } from "../../src/Service.js"
 
-export default createStack("myapp")
-  .addService("myapp", 3000)
-  .addRoute("myapp.example.com")
+export default createStack("myapp").addService("myapp", 3000).addRoute("myapp.example.com")
 ```
 
 ### Customization
@@ -149,12 +178,13 @@ export default createStack("myapp")
   .addRoute("myapp.example.com")
   .addRoute("myapp.example.com", {
     paths: ["/api"],
-    strip_path: true
+    strip_path: true,
   })
   .addPlugin("rate-limiting", { minute: 100 })
 ```
 
 Then regenerate Kong config:
+
 ```bash
 npm run kong:generate
 ```
