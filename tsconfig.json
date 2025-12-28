@@ -4,6 +4,8 @@
     "target": "ESNext",
     "lib": ["ESNext"],
     "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "sourceMap": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,

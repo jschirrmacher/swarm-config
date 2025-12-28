@@ -1,0 +1,12 @@
+# Swarm Config - Server Configuration
+# Copy this file to .swarm-config and adjust the values
+
+# Base domain for your server
+# Apps will be available at <appname>.<DOMAIN>
+DOMAIN=example.com
+
+# Server hostname for SSH access
+SERVER_HOST=server.example.com
+
+# Base URL for downloading git hooks
+HOOKS_BASE_URL=https://${SERVER_HOST}/scripts

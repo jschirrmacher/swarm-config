@@ -1,0 +1,14 @@
+# Ignore all TypeScript configuration files
+*.ts
+
+# Keep example files
+!*.example
+
+# Keep required services
+!services/acme.ts
+
+# Keep required plugins
+!plugins/acme.ts
+
+# Keep README files
+!README.md
