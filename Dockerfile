@@ -12,7 +12,7 @@ RUN npm ci --ignore-scripts
 COPY . .
 
 # Build web-ui application
-RUN npm run ui:build
+RUN npm run build
 
 # Production stage
 FROM node:24-alpine
