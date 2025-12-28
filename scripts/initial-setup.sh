@@ -80,19 +80,12 @@ cd /var/apps
 if [ -d "swarm-config" ]; then
   echo "⚠️  swarm-config directory already exists, updating..."
   cd swarm-config
-  
-  # Fetch latest changes
+  git stash -u
   git fetch origin next
+  git reset --hard origin/next
+  git stash pop
   
-  # Check if there are uncommitted changes
-  if git diff-index --quiet HEAD --; then
-    # No uncommitted changes, safe to pull
-    git reset --hard origin/next
-    echo "✅ Repository updated to latest version"
-  else
-    echo "⚠️  Local changes detected, skipping update"
-    echo "  To update manually: cd /var/apps/swarm-config && git stash && git pull"
-  fi
+  echo "✅ Repository updated to latest version"
 else
   echo "Cloning swarm-config repository (branch: next)..."
   git clone -b next https://github.com/jschirrmacher/swarm-config.git
