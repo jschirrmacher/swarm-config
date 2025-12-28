@@ -7,10 +7,14 @@ import { getCookie } from "h3"
 
 const execAsync = promisify(exec)
 
+function getSwarmConfigDir(): string {
+  // The Nuxt server runs from the swarm-config project directory
+  return process.cwd()
+}
+
 export interface RepoConfig {
   name: string
   port: number
-  enableKong: boolean
   owner: string
   createdAt: string
 }
@@ -29,7 +33,7 @@ export async function createGitRepository(
   await execAsync(`git init --bare "${repoPath}"`)
 
   // Copy post-receive hook from swarm-config
-  const hookSource = "/var/apps/swarm-config/hooks/post-receive"
+  const hookSource = join(getSwarmConfigDir(), "hooks", "post-receive")
   const hookDest = join(repoPath, "hooks", "post-receive")
 
   try {
@@ -70,7 +74,7 @@ PORT=${config.port}
 }
 
 export async function createKongService(name: string, port: number, domain: string): Promise<void> {
-  const servicesDir = "/var/apps/swarm-config/config/services"
+  const servicesDir = join(getSwarmConfigDir(), "config", "services")
   const serviceFile = join(servicesDir, `${name}.ts`)
 
   const serviceContent = `import { createStack } from "../../src/Service.js"
@@ -83,9 +87,11 @@ export default createStack("${name}")
   await mkdir(servicesDir, { recursive: true })
   await writeFile(serviceFile, serviceContent)
 
-  // Regenerate Kong configuration
+  // Regenerate and reload Kong configuration
   try {
-    await execAsync("cd /var/apps/swarm-config && npm run kong:generate")
+    const swarmConfigDir = getSwarmConfigDir()
+    await execAsync("npm run kong:generate", { cwd: swarmConfigDir })
+    await execAsync("npm run kong:reload", { cwd: swarmConfigDir })
   } catch (error) {
     console.error("Failed to regenerate Kong config:", error)
     throw error
@@ -104,7 +110,7 @@ export async function listRepositories(
 
   try {
     const { stdout } = await execAsync(
-      `find "${ownerWorkspaceDir}" -maxdepth 1 -type d -name ".repo-config.json" 2>/dev/null || true`,
+      `find "${ownerWorkspaceDir}" -maxdepth 2 -type f -name ".repo-config.json" 2>/dev/null || true`,
     )
     const configFiles = stdout.trim().split("\n").filter(Boolean)
 

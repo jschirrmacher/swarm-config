@@ -11,7 +11,6 @@ export interface Repository {
 export interface CreateRepoRequest {
   name: string
   port?: number
-  enableKong?: boolean
 }
 
 export interface CreateRepoResponse {

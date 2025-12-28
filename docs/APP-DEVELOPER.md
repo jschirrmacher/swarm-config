@@ -5,6 +5,7 @@ Diese Anleitung ist für Entwickler, die ihre Anwendung auf dem Docker Swarm Ser
 ## Überblick
 
 Das CI/CD-System bietet:
+
 - **Zero-Configuration Deployment** - Einfaches `git push` zum Deployen
 - **Automatisches SSL/TLS** - Let's Encrypt Zertifikate via Kong
 - **Docker Containerisierung** - Automatischer Build aus Dockerfile
@@ -20,12 +21,14 @@ Das CI/CD-System bietet:
 **URL:** `https://config.justso.de` (oder deine konfigurierte Domain)
 
 1. **Repository erstellen**
+
    - Name eingeben (z.B. `myapp`)
    - Port festlegen (z.B. `3000`)
    - Kong Gateway aktivieren ✓
    - "Create Repository" klicken
 
 2. **Git URL kopieren**
+
    - Die URL wird automatisch angezeigt
    - Mit Button "Copy Git URL" in Zwischenablage kopieren
 
@@ -48,6 +51,7 @@ npm run init-repo myapp
 ```
 
 Dies erstellt:
+
 - Git Repository: `/home/<user>/myapp.git`
 - Arbeitsverzeichnis: `/var/apps/myapp/`
 - Kong Route: `https://myapp.justso.de`
@@ -90,6 +94,7 @@ In deiner `package.json`:
 ```
 
 Dies installiert automatisch:
+
 - **pre-commit**: Code-Formatierung mit Prettier
 - **pre-push**: Tests und Build-Checks
 
@@ -120,6 +125,7 @@ git push production main
 ```
 
 Das passiert automatisch:
+
 1. Code wird auf den Server gepusht
 2. Dockerfile wird gebaut
 3. Docker Image wird erstellt
@@ -233,6 +239,7 @@ CMD ["node", "dist/server.js"]
 ### Lokale Entwicklung
 
 `.env.local`:
+
 ```env
 NODE_ENV=development
 PORT=3000
@@ -242,6 +249,7 @@ DATABASE_URL=postgresql://localhost/myapp_dev
 ### Production
 
 Server: `/var/apps/myapp/.env`:
+
 ```env
 NODE_ENV=production
 PORT=3000
@@ -252,7 +260,7 @@ DATABASE_URL=postgresql://prod-db.justso.de/myapp
 
 ```javascript
 // server.js
-require('dotenv').config()
+require("dotenv").config()
 
 const port = process.env.PORT || 3000
 const dbUrl = process.env.DATABASE_URL
@@ -266,15 +274,13 @@ app.listen(port, () => {
 
 ### Standard-Konfiguration
 
-Nach `npm run init-repo myapp` wird automatisch erstellt:
+Nach dem Anlegen eines Repositories über die Web-UI wird automatisch erstellt:
 
 ```typescript
 // /var/apps/swarm-config/config/services/myapp.ts
 import { createStack } from "../../src/Service.js"
 
-export default createStack("myapp")
-  .addService("myapp", 3000)
-  .addRoute("myapp.justso.de")
+export default createStack("myapp").addService("myapp", 3000).addRoute("myapp.justso.de")
 ```
 
 ### Custom Konfiguration
@@ -290,7 +296,7 @@ export default createStack("myapp")
   .addRoute("myapp.justso.de", {
     paths: ["/api"],
     strip_path: true,
-    name: "myapp-api"
+    name: "myapp-api",
   })
 ```
 
@@ -302,7 +308,7 @@ export default createStack("myapp")
   .addRoute("myapp.justso.de")
   .addPlugin("rate-limiting", {
     minute: 100,
-    hour: 1000
+    hour: 1000,
   })
 ```
 
@@ -315,7 +321,7 @@ export default createStack("myapp")
   .addPlugin("cors", {
     origins: ["https://frontend.example.com"],
     methods: ["GET", "POST"],
-    headers: ["Content-Type", "Authorization"]
+    headers: ["Content-Type", "Authorization"],
   })
 ```
 
@@ -325,7 +331,7 @@ export default createStack("myapp")
 export default createStack("myapp")
   .addService("myapp", 3000)
   .addRoute("myapp.justso.de", {
-    paths: ["/admin"]
+    paths: ["/admin"],
   })
   .addPlugin("basic-auth")
 ```
@@ -351,6 +357,7 @@ git push production main
 ### Mit Tests
 
 Die Git Hooks führen automatisch aus:
+
 - **pre-commit**: `prettier --write` (Auto-Formatierung)
 - **pre-push**: `npm test` und `npm run build`
 
@@ -399,11 +406,13 @@ ssh justso.de 'docker exec -it <container-id> sh'
 ### App startet nicht
 
 1. **Logs prüfen**:
+
    ```bash
    ssh justso.de 'docker service logs myapp_myapp'
    ```
 
 2. **Environment Variables prüfen**:
+
    ```bash
    ssh justso.de 'cat /var/apps/myapp/.env'
    ```
@@ -417,6 +426,7 @@ ssh justso.de 'docker exec -it <container-id> sh'
 ### Port-Konflikt
 
 Stelle sicher, dass Port in:
+
 - Dockerfile `EXPOSE 3000`
 - `.env` `PORT=3000`
 - Kong Config `.addService("myapp", 3000)`
@@ -435,11 +445,13 @@ ssh justso.de 'docker exec kong_kong kong config dump'
 ### Service nicht erreichbar
 
 1. **Kong Status prüfen**:
+
    ```bash
    ssh justso.de 'docker service ps kong_kong'
    ```
 
 2. **DNS prüfen**:
+
    ```bash
    nslookup myapp.justso.de
    ```
@@ -456,17 +468,17 @@ ssh justso.de 'docker exec kong_kong kong config dump'
 Implementiere einen Health-Check Endpoint:
 
 ```javascript
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() })
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date() })
 })
 ```
 
 ### 2. Graceful Shutdown
 
 ```javascript
-process.on('SIGTERM', () => {
+process.on("SIGTERM", () => {
   server.close(() => {
-    console.log('Process terminated')
+    console.log("Process terminated")
     process.exit(0)
   })
 })
@@ -477,27 +489,25 @@ process.on('SIGTERM', () => {
 Strukturiertes Logging nutzen:
 
 ```javascript
-const winston = require('winston')
+const winston = require("winston")
 
 const logger = winston.createLogger({
-  level: 'info',
+  level: "info",
   format: winston.format.json(),
-  transports: [
-    new winston.transports.Console()
-  ]
+  transports: [new winston.transports.Console()],
 })
 ```
 
 ### 4. Error Handling
 
 ```javascript
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception:', error)
+process.on("uncaughtException", error => {
+  logger.error("Uncaught Exception:", error)
   process.exit(1)
 })
 
-process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled Rejection:', reason)
+process.on("unhandledRejection", reason => {
+  logger.error("Unhandled Rejection:", reason)
 })
 ```
 

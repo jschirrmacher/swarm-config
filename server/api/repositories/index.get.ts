@@ -13,7 +13,7 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
       path: `${config.gitRepoBase}/${owner}/${repo.name}.git`,
       workspaceDir: `${config.workspaceBase}/${owner}/${repo.name}`,
       gitUrl: `git@${config.domain}:${config.gitRepoBase}/${owner}/${repo.name}.git`,
-      kongRoute: repo.enableKong ? `https://${repo.name}.${config.domain}` : "",
+      kongRoute: `https://${repo.name}.${config.domain}`,
       createdAt: repo.createdAt,
       owner: repo.owner,
     }))

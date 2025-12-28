@@ -5,6 +5,7 @@ Diese Anleitung ist für Systemadministratoren, die einen neuen Server mit Docke
 ## Übersicht
 
 Das System besteht aus:
+
 - **Docker Swarm** - Container-Orchestrierung
 - **Kong Gateway** - API Gateway mit automatischem SSL/TLS
 - **Portainer** - Web UI für Container-Management
@@ -28,6 +29,7 @@ curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scrip
 ```
 
 Das Skript führt folgende Schritte automatisch aus:
+
 - ✅ System-Updates
 - ✅ Git-Installation
 - ✅ Docker & Docker Swarm Installation und Initialisierung
@@ -43,6 +45,7 @@ Das Skript führt folgende Schritte automatisch aus:
 - ✅ Web UI bauen und deployen
 
 **Hinweis:** Das initial-setup.sh Skript:
+
 - Fragt interaktiv nach Ihrer Domain und erstellt die `.swarm-config` Datei
 - Erstellt das Kong Network (`kong-net`)
 - Generiert die Kong-Konfiguration und deployt den Kong Stack automatisch
@@ -116,6 +119,7 @@ npm run kong:generate
 ### Kong Stack deployen
 
 In Portainer:
+
 1. "Stacks" → "Add stack"
 2. "Repository" auswählen
 3. Repository URL: `https://github.com/jschirrmacher/swarm-config.git`
@@ -143,6 +147,7 @@ Nach der Installation ist Portainer verfügbar unter: `https://your-server:9000`
 ### Stacks über Portainer deployen
 
 Mit Portainer können Sie Stacks komfortabel über die Web-UI deployen:
+
 1. "Stacks" → "Add stack"
 2. "Repository" auswählen
 3. Repository URL eingeben
@@ -183,7 +188,8 @@ Kong lädt die Konfiguration automatisch neu.
 
 ```bash
 cd /var/apps/swarm-config
-npm run init-repo myapp
+# Use the Web UI at https://config.yourdomain.com
+# Or use the API directly
 ```
 
 Details siehe [APP-DEVELOPER.md](./APP-DEVELOPER.md)
@@ -269,7 +275,7 @@ nvm alias default 24
 
 ### Firewall konfigurieren
 
-```bash
+````bash
 sudo ufw allow ssh
 sudo ufw allow http
 sudoAutomatische Sicherheitsupdates
@@ -278,7 +284,7 @@ sudoAutomatische Sicherheitsupdates
 sudo apt install -y unattended-upgrades
 dpkg-reconfigure -plow unattended-upgrades
 # -> yes auswählen
-```
+````
 
 ## Multi-Node Cluster (Optional)
 
@@ -391,3 +397,4 @@ Danach weiter mit Schritt 2 des Schnellstarts (Kong Gateway konfigurieren).
 - [Kong Dokumentation](https://docs.konghq.com/)
 - [Docker Swarm Dokumentation](https://docs.docker.com/engine/swarm/)
 - [MULTI-NODE-SETUP.md](./MULTI-NODE-SETUP.md) - Multi-Node Cluster mit GlusterFS
+```

@@ -65,12 +65,14 @@ Visit `https://config.your-domain.com` and create your repository with a few cli
 3. Enable Kong Gateway
 4. Get your Git URL instantly
 
-### Alternative: Command Line
+### Alternative: API Access
 
 ```bash
-# On server (done by admin)
-cd /var/apps/swarm-config
-npm run init-repo myapp
+# Create repository via API
+curl -X POST https://config.your-domain.com/api/repositories/create \
+  -H "Content-Type: application/json" \
+  -u username:password \
+  -d '{"name":"myapp","port":3000}'
 
 # In your local project
 git remote add production git@your-server:~/myapp.git
@@ -98,7 +100,6 @@ swarm-config/
 │
 ├── src/                    # TypeScript Source Code
 │   ├── generate-kong-config.ts
-│   ├── init-repo.ts
 │   ├── install-hooks.ts
 │   ├── utils/              # Utility functions
 │   └── Service.ts, Plugin.ts, etc.
@@ -154,13 +155,9 @@ When you push code:
 
 Visit `https://config.your-domain.com` to create repositories with automatic Kong configuration.
 
-### Manual Configuration
+### Configuration Files
 
-```bash
-npm run init-repo myapp
-```
-
-Creates `config/services/myapp.ts`:
+Creating a repository via the Web UI or API automatically generates `config/services/myapp.ts`:
 
 ```typescript
 import { createStack } from "../../src/Service.js"

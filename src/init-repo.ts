@@ -19,6 +19,7 @@
  * - Creates Kong service configuration
  */
 
+import "dotenv/config"
 import { existsSync } from "fs"
 import { mkdir, writeFile, copyFile, chmod } from "fs/promises"
 import { resolve } from "path"
@@ -30,9 +31,9 @@ import { config } from "./config.ts"
 const execAsync = promisify(exec)
 
 const BRANCH = "main"
-const GIT_BASE_DIR = "/home"
-const APP_BASE_DIR = "/var/apps"
-const SWARM_CONFIG_DIR = "/var/apps/swarm-config"
+const GIT_BASE_DIR = process.env.GIT_REPO_BASE || "/home"
+const APP_BASE_DIR = process.env.WORKSPACE_BASE || "/var/apps"
+const SWARM_CONFIG_DIR = `${APP_BASE_DIR}/swarm-config`
 
 function createReadlineInterface() {
   return readline.createInterface({

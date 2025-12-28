@@ -31,12 +31,10 @@ export default defineEventHandler(async (event): Promise<CreateRepoResponse> => 
   try {
     const owner = await getCurrentUser(event)
     const port = body.port || 3000
-    const enableKong = body.enableKong !== false
 
     const repoConfig: RepoConfig = {
       name: body.name,
       port,
-      enableKong,
       owner,
       createdAt: new Date().toISOString(),
     }
@@ -47,10 +45,8 @@ export default defineEventHandler(async (event): Promise<CreateRepoResponse> => 
     // Create workspace
     const workspaceDir = await createWorkspace(body.name, owner, config.workspaceBase, repoConfig)
 
-    // Create Kong service if enabled
-    if (enableKong) {
-      await createKongService(body.name, port, config.domain)
-    }
+    // Create Kong service (always enabled)
+    await createKongService(body.name, port, config.domain)
 
     return {
       success: true,
@@ -59,7 +55,7 @@ export default defineEventHandler(async (event): Promise<CreateRepoResponse> => 
         path: repoPath,
         workspaceDir,
         gitUrl: `git@${config.domain}:${repoPath}`,
-        kongRoute: enableKong ? `https://${body.name}.${config.domain}` : "",
+        kongRoute: `https://${body.name}.${config.domain}`,
         createdAt: repoConfig.createdAt,
         owner,
       },

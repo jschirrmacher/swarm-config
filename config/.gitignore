@@ -6,6 +6,7 @@
 
 # Keep required services
 !services/acme.ts
+!services/swarm-config-ui.ts
 
 # Keep required plugins
 !plugins/acme.ts

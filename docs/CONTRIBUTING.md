@@ -18,12 +18,15 @@ swarm-config/
 ├── src/                   # TypeScript Source Code
 │   ├── generate-kong-config.ts  # Kong YAML Generator
 │   ├── install-hooks.ts         # Git Hooks Installer
-│   ├── init-repo.ts             # Git Repository Initializer
 │   │
 │   ├── Service.ts              # Service Builder
 │   ├── Plugin.ts               # Plugin Builder
 │   ├── PortainerStack.ts       # Portainer Config
 │   └── MonitoringStack.ts      # Monitoring Config
+│
+├── server/                # Nuxt Server (API Routes)
+│   ├── api/                  # REST API Endpoints
+│   └── utils/                # Server Utilities
 │
 ├── hooks/                 # Git Hook Templates
 │   ├── post-receive      # Server-side Deployment
@@ -109,8 +112,9 @@ npm run install-hooks
 
 ```bash
 npm run kong:generate    # Kong YAML generieren
-npm run init-repo        # Git Repository für App erstellen
 npm run install-hooks    # Git Hooks installieren
+npm run dev              # Web UI Entwicklungsserver starten
+npm run build            # Web UI für Produktion bauen
 ```
 
 ## Code-Struktur
@@ -174,7 +178,7 @@ export default async function checkExample(): Promise<CheckResult> {
     message: "Everything is fine",
     fix: async () => {
       // Optional: Auto-Fix Funktion
-    }
+    },
   }
 }
 ```
@@ -209,7 +213,7 @@ export function createPlugin(name: string, config = {}) {
     config,
     get() {
       return { name, config }
-    }
+    },
   }
 }
 ```
@@ -226,7 +230,7 @@ class Stack {
 
   addService(name: string, port: number) {
     this.services.push({ name, port })
-    return this  // Fluent API
+    return this // Fluent API
   }
 
   addRoute(host: string, config = {}) {
@@ -239,7 +243,7 @@ class Stack {
       name: svc.name,
       url: `http://${svc.name}:${svc.port}`,
       routes: this.routes,
-      plugins: this.plugins
+      plugins: this.plugins,
     }))
   }
 }
@@ -251,13 +255,10 @@ class Stack {
 async function loadModules(dirName: string) {
   const dir = resolve(process.cwd(), "config", dirName)
   const modules = []
-  
+
   const files = await readdir(dir)
-  const tsFiles = files.filter(f => 
-    f.endsWith(".ts") && 
-    !f.endsWith(".example")
-  )
-  
+  const tsFiles = files.filter(f => f.endsWith(".ts") && !f.endsWith(".example"))
+
   for (const file of tsFiles) {
     const modulePath = join(dir, file)
     const module = await import(`file://${modulePath}`)
@@ -265,7 +266,7 @@ async function loadModules(dirName: string) {
       modules.push(module.default)
     }
   }
-  
+
   return modules
 }
 ```
@@ -408,10 +409,10 @@ export function createMyPlugin(config: MyConfig) {
         name: "my-plugin",
         config: {
           // Plugin-spezifische Konfiguration
-          ...config
-        }
+          ...config,
+        },
       }
-    }
+    },
   }
 }
 ```
@@ -497,10 +498,7 @@ try {
 
 ```typescript
 // ✅ Parallel execution wo möglich
-const [services, plugins] = await Promise.all([
-  loadModules("services"),
-  loadModules("plugins")
-])
+const [services, plugins] = await Promise.all([loadModules("services"), loadModules("plugins")])
 
 // ❌ Sequential ohne Not
 const services = await loadModules("services")
@@ -518,7 +516,7 @@ interface ServiceConfig {
 }
 
 // ❌ Any types
-function createService(config: any) { }
+function createService(config: any) {}
 ```
 
 ## Dokumentation
@@ -528,7 +526,7 @@ function createService(config: any) { }
 ```typescript
 /**
  * Load TypeScript modules from a directory
- * 
+ *
  * @param dirName - Directory name relative to config/
  * @returns Array of loaded module exports
  */
@@ -540,6 +538,7 @@ async function loadModules(dirName: string) {
 ### README Updates
 
 Bei neuen Features immer README.md aktualisieren:
+
 - Was macht das Feature?
 - Wie wird es verwendet?
 - Welche Konfiguration ist nötig?
@@ -575,6 +574,7 @@ git push origin v2.0.0
 ## Support
 
 Bei Fragen oder Problemen:
+
 - GitHub Issues: https://github.com/jschirrmacher/swarm-config/issues
 - Email: tech@justso.de
 

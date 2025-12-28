@@ -333,19 +333,20 @@ echo "🎨 Step 10: Building and deploying Swarm Config Web UI..."
 cd /var/apps/swarm-config
 
 echo "  Building Web UI Docker image..."
-docker build -t swarm-config-ui:latest -f web-ui/Dockerfile . || {
+docker build -t swarm-config-ui:latest . || {
   echo "⚠️  Web UI build failed, but continuing..."
   echo "  You can build it manually later with:"
-  echo "  cd /var/apps/swarm-config && docker build -t swarm-config-ui:latest -f web-ui/Dockerfile ."
+  echo "  cd /var/apps/swarm-config && docker build -t swarm-config-ui:latest ."
 }
 
 if docker images | grep -q swarm-config-ui; then
   echo "  Deploying Web UI stack..."
-  export DOMAIN="$DOMAIN"
-  docker stack deploy -c web-ui/docker-compose.yml swarm-config-ui
+  export DOMAIN
+  docker stack deploy -c config/stacks/swarm-config-ui.yaml swarm-config-ui
   
   echo "  Regenerating Kong configuration with Web UI route..."
   npm run kong:generate
+  npm run kong:reload
   
   echo "✅ Web UI deployed"
   echo "  Access at: https://config.$DOMAIN"
@@ -383,7 +384,7 @@ echo "  • Web UI (Repository Management): https://config.$DOMAIN"
 echo ""
 echo "Next steps:"
 echo "1. Create repositories via Web UI: https://config.$DOMAIN"
-echo "2. Or manually: cd /var/apps/swarm-config && npm run init-repo <app-name>"
+echo "2. Or through the API: POST https://config.${DOMAIN}/api/repositories/create"
 echo "3. View all services: docker service ls"
 echo "4. View Kong routes: docker exec \$(docker ps -q -f name=kong) kong routes list"
 echo ""

@@ -5,7 +5,6 @@
   "scripts": {
     "kong:generate": "tsx src/generate-kong-config.ts",
     "kong:reload": "tsx src/reload-kong.ts",
-    "init-repo": "tsx src/init-repo.ts",
     "install-hooks": "tsx src/install-hooks.ts",
     "dev": "nuxt dev",
     "build": "nuxt build",
