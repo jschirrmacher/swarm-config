@@ -47,7 +47,7 @@ For **contributors** developing and extending swarm-config.
 ## Quick Start for Administrators
 
 ```bash
-curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/initial-setup.sh | sudo bash
+curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash
 ```
 
 This automated script sets up everything: Docker Swarm, firewall, Node.js, users, SSH security, Kong Gateway, and Web UI.
@@ -111,7 +111,7 @@ swarm-config/
 │   └── README.md           # Web UI documentation
 │
 ├── scripts/                # Setup and deployment scripts
-│   └── initial-setup.sh   # Automated server setup
+│   └── setup.sh           # Automated server setup and updates
 │
 ├── hooks/                  # Git hooks for CI/CD
 │   ├── post-receive       # Server-side deployment hook

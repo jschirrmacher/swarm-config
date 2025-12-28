@@ -81,6 +81,13 @@ if [ -d "swarm-config" ]; then
   echo "⚠️  swarm-config directory already exists, updating..."
   cd swarm-config
   
+  # Check if remote URL uses SSH and switch to HTTPS if needed
+  REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+  if [[ "$REMOTE_URL" == git@github.com:* ]]; then
+    echo "  🔄 Switching remote URL from SSH to HTTPS..."
+    git remote set-url origin https://github.com/jschirrmacher/swarm-config.git
+  fi
+  
   # Backup config directories to preserve local-only files
   BACKUP_DIR=$(mktemp -d)
   echo "  📦 Backing up local configuration..."
@@ -102,6 +109,7 @@ if [ -d "swarm-config" ]; then
         echo "    Restored: config/$file"
       fi
     done
+    cd /var/apps/swarm-config
   fi
   rm -rf "$BACKUP_DIR"
   
@@ -112,6 +120,9 @@ else
   cd swarm-config
   echo "✅ Repository cloned from next branch"
 fi
+
+# Ensure we're in the correct directory for next steps
+cd /var/apps/swarm-config
 
 # Step 4: Create config file if it doesn't exist
 if [ ! -f ".swarm-config" ]; then

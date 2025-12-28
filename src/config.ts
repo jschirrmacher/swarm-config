@@ -30,7 +30,7 @@ export function getSwarmConfig(): Config {
   // If no config file exists, return defaults
   if (!existsSync(configPath)) {
     console.warn("⚠️  No .swarm-config file found. Using defaults.")
-    console.warn("   Run the initial-setup.sh script to configure your domain.")
+    console.warn("   Run the setup.sh script to configure your domain.")
     cachedConfig = defaults
     return defaults
   }
@@ -64,7 +64,7 @@ export function getSwarmConfig(): Config {
     return mergedConfig
   } catch (error) {
     if (error instanceof Error && "code" in error && (error as any).code === "ENOENT") {
-      throw new Error(".swarm-config file not found. Run initial-setup.sh to create it.")
+      throw new Error(".swarm-config file not found. Run setup.sh to create it.")
     }
     throw error
   }

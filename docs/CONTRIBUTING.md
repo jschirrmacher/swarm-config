@@ -72,7 +72,7 @@ npm run kong:generate
 #### 3. Server Bootstrap
 
 ```
-scripts/initial-setup.sh
+scripts/setup.sh
     ↓
 Automatische Installation:
 - Docker & Swarm
@@ -185,7 +185,7 @@ export default async function checkExample(): Promise<CheckResult> {
 
 Neue Checks werden automatisch von `bootstrap-server.ts` geladen.
 
-**Hinweis:** Die meisten grundlegenden Checks (Docker, UFW, Node.js, Team-Users, SSH-Security) wurden ins `initial-setup.sh` Skript ausgelagert und sind nicht mehr als separate Checks vorhanden.
+**Hinweis:** Die meisten grundlegenden Checks (Docker, UFW, Node.js, Team-Users, SSH-Security) wurden ins `setup.sh` Skript ausgelagert und sind nicht mehr als separate Checks vorhanden.
 
 #### 2. Kong Service Builder
 

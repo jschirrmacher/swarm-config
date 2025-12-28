@@ -25,7 +25,7 @@ Verwenden Sie das automatisierte Setup-Skript, um alle Basis-Komponenten zu inst
 
 ```bash
 # Direkter Download und Ausführung
-curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/initial-setup.sh | sudo bash
+curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash
 ```
 
 Das Skript führt folgende Schritte automatisch aus:
@@ -44,7 +44,7 @@ Das Skript führt folgende Schritte automatisch aus:
 - ✅ Kong Stack deployen
 - ✅ Web UI bauen und deployen
 
-**Hinweis:** Das initial-setup.sh Skript:
+**Hinweis:** Das setup.sh Skript:
 
 - Fragt interaktiv nach Ihrer Domain und erstellt die `.swarm-config` Datei
 - Erstellt das Kong Network (`kong-net`)
@@ -58,7 +58,7 @@ Nach dem Setup sind Kong und die Web UI bereits einsatzbereit!
 
 ### Schritt 2: Web UI für Self-Service Repository-Management
 
-Die Web UI wurde automatisch durch das initial-setup.sh Skript installiert und ist verfügbar unter:
+Die Web UI wurde automatisch durch das setup.sh Skript installiert und ist verfügbar unter:
 
 **`https://config.your-domain.com`**
 
@@ -247,9 +247,9 @@ docker service update --force init_portainer
 docker service logs init_portainer
 ```
 
-## Manuelle Schritte (nur wenn initial-setup.sh fehlschlägt)
+## Manuelle Schritte (nur wenn setup.sh fehlschlägt)
 
-Falls das initial-setup.sh Skript Probleme meldet, können diese manuell behoben werden:
+Falls das setup.sh Skript Probleme meldet, können diese manuell behoben werden:
 
 ### Docker und Basis-Pakete installieren
 
@@ -292,7 +292,7 @@ Für Multi-Node Cluster mit verteiltem Storage via GlusterFS siehe die ausführl
 
 **→ [Multi-Node Cluster Setup](./MULTI-NODE-SETUP.md)**
 
-Das initial-setup.sh Skript fragt während der Installation, ob GlusterFS installiert werden soll.
+Das setup.sh Skript fragt während der Installation, ob GlusterFS installiert werden soll.
 
 Die Konfiguration des Clusters muss manuell erfolgen (siehe MULTI-NODE-SETUP.md).
 
@@ -333,7 +333,7 @@ dpkg-reconfigure -plow unattended-upgrades
 ### Best Practices
 
 1. **SSH**: Nur Key-basierte Authentifizierung
-2. **Firewall**: Nur notwendige Ports öffnen (wird durch initial-setup.sh eingerichtet)
+2. **Firewall**: Nur notwendige Ports öffnen (wird durch setup.sh eingerichtet)
 3. **Updates**: Automatische Sicherheitsupdates aktivieren (siehe oben)
 4. **SSL/TLS**: Kong ACME Plugin für automatische Zertifikate
 5. **Secrets**: Nie in Git committen, nur in `/var/apps/<app>/.env`
