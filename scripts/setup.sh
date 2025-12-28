@@ -92,10 +92,27 @@ if [ -d "swarm-config" ]; then
   BACKUP_DIR=$(mktemp -d)
   echo "  📦 Backing up local configuration..."
   cp -r config "$BACKUP_DIR/" 2>/dev/null || true
+  cp .swarm-config "$BACKUP_DIR/" 2>/dev/null || true
+  cp config.ts "$BACKUP_DIR/" 2>/dev/null || true
   
   # Update repository
   git fetch origin next
   git reset --hard origin/next
+  
+  # Restore .swarm-config if it existed
+  if [ -f "$BACKUP_DIR/.swarm-config" ]; then
+    cp "$BACKUP_DIR/.swarm-config" .swarm-config
+    echo "  ✅ Restored .swarm-config"
+  fi
+  
+  # Restore config.ts if it existed (legacy)
+  if [ -f "$BACKUP_DIR/config.ts" ]; then
+    cp "$BACKUP_DIR/config.ts" config.ts
+    echo "  📦 Found legacy config.ts - migrating to config/ directories..."
+    
+    # Run migration script
+    tsx src/migrate-config.ts || echo "  ⚠️  Automatic migration failed - manual migration required"
+  fi
   
   # Restore only files that don't exist in the repository
   echo "  📝 Restoring local-only configuration files..."
@@ -109,7 +126,6 @@ if [ -d "swarm-config" ]; then
         echo "    Restored: config/$file"
       fi
     done
-    cd /var/apps/swarm-config
   fi
   rm -rf "$BACKUP_DIR"
   
@@ -125,9 +141,11 @@ fi
 cd /var/apps/swarm-config
 
 # Step 4: Create config file if it doesn't exist
+echo ""
+echo "📝 Step 4: Checking configuration..."
+
 if [ ! -f ".swarm-config" ]; then
-  echo ""
-  echo "📝 Step 4: Creating .swarm-config file..."
+  echo "Creating .swarm-config file..."
   
   # Ask for domain name - redirect from /dev/tty to work with curl | bash
   read -p "Enter your base domain (e.g., example.com): " DOMAIN < /dev/tty
@@ -148,9 +166,8 @@ TECH_EMAIL=${TECH_EMAIL}
 EOF
   
   echo "✅ Created .swarm-config with domain: ${DOMAIN} and email: ${TECH_EMAIL}"
-  echo ""
 else
-  echo "✅ .swarm-config already exists"
+  echo ".swarm-config already exists"
   
   # Load existing configuration
   source .swarm-config
@@ -165,7 +182,9 @@ else
     echo "TECH_EMAIL=${TECH_EMAIL}" >> .swarm-config
     echo "  Updated .swarm-config with email: ${TECH_EMAIL}"
   fi
+  echo "✅ Configuration loaded"
 fi
+echo ""
 
 # Step 5: Install npm dependencies
 echo "📦 Step 5: Installing npm dependencies..."
