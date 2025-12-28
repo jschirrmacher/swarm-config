@@ -43,11 +43,14 @@ const config = {
 
   services: services.flatMap(service => service.get()),
   plugins: plugins.map(plugin => plugin.get()),
-  consumers: consumers.map(c => ({ username: c.username })),
-  basicauth_credentials: consumers.map(c => ({
+  consumers: consumers.map(c => ({
     username: c.username,
-    password: c.password,
-    consumer: { username: c.username }
+    basicauth_credentials: [
+      {
+        username: c.username,
+        password: c.password,
+      },
+    ],
   })),
 }
 
