@@ -394,7 +394,7 @@ docker build -t swarm-config-ui:latest . || {
 if docker images | grep -q swarm-config-ui; then
   echo "  Deploying Web UI stack..."
   export DOMAIN
-  docker stack deploy -c config/stacks/swarm-config-ui.yaml swarm-config-ui
+  docker stack deploy -c config/stacks/swarm-config-ui.yaml swarm-config
   
   echo "  Regenerating Kong configuration with Web UI route..."
   npm run kong:generate
