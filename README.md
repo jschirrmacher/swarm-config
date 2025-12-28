@@ -9,19 +9,18 @@ Complete Docker Swarm infrastructure with Kong API Gateway and Git-based CI/CD d
 - 🚀 **Git-based CI/CD** - Deploy apps with `git push production main`
 - 📊 **Monitoring** - Prometheus & Grafana
 - 🎛️ **Portainer** - Web UI for container management
-- 🔧 **Automated Setup** - Bootstrap script configures everything
+- 🔧 **Automated Setup** - Initial setup script configures everything
 
 ## Quick Start
 
 For complete setup instructions, see the **[Administrator Setup Guide](./docs/ADMIN-SETUP.md)**.
 
 Essential steps:
-1. Ubuntu/Debian server with Docker and Node.js (current LTS)
-2. Clone this repository to `/var/apps/swarm-config`
-3. Run `npm install && npm run bootstrap:fix` (with sudo)
-4. Configure Kong and deploy stacks via Portainer
+1. Run the automated setup script: `curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/initial-setup.sh | sudo bash`
+2. Configure Kong services and generate configuration
+3. Deploy Kong stack via Portainer or Docker CLI
 
-The bootstrap script automatically configures Docker Swarm, networking, firewall, and Portainer.
+The setup script automatically configures Docker Swarm, firewall, Node.js, team users, SSH security, and Kong network.
 
 ## 📚 Documentation
 
@@ -46,12 +45,13 @@ swarm-config/
 │
 ├── src/                    # TypeScript Source Code
 │   ├── generate-kong-config.ts
-│   ├── bootstrap-server.ts
 │   ├── init-repo.ts
 │   ├── install-hooks.ts
-│   ├── checks/             # Bootstrap validation checks
 │   ├── utils/              # Utility functions
 │   └── Service.ts, Plugin.ts, etc.
+│
+├── scripts/                # Setup and deployment scripts
+│   └── initial-setup.sh   # Automated server setup
 │
 ├── hooks/                  # Git hooks for CI/CD
 │   ├── post-receive       # Server-side deployment hook
@@ -94,7 +94,7 @@ This automatically:
 # Add the production remote
 git remote add production git@your-server:/opt/git/myapp.git
 
-# Add bootstrap script to package.json
+# Add postinstall script to package.json for git hooks
 {
   "scripts": {
     "postinstall": "nuxt prepare && npm run install-hooks"

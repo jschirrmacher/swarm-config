@@ -22,9 +22,12 @@
 import { existsSync } from "fs"
 import { mkdir, writeFile, copyFile, chmod } from "fs/promises"
 import { resolve } from "path"
-import { execAsync } from "./bootstrap-helpers.ts"
+import { exec } from "child_process"
+import { promisify } from "util"
 import * as readline from "readline"
 import { config } from "./config.ts"
+
+const execAsync = promisify(exec)
 
 const BRANCH = "main"
 const GIT_BASE_DIR = "/opt/git"

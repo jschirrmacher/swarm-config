@@ -30,56 +30,25 @@ curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scrip
 Das Skript führt folgende Schritte automatisch aus:
 - ✅ System-Updates
 - ✅ Git-Installation
-- ✅ Node.js 24 LTS via nvm
+- ✅ Docker & Docker Swarm Installation und Initialisierung
+- ✅ UFW Firewall Konfiguration (Ports 22, 80, 443, 9000)
+- ✅ Node.js 24 LTS via NodeSource
 - ✅ Workspace `/var/apps` erstellen
 - ✅ Repository klonen
-- ✅ `.swarm-config` Beispiel kopieren
 - ✅ npm Dependencies installieren
+- ✅ Team-Benutzer erstellen (basierend auf SSH authorized_keys)
+- ✅ SSH-Sicherheit konfigurieren (deaktiviert Root-Login und Password-Auth)
 
 **Alternative (manuell):** Falls Sie die Schritte einzeln durchführen möchten, siehe Abschnitt "Manuelle Installation" am Ende dieses Dokuments.
 
-### Schritt 2: Konfiguration anpassen
+**Hinweis:** Das initial-setup.sh Skript:
+- Fragt interaktiv nach Ihrer Domain und erstellt die `.swarm-config` Datei
+- Erstellt das Kong Network (`kong-net`)
+- Fragt optional nach GlusterFS Installation (für Multi-Node Cluster)
 
-Nach dem initialen Setup müssen Sie Ihre Domain-Einstellungen anpassen:
+### Schritt 2: Kong Gateway konfigurieren
 
-```bash
-cd /var/apps/swarm-config
-sudo nano .swarm-config
-```
-
-**Wichtig:** Passen Sie in `.swarm-config` Ihre Domain an:
-- `DOMAIN=` - Ihre Hauptdomain (z.B. `example.com`)
-- `SERVER_HOST=` - Ihr Server-Hostname (z.B. `server.example.com`)
-
-### Schritt 3: Bootstrap-Skript ausführen
-
-Das Bootstrap-Skript prüft und richtet automatisch ein:
-- ✅ Docker & Docker Swarm
-- ✅ UFW Firewall (Ports 22, 80, 443, 9000)
-- ✅ Node.js Installation
-- ✅ Team-Benutzer (basierend auf SSH-Keys)
-- ✅ SSH-Sicherheit (deaktiviert Root-Login und Password-Auth)
-- ✅ Kong Network (`kong-net`)
-- ✅ GlusterFS (wenn konfiguriert)
-
-```bash
-cd /var/apps/swarm-config
-sudo npm run bootstrap:fix
-```
-
-### Nur Prüfung (ohne automatische Korrektur)
-
-```bash
-npm run bootstrap
-```
-
-## Kong Gateway konfigurieren
-
-Das Bootstrap-Skript erstellt automatisch das Kong Network. Falls es manuell erstellt werden muss:
-
-```bash
-docker network create --scope=swarm --attachable -d overlay kong-net
-```
+Nach dem Setup können Sie direkt mit der Kong-Konfiguration fortfahren:
 
 ### Kong-Konfiguration anpassen
 
@@ -122,10 +91,6 @@ Portainer ist ein Web-UI für Container-Management und **optional**.
 ### Installation
 
 ```bash
-# Mit Bootstrap
-npm run bootstrap:fix  # Installiert Portainer wenn gewünscht
-
-# Oder manuell
 docker stack deploy -c config/stacks/init.yaml init
 ```
 
@@ -232,9 +197,9 @@ docker service update --force init_portainer
 docker service logs init_portainer
 ```
 
-## Manuelle Schritte (nur wenn Bootstrap fehlschlägt)
+## Manuelle Schritte (nur wenn initial-setup.sh fehlschlägt)
 
-Falls das Bootstrap-Skript Probleme meldet, können diese manuell behoben werden:
+Falls das initial-setup.sh Skript Probleme meldet, können diese manuell behoben werden:
 
 ### Docker und Basis-Pakete installieren
 
@@ -277,10 +242,7 @@ Für Multi-Node Cluster mit verteiltem Storage via GlusterFS siehe die ausführl
 
 **→ [Multi-Node Cluster Setup](./MULTI-NODE-SETUP.md)**
 
-Das Bootstrap-Skript kann GlusterFS optional installieren:
-```bash
-npm run bootstrap:fix  # Installiert GlusterFS wenn gewünscht
-```
+Das initial-setup.sh Skript fragt während der Installation, ob GlusterFS installiert werden soll.
 
 Die Konfiguration des Clusters muss manuell erfolgen (siehe MULTI-NODE-SETUP.md).
 
@@ -321,7 +283,7 @@ dpkg-reconfigure -plow unattended-upgrades
 ### Best Practices
 
 1. **SSH**: Nur Key-basierte Authentifizierung
-2. **Firewall**: Nur notwendige Ports öffnen (wird durch Bootstrap eingerichtet)
+2. **Firewall**: Nur notwendige Ports öffnen (wird durch initial-setup.sh eingerichtet)
 3. **Updates**: Automatische Sicherheitsupdates aktivieren (siehe oben)
 4. **SSL/TLS**: Kong ACME Plugin für automatische Zertifikate
 5. **Secrets**: Nie in Git committen, nur in `/var/apps/<app>/.env`
@@ -375,7 +337,8 @@ cd swarm-config
 # Konfiguration einrichten
   echo "DOMAIN=your-domain.com" | sudo tee .swarm-config
   sudo nano .swarm-config  # Domain anpassen
-Danach weiter mit Schritt 3 des Schnellstarts (Bootstrap-Skript ausführen).
+
+Danach weiter mit Schritt 2 des Schnellstarts (Kong Gateway konfigurieren).
 
 ## Weitere Ressourcen
 

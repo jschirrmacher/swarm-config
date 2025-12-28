@@ -17,14 +17,8 @@ swarm-config/
 │
 ├── src/                   # TypeScript Source Code
 │   ├── generate-kong-config.ts  # Kong YAML Generator
-│   ├── bootstrap-server.ts      # Server Setup Validator
 │   ├── install-hooks.ts         # Git Hooks Installer
-│   ├── bootstrap-helpers.ts     # Gemeinsame Helper
-│   │
-│   ├── checks/                  # Bootstrap Checks (modular)
-│   │   ├── docker.ts
-│   │   ├── docker-swarm.ts
-│   │   └── ...
+│   ├── init-repo.ts             # Git Repository Initializer
 │   │
 │   ├── Service.ts              # Service Builder
 │   ├── Plugin.ts               # Plugin Builder
@@ -75,13 +69,16 @@ npm run kong:generate
 #### 3. Server Bootstrap
 
 ```
-npm run bootstrap
+scripts/initial-setup.sh
     ↓
-src/checks/*.ts (alle Checks laden)
-    ↓
-Validierung ausführen
-    ↓
-Optional: --fix Flag → Automatische Korrekturen
+Automatische Installation:
+- Docker & Swarm
+- UFW Firewall
+- Node.js 24 LTS
+- Team Users
+- SSH Security
+- Kong Network
+- Optional: GlusterFS
 ```
 
 ## Entwicklungsumgebung
@@ -112,8 +109,7 @@ npm run install-hooks
 
 ```bash
 npm run kong:generate    # Kong YAML generieren
-npm run bootstrap        # Server-Checks ausführen
-npm run bootstrap:fix    # Server-Checks mit Auto-Fix
+npm run init-repo        # Git Repository für App erstellen
 npm run install-hooks    # Git Hooks installieren
 ```
 
@@ -154,20 +150,20 @@ export type BumpType = "major" | "minor" | "patch"
 
 ```typescript
 // Für nur Type-Imports
-import type { CheckResult } from "./bootstrap-helpers.ts"
+import type { SomeType } from "./module.ts"
 
 // Für Runtime + Type
-import { execAsync, type CheckResult } from "./bootstrap-helpers.ts"
+import { someFunction, type SomeType } from "./module.ts"
 ```
 
 ### Modulares Design
 
 #### 1. Checks System
 
-Jeder Check ist eine separate Datei in `src/checks/`:
+Jeder Check ist eine separate Datei in `src/checks/`. Die Checks werden alphabetisch nach Dateinamen sortiert und ausgeführt, daher verwenden wir Nummernpräfixe (01-, 02-, etc.).
 
 ```typescript
-// src/checks/example.ts
+// src/checks/01-example.ts
 import { type CheckResult } from "../bootstrap-helpers.ts"
 
 export default async function checkExample(): Promise<CheckResult> {
@@ -184,6 +180,8 @@ export default async function checkExample(): Promise<CheckResult> {
 ```
 
 Neue Checks werden automatisch von `bootstrap-server.ts` geladen.
+
+**Hinweis:** Die meisten grundlegenden Checks (Docker, UFW, Node.js, Team-Users, SSH-Security) wurden ins `initial-setup.sh` Skript ausgelagert und sind nicht mehr als separate Checks vorhanden.
 
 #### 2. Kong Service Builder
 
@@ -395,31 +393,6 @@ npm run kong:generate
 ```
 
 ## Neue Features hinzufügen
-
-### Neuer Bootstrap Check
-
-1. Datei erstellen: `src/checks/my-check.ts`
-2. Interface implementieren:
-
-```typescript
-import { type CheckResult } from "../bootstrap-helpers.ts"
-
-export default async function checkMyFeature(): Promise<CheckResult> {
-  // Check-Logik
-  const isOk = true  // Deine Prüfung hier
-  
-  return {
-    name: "My Feature Check",
-    passed: isOk,
-    message: isOk ? "Feature is OK" : "Feature needs fixing",
-    fix: async () => {
-      // Optional: Auto-Fix
-    }
-  }
-}
-```
-
-3. Automatisch geladen - kein weiterer Code nötig!
 
 ### Neuer Kong Plugin Helper
 
