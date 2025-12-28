@@ -138,6 +138,8 @@ fi
 
 # Step 5: Install npm dependencies
 echo "📦 Step 5: Installing npm dependencies..."
+# Disable Nuxt telemetry prompt for non-interactive installation
+export NUXT_TELEMETRY_DISABLED=1
 npm install --prefix /var/apps/swarm-config
 echo "✅ Dependencies installed"
 echo ""
