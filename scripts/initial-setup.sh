@@ -28,9 +28,14 @@ echo ""
 
 # Step 1.6: Initialize Docker Swarm
 echo "🐳 Step 1.6: Initializing Docker Swarm..."
-if docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null | grep -q 'active'; then
+
+# Check if Docker Swarm is already active
+SWARM_STATE=$(docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null || echo "inactive")
+
+if [ "$SWARM_STATE" = "active" ]; then
   echo "✅ Docker Swarm already initialized"
 else
+  echo "  Initializing Docker Swarm..."
   docker swarm init
   echo "✅ Docker Swarm initialized"
 fi
@@ -117,7 +122,28 @@ echo "👥 Step 6: Creating team users from SSH authorized_keys..."
 # Check if authorized_keys exists
 if [ -f "/root/.ssh/authorized_keys" ]; then
   # Extract usernames from SSH keys (3rd field in each line)
-  USERNAMES=$(grep -v '^#' /root/.ssh/authorized_keys | grep -v '^$' | awk '{print $3}' | sort -u)
+  # Normalize usernames: keep only alphanumeric and underscore, convert to lowercase
+  RAW_USERNAMES=$(grep -v '^#' /root/.ssh/authorized_keys | grep -v '^$' | awk '{print $3}')
+  
+  # Normalize and deduplicate usernames
+  USERNAMES=""
+  for RAW_USER in $RAW_USERNAMES; do
+    # Extract only alphanumeric and underscore characters, convert to lowercase
+    NORMALIZED=$(echo "$RAW_USER" | sed 's/[^a-zA-Z0-9_]//g' | tr '[:upper:]' '[:lower:]')
+    
+    # Ensure username starts with a letter (Linux requirement)
+    if [[ "$NORMALIZED" =~ ^[a-z] ]] && [ -n "$NORMALIZED" ]; then
+      # Add to list if not already present
+      if ! echo "$USERNAMES" | grep -q -w "$NORMALIZED"; then
+        USERNAMES="$USERNAMES $NORMALIZED"
+      fi
+    else
+      echo "  ⚠️  Skipping invalid username from SSH key: $RAW_USER (normalized: $NORMALIZED)"
+    fi
+  done
+  
+  # Trim leading space
+  USERNAMES=$(echo "$USERNAMES" | xargs)
   
   if [ -n "$USERNAMES" ]; then
     # Create team group if it doesn't exist
@@ -126,7 +152,16 @@ if [ -f "/root/.ssh/authorized_keys" ]; then
       echo "  Created 'team' group"
     fi
     
+    # Configure passwordless sudo for team group
+    echo "  Configuring passwordless sudo for team group..."
+    echo "%team ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers.d/team
+    chmod 0440 /etc/sudoers.d/team
+    echo "  ✅ Passwordless sudo configured for team group"
+    
     for USERNAME in $USERNAMES; do
+      # Double-check normalization (should already be normalized)
+      USERNAME=$(echo "$USERNAME" | sed 's/[^a-zA-Z0-9_]//g' | tr '[:upper:]' '[:lower:]')
+      
       echo "  Setting up user: $USERNAME"
       
       # Create user if doesn't exist
