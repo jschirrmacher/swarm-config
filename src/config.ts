@@ -10,22 +10,28 @@ import { resolve } from "path"
 
 interface Config {
   DOMAIN: string
-  SERVER_HOST: string
-  HOOKS_BASE_URL: string
 }
 
-function loadConfig(): Config {
+let cachedConfig: Config | null = null
+
+/**
+ * Reads the .swarm-config file and returns the configuration values
+ */
+export function getSwarmConfig(): Config {
+  if (cachedConfig) {
+    return cachedConfig
+  }
+
   const configPath = resolve(process.cwd(), ".swarm-config")
   const defaults: Config = {
     DOMAIN: process.env.DOMAIN || "example.com",
-    SERVER_HOST: process.env.SERVER_HOST || "server.example.com",
-    HOOKS_BASE_URL: process.env.HOOKS_BASE_URL || "",
   }
 
   // If no config file exists, return defaults
   if (!existsSync(configPath)) {
     console.warn("⚠️  No .swarm-config file found. Using defaults.")
-    console.warn("   Copy .swarm-config.example to .swarm-config and configure your domain.")
+    console.warn("   Run the initial-setup.sh script to configure your domain.")
+    cachedConfig = defaults
     return defaults
   }
 
@@ -44,17 +50,32 @@ function loadConfig(): Config {
       }
     })
 
-    // Merge with defaults
-    return {
-      DOMAIN: config.DOMAIN || defaults.DOMAIN,
-      SERVER_HOST: config.SERVER_HOST || defaults.SERVER_HOST,
-      HOOKS_BASE_URL:
-        config.HOOKS_BASE_URL || `https://${config.SERVER_HOST || defaults.SERVER_HOST}/scripts`,
+    // Validate required fields
+    if (!config.DOMAIN && !defaults.DOMAIN) {
+      throw new Error("DOMAIN not set in .swarm-config")
     }
+
+    // Merge with defaults
+    const mergedConfig = {
+      DOMAIN: config.DOMAIN || defaults.DOMAIN,
+    }
+
+    cachedConfig = mergedConfig
+    return mergedConfig
   } catch (error) {
-    console.error("❌ Error reading .swarm-config:", error)
-    return defaults
+    if (error instanceof Error && "code" in error && (error as any).code === "ENOENT") {
+      throw new Error(".swarm-config file not found. Run initial-setup.sh to create it.")
+    }
+    throw error
   }
 }
 
-export const config = loadConfig()
+/**
+ * Returns the base domain from configuration
+ */
+export function getDomain(): string {
+  return getSwarmConfig().DOMAIN
+}
+
+// Legacy export for backward compatibility
+export const config = getSwarmConfig()

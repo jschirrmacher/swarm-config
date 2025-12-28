@@ -1,5 +1,5 @@
 import { createStack } from "../src/Service.js"
-import { getDomain } from "../src/config-reader.js"
+import { getDomain } from "../src/config.js"
 
 // Monitoring stack with Grafana and Prometheus
 // Creates grafana.<domain> and prometheus.<domain>

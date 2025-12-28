@@ -2,21 +2,19 @@
 /**
  * Install Git Hooks Script
  *
- * Sets up Git hooks (pre-commit, pre-push) automatically
+ * Sets up Git hooks (pre-commit, pre-push) automatically by downloading them from GitHub
  * This script is called by npm postinstall and is CI/CD-safe
  *
  * The script will exit silently if:
  * - Not in a git repository
- * - Server is unreachable
  * - Running in CI environment
  */
 
 import { existsSync } from "fs"
-import { mkdir, writeFile, chmod } from "fs/promises"
+import { writeFile, chmod } from "fs/promises"
 import { resolve } from "path"
-import { config } from "./config.ts"
 
-const SCRIPTS_URL = config.HOOKS_BASE_URL
+const HOOKS_BASE_URL = "https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/hooks"
 const HOOK_DIR = ".git/hooks"
 
 // Check if we're in a CI environment
@@ -37,10 +35,11 @@ async function fetchHook(hookName: string) {
   const target = resolve(HOOK_DIR, hookName)
 
   try {
-    const response = await fetch(`${SCRIPTS_URL}/hooks/${hookName}`)
+    const url = `${HOOKS_BASE_URL}/${hookName}`
+    const response = await fetch(url)
 
     if (!response.ok) {
-      console.log(`⚠️  Could not fetch ${hookName} (server may be unreachable)`)
+      console.log(`⚠️  Could not fetch ${hookName} from GitHub (${response.status})`)
       return false
     }
 
@@ -51,18 +50,16 @@ async function fetchHook(hookName: string) {
     console.log(`✅ Installed ${hookName}`)
     return true
   } catch (error) {
-    console.log(`⚠️  Could not fetch ${hookName} (server may be unreachable)`)
+    console.log(
+      `⚠️  Could not fetch ${hookName}:`,
+      error instanceof Error ? error.message : String(error),
+    )
     return false
   }
 }
 
 async function installHooks() {
-  console.log("🔧 Setting up Git hooks...")
-
-  // Create hooks directory if it doesn't exist
-  if (!existsSync(HOOK_DIR)) {
-    await mkdir(HOOK_DIR, { recursive: true })
-  }
+  console.log("🔧 Setting up Git hooks from GitHub...")
 
   // Install hooks
   await fetchHook("pre-commit")

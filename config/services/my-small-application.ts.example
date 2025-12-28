@@ -1,5 +1,5 @@
 import { createStack } from "../src/Service.js"
-import { getDomain } from "../src/config-reader.js"
+import { getDomain } from "../src/config.js"
 
 // Example: Application with separate backend API route
 // This shows how to add multiple routes to the same service

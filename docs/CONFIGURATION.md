@@ -4,8 +4,16 @@ This file contains server-specific configuration that should not be committed to
 
 ## Setup
 
-1. Copy `.swarm-config.example` to `.swarm-config`
-2. Edit `.swarm-config` with your domain and server settings
+1. Create `.swarm-config` file with your domain:
+   ```bash
+   echo "DOMAIN=example.com" > .swarm-config
+   ```
+
+2. Or run the initial setup script which will prompt you:
+   ```bash
+   ./scripts/initial-setup.sh
+   ```
+
 3. Configuration will be automatically loaded by the scripts
 
 ## Configuration Values
@@ -13,11 +21,7 @@ This file contains server-specific configuration that should not be committed to
 - **DOMAIN**: Your base domain (e.g., `example.com`)
   - Apps will be available at `<appname>.<DOMAIN>`
   - Example: If DOMAIN=example.com, myapp will be at myapp.example.com
-
-- **SERVER_HOST**: Your server hostname for SSH access (e.g., `server.example.com`)
-  - Used for `git push` and SSH commands in documentation
-
-- **HOOKS_BASE_URL**: Base URL for downloading git hooks (optional)
+  - Also used for SSH access and git remote URLs
   - Defaults to `https://${SERVER_HOST}/scripts`
   - Used by install-hooks.ts to download pre-commit and pre-push hooks
 

@@ -55,9 +55,8 @@ if [ ! -f ".swarm-config" ]; then
   echo ""
   echo "📝 Step 4: Creating .swarm-config file..."
   
-  # Ask for domain name
-  read -p "Enter your base domain (e.g., example.com): " DOMAIN
-  read -p "Enter your server hostname (e.g., server.example.com): " SERVER_HOST
+  # Ask for domain name - redirect from /dev/tty to work with curl | bash
+  read -p "Enter your base domain (e.g., example.com): " DOMAIN < /dev/tty
   
   # Create .swarm-config with user input
   cat > .swarm-config << EOF
@@ -66,12 +65,6 @@ if [ ! -f ".swarm-config" ]; then
 # Base domain for your server
 # Apps will be available at <appname>.<DOMAIN>
 DOMAIN=${DOMAIN}
-
-# Server hostname for SSH access
-SERVER_HOST=${SERVER_HOST}
-
-# Base URL for downloading git hooks
-HOOKS_BASE_URL=https://\${SERVER_HOST}/scripts
 EOF
   
   echo "✅ Created .swarm-config with domain: ${DOMAIN}"

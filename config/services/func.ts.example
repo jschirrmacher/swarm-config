@@ -1,5 +1,5 @@
 import { createStack } from "../src/Service.js"
-import { getDomain } from "../src/config-reader.js"
+import { getDomain } from "../src/config.js"
 
 // Simple Node.js service example
 // Domain is automatically read from .swarm-config

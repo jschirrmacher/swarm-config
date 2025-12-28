@@ -24,7 +24,7 @@ Verwenden Sie das automatisierte Setup-Skript, um alle Basis-Komponenten zu inst
 
 ```bash
 # Direkter Download und Ausführung
-curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/main/scripts/initial-setup.sh | sudo bash
+curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/initial-setup.sh | sudo bash
 ```
 
 Das Skript führt folgende Schritte automatisch aus:
@@ -373,13 +373,8 @@ sudo git clone https://github.com/jschirrmacher/swarm-config.git
 cd swarm-config
 
 # Konfiguration einrichten
-sudo cp .swarm-config.example .swarm-config
-sudo nano .swarm-config  # Domain und Server-Host anpassen
-
-# Dependencies installieren
-sudo npm install
-```
-
+  echo "DOMAIN=your-domain.com" | sudo tee .swarm-config
+  sudo nano .swarm-config  # Domain anpassen
 Danach weiter mit Schritt 3 des Schnellstarts (Bootstrap-Skript ausführen).
 
 ## Weitere Ressourcen

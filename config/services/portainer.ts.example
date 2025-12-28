@@ -1,5 +1,5 @@
 import { createStack } from "../src/Service.js"
-import { getDomain } from "../src/config-reader.js"
+import { getDomain } from "../src/config.js"
 
 // Portainer service for Docker/Kubernetes cluster management
 // Domain is automatically read from .swarm-config

@@ -1,5 +1,5 @@
 import { createStack } from "../src/Service.js"
-import { getDomain } from "../src/config-reader.js"
+import { getDomain } from "../src/config.js"
 
 // Example: Static website with redirections
 // This shows how to serve static content and set up domain redirections
