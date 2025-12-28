@@ -81,15 +81,18 @@ if [ -d "swarm-config" ]; then
   echo "⚠️  swarm-config directory already exists, updating..."
   cd swarm-config
   
-  # Stash local changes if any exist
-  git stash -u
-  STASH_RESULT=$?
+  # Check if there are local changes
+  HAS_CHANGES=false
+  if ! git diff-index --quiet HEAD -- || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+    HAS_CHANGES=true
+    git stash -u
+  fi
   
   git fetch origin next
   git reset --hard origin/next
   
   # Only pop stash if something was stashed
-  if [ $STASH_RESULT -eq 0 ] && git stash list | grep -q "stash@{0}"; then
+  if [ "$HAS_CHANGES" = true ]; then
     git stash pop || echo "⚠️  Could not apply stashed changes"
   fi
   
