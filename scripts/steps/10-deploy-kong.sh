@@ -5,9 +5,23 @@ echo "🦍 Step 10: Deploying Kong API Gateway..."
 
 cd /var/apps/swarm-config
 
+# Ensure redis-data directory exists with correct permissions
+echo "  Setting up Redis data directory..."
+mkdir -p redis-data
+chown -R 1001:1001 redis-data
+chmod 755 redis-data
+
 # Generate Kong configuration
 echo "  Generating Kong configuration..."
 npx tsx src/generate-kong-config.ts
+
+# Check if Kong stack already exists and remove it if needed
+if docker stack ls 2>/dev/null | grep -q "^kong "; then
+  echo "  Removing existing Kong stack..."
+  docker stack rm kong
+  echo "  Waiting for services to be removed..."
+  sleep 10
+fi
 
 # Deploy Kong stack
 echo "  Deploying Kong stack..."

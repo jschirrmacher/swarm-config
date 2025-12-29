@@ -93,6 +93,7 @@ detect_port() {
 # Scan and preview apps
 echo "  Scanning for apps..."
 declare -a APPS_TO_MIGRATE
+declare -a APPS_TO_UPDATE
 for app_dir in "$WORKSPACE_BASE"/*; do
   if [ ! -d "$app_dir" ]; then continue; fi
   
@@ -103,27 +104,36 @@ for app_dir in "$WORKSPACE_BASE"/*; do
     continue
   fi
   
-  # Skip if already has .repo-config.json
-  if [ -f "$app_dir/.repo-config.json" ]; then
-    echo "  ✅ Already migrated: $app_name"
-    continue
-  fi
-  
   port=$(detect_port "$app_dir")
   created_at=$(stat -c %w "$app_dir" 2>/dev/null || stat -f %SB -t "%Y-%m-%dT%H:%M:%SZ" "$app_dir" 2>/dev/null || date -Iseconds)
   
-  echo "  📦 Found app: $app_name (port: $port)"
-  APPS_TO_MIGRATE+=("$app_name|$port|$created_at")
+  # Check if already has .repo-config.json
+  if [ -f "$app_dir/.repo-config.json" ]; then
+    # Check if it has an owner field
+    owner=$(jq -r '.owner // empty' "$app_dir/.repo-config.json" 2>/dev/null || echo "")
+    if [ -z "$owner" ] || [ "$owner" = "null" ]; then
+      echo "  🔧 Config exists but missing owner: $app_name"
+      APPS_TO_UPDATE+=("$app_name|$port|$created_at")
+    else
+      echo "  ✅ Already migrated: $app_name"
+    fi
+  else
+    echo "  📦 Found app: $app_name (port: $port)"
+    APPS_TO_MIGRATE+=("$app_name|$port|$created_at")
+  fi
 done
 
 # Ask for confirmation
 echo ""
 echo "  📋 Found ${#APPS_TO_MIGRATE[@]} app(s) to migrate"
+if [ ${#APPS_TO_UPDATE[@]} -gt 0 ]; then
+  echo "  🔧 Found ${#APPS_TO_UPDATE[@]} app(s) to update (missing owner)"
+fi
 echo ""
 
-if [ -t 0 ] && [ ${#APPS_TO_MIGRATE[@]} -gt 0 ]; then
+if [ -t 0 ] && ([ ${#APPS_TO_MIGRATE[@]} -gt 0 ] || [ ${#APPS_TO_UPDATE[@]} -gt 0 ]); then
   # Interactive mode
-  read -p "  Do you want to proceed with the migration? [Y/n] " -n 1 -r
+  read -p "  Do you want to proceed? [Y/n] " -n 1 -r
   echo
   if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
     echo "  ⏭️  Migration skipped"
@@ -132,9 +142,9 @@ if [ -t 0 ] && [ ${#APPS_TO_MIGRATE[@]} -gt 0 ]; then
   fi
 fi
 
-# Perform migration
+# Perform migration for new apps
 if [ ${#APPS_TO_MIGRATE[@]} -gt 0 ]; then
-  echo "  Performing migration..."
+  echo "  Creating config files for new apps..."
 fi
 
 for app_data in "${APPS_TO_MIGRATE[@]}"; do
@@ -157,9 +167,32 @@ EOF
   echo "  ✅ Created: $config_path"
 done
 
+# Update existing configs without owner
+if [ ${#APPS_TO_UPDATE[@]} -gt 0 ]; then
+  echo "  Updating existing configs with missing owner..."
+fi
+
+for app_data in "${APPS_TO_UPDATE[@]}"; do
+  IFS='|' read -r app_name port created_at <<< "$app_data"
+  
+  config_path="$WORKSPACE_BASE/$app_name/.repo-config.json"
+  
+  # Update .repo-config.json with owner field
+  tmp_file=$(mktemp)
+  jq --arg owner "$SELECTED_USER" '.owner = $owner' "$config_path" > "$tmp_file"
+  mv "$tmp_file" "$config_path"
+  chmod 644 "$config_path"
+  echo "  ✅ Updated: $config_path"
+done
+
 echo ""
 if [ ${#APPS_TO_MIGRATE[@]} -gt 0 ]; then
   echo "  ✅ Migration complete! Migrated ${#APPS_TO_MIGRATE[@]} app(s)"
+fi
+if [ ${#APPS_TO_UPDATE[@]} -gt 0 ]; then
+  echo "  ✅ Updated ${#APPS_TO_UPDATE[@]} existing app(s)"
+fi
+if [ ${#APPS_TO_MIGRATE[@]} -gt 0 ] || [ ${#APPS_TO_UPDATE[@]} -gt 0 ]; then
   echo "  ℹ️  Run Step 14 to create Git repositories"
 fi
 echo ""
