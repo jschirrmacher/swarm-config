@@ -11,6 +11,52 @@ Complete Docker Swarm infrastructure with Kong API Gateway and Git-based CI/CD d
 - 🎛️ **Portainer** - Web UI for container management
 - 🔧 **Automated Setup** - One-command installation script
 
+## Quick Start for Administrators
+
+### Requirements
+
+- **Operating System**: Ubuntu 20.04+ or Debian 11+ (uses `apt`, `ufw`, `adduser`)
+- **Root Access**: Setup script must run as root
+- **Domain Name**: Configured to point to your server
+- **SSH Keys**: Upload to `/root/.ssh/authorized_keys` for team access
+
+### Installation
+
+```bash
+curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash
+```
+
+This automated script sets up everything: Docker Swarm, firewall, Node.js, users, SSH security, Kong Gateway, and Web UI.
+
+**→ See [ADMIN-SETUP.md](./docs/ADMIN-SETUP.md) for complete instructions**
+
+## Quick Start for App Developers
+
+### Web UI (Primary Method)
+
+Visit `https://config.your-domain.com` and create your repository with a few clicks:
+
+1. Enter repository name
+2. Set port number
+3. Enable Kong Gateway
+4. Get your Git URL instantly
+
+### Alternative: API Access
+
+```bash
+# Create repository via API
+curl -X POST https://config.your-domain.com/api/repositories/create \
+  -H "Content-Type: application/json" \
+  -u username:password \
+  -d '{"name":"myapp","port":3000}'
+
+# In your local project
+git remote add production git@your-server:~/myapp.git
+git push production main
+```
+
+**→ See [APP-DEVELOPER.md](./docs/APP-DEVELOPER.md) for complete deployment guide**
+
 ## 📚 Documentation by Role
 
 ### 👨‍💼 [Administrator Setup Guide](./docs/ADMIN-SETUP.md)
@@ -45,6 +91,15 @@ For **contributors** developing and extending swarm-config.
 - Testing and deployment workflows
 
 ## Quick Start for Administrators
+
+### Requirements
+
+- **Operating System**: Ubuntu 20.04+ or Debian 11+ (uses `apt`, `ufw`, `adduser`)
+- **Root Access**: Setup script must run as root
+- **Domain Name**: Configured to point to your server
+- **SSH Keys**: Upload to `/root/.ssh/authorized_keys` for team access
+
+### Installation
 
 ```bash
 curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash

@@ -68,7 +68,12 @@ for USERNAME in $USERNAMES; do
   # Setup SSH
   mkdir -p "/home/$USERNAME/.ssh"
   chmod 700 "/home/$USERNAME/.ssh"
-  cp /root/.ssh/authorized_keys "/home/$USERNAME/.ssh/authorized_keys"
+  
+  # Copy only this user's SSH key from root's authorized_keys (case-insensitive)
+  grep -i "@${USERNAME}\b" /root/.ssh/authorized_keys > "/home/$USERNAME/.ssh/authorized_keys" || \
+  grep -i " ${USERNAME}$" /root/.ssh/authorized_keys > "/home/$USERNAME/.ssh/authorized_keys" || \
+  grep -i " ${USERNAME}@" /root/.ssh/authorized_keys > "/home/$USERNAME/.ssh/authorized_keys" || true
+  
   chmod 600 "/home/$USERNAME/.ssh/authorized_keys"
   chown -R "$USERNAME:team" "/home/$USERNAME/.ssh"
   
