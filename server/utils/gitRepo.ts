@@ -3,7 +3,7 @@ import { promisify } from "node:util"
 import { access, mkdir, writeFile, readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { constants } from "node:fs"
-import { getCookie } from "h3"
+import { getCookie, getHeader } from "h3"
 
 const execAsync = promisify(exec)
 
@@ -131,8 +131,19 @@ export async function listRepositories(
 }
 
 export async function getCurrentUser(event?: any): Promise<string> {
-  // Try to get user from JWT token (Argus authentication)
+  // Try to get user from Basic Auth header (Kong authentication)
   if (event) {
+    try {
+      // Kong passes the authenticated username via X-Consumer-Username header
+      const username = getHeader(event, "x-consumer-username")
+      if (username) {
+        return username
+      }
+    } catch (error) {
+      console.warn("Failed to get username from Kong header:", error)
+    }
+
+    // Try to get user from JWT token (Argus authentication) as fallback
     try {
       const cookie = getCookie(event, "argus-token")
       if (cookie) {

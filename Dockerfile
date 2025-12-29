@@ -17,8 +17,8 @@ RUN npm run build
 # Production stage
 FROM node:24-alpine
 
-# Install wget for health checks
-RUN apk add --no-cache wget
+# Install wget for health checks and git for repository management
+RUN apk add --no-cache wget git
 
 WORKDIR /app
 
