@@ -42,35 +42,21 @@
 
           <div v-else class="repos-grid">
             <div v-for="repo in repositories" :key="repo.name" class="repo-card">
-              <div class="repo-header">
-                <h3>{{ repo.name }}</h3>
-                <span class="repo-date">{{ formatDate(repo.createdAt) }}</span>
-              </div>
-
-              <div class="repo-details">
-                <div class="detail">
-                  <strong>Git URL:</strong>
-                  <div class="url-with-copy">
-                    <code>{{ repo.gitUrl }}</code>
-                    <button @click="copyGitUrl(repo.gitUrl)" class="btn-icon" title="Copy Git URL">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
-                        <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <div v-if="repo.kongRoute" class="detail">
-                  <strong>HTTPS URL:</strong>
-                  <a :href="repo.kongRoute" target="_blank" rel="noopener">
-                    {{ repo.kongRoute }}
+              <div class="repo-content">
+                <h3 class="repo-title">
+                  <a v-if="repo.kongRoute" :href="repo.kongRoute" target="_blank" rel="noopener">
+                    {{ repo.name }}
                   </a>
-                </div>
-
-                <div class="detail">
-                  <strong>Workspace:</strong>
-                  <code>{{ repo.workspaceDir }}</code>
+                  <span v-else>{{ repo.name }}</span>
+                </h3>
+                <div class="url-with-copy">
+                  <code>{{ repo.gitUrl }}</code>
+                  <button @click="copyGitUrl(repo.gitUrl)" class="btn-icon" title="Copy Git URL">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
+                      <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -487,36 +473,44 @@ onMounted(() => {
 }
 
 .repos-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .repo-card {
   background: white;
-  border-radius: 8px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.2s;
 }
 
 .repo-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
-.repo-header {
+.repo-content {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #f0f0f0;
+  gap: 1rem;
 }
 
-.repo-header h3 {
+.repo-title {
   color: #667eea;
-  font-size: 1.25rem;
+  font-size: 1rem;
+  margin: 0;
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+.repo-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.repo-title a:hover {
+  text-decoration: underline;
 }
 
 .repo-date {

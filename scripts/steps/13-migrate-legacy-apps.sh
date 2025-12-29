@@ -3,16 +3,42 @@
 
 echo "🔄 Step 13: Migrating legacy apps to swarm-config..."
 
-# Get the first user from the system (skip root and system users)
-FIRST_USER=$(awk -F: '$3 >= 1000 && $3 < 60000 && $1 != "nobody" {print $1; exit}' /etc/passwd)
+# Get all regular users from the system (skip root and system users)
+mapfile -t AVAILABLE_USERS < <(awk -F: '$3 >= 1000 && $3 < 60000 && $1 != "nobody" {print $1}' /etc/passwd)
 
-if [ -z "$FIRST_USER" ]; then
-  echo "  ⚠️  No regular user found, skipping migration"
+if [ ${#AVAILABLE_USERS[@]} -eq 0 ]; then
+  echo "  ⚠️  No regular users found, skipping migration"
   echo ""
   return 0
 fi
 
-echo "  Using owner: $FIRST_USER"
+# Select user
+SELECTED_USER=""
+if [ ${#AVAILABLE_USERS[@]} -eq 1 ]; then
+  SELECTED_USER="${AVAILABLE_USERS[0]}"
+  echo "  Only one user found: $SELECTED_USER"
+elif [ -t 0 ]; then
+  # Interactive mode - let user choose
+  echo "  Available users:"
+  for i in "${!AVAILABLE_USERS[@]}"; do
+    echo "    $((i+1)). ${AVAILABLE_USERS[$i]}"
+  done
+  echo ""
+  read -p "  Select user (1-${#AVAILABLE_USERS[@]}): " user_choice
+  
+  if [[ "$user_choice" =~ ^[0-9]+$ ]] && [ "$user_choice" -ge 1 ] && [ "$user_choice" -le ${#AVAILABLE_USERS[@]} ]; then
+    SELECTED_USER="${AVAILABLE_USERS[$((user_choice-1))]}"
+  else
+    echo "  ⚠️  Invalid selection, skipping migration"
+    echo ""
+    return 0
+  fi
+else
+  # Non-interactive mode - use first user
+  SELECTED_USER="${AVAILABLE_USERS[0]}"
+fi
+
+echo "  Using owner: $SELECTED_USER"
 
 WORKSPACE_BASE="${WORKSPACE_BASE:-/var/apps}"
 
@@ -73,7 +99,7 @@ for app_dir in "$WORKSPACE_BASE"/*; do
   app_name=$(basename "$app_dir")
   
   # Skip special directories
-  if [ "$app_name" = "swarm-config" ] || [ "$app_name" = "$FIRST_USER" ]; then
+  if [ "$app_name" = "swarm-config" ] || [ "$app_name" = "$SELECTED_USER" ]; then
     continue
   fi
   
@@ -95,7 +121,7 @@ echo ""
 echo "  📋 Found ${#APPS_TO_MIGRATE[@]} app(s) to migrate"
 echo ""
 
-if [ -t 0 ]; then
+if [ -t 0 ] && [ ${#APPS_TO_MIGRATE[@]} -gt 0 ]; then
   # Interactive mode
   read -p "  Do you want to proceed with the migration? [Y/n] " -n 1 -r
   echo
@@ -107,17 +133,21 @@ if [ -t 0 ]; then
 fi
 
 # Perform migration
-echo "  Performing migration..."
+if [ ${#APPS_TO_MIGRATE[@]} -gt 0 ]; then
+  echo "  Performing migration..."
+fi
+
 for app_data in "${APPS_TO_MIGRATE[@]}"; do
   IFS='|' read -r app_name port created_at <<< "$app_data"
   
   config_path="$WORKSPACE_BASE/$app_name/.repo-config.json"
   
+  # Create .repo-config.json in workspace
   cat > "$config_path" << EOF
 {
   "name": "$app_name",
   "port": $port,
-  "owner": "$FIRST_USER",
+  "owner": "$SELECTED_USER",
   "createdAt": "$created_at",
   "legacy": true
 }
@@ -128,5 +158,8 @@ EOF
 done
 
 echo ""
-echo "  ✅ Migration complete! Migrated ${#APPS_TO_MIGRATE[@]} app(s)"
+if [ ${#APPS_TO_MIGRATE[@]} -gt 0 ]; then
+  echo "  ✅ Migration complete! Migrated ${#APPS_TO_MIGRATE[@]} app(s)"
+  echo "  ℹ️  Run Step 14 to create Git repositories"
+fi
 echo ""
