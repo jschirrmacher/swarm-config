@@ -17,13 +17,20 @@ RUN npm run build
 # Production stage
 FROM node:24-alpine
 
-# Install wget for health checks and git for repository management
+# Install system dependencies
 RUN apk add --no-cache wget git
 
 WORKDIR /app
 
-# Copy built application
+# Copy package files and install node dependencies
+COPY package*.json ./
+RUN npm ci --omit=dev && npm install -g tsx
+
+# Copy all application files (combined in one layer)
 COPY --from=builder /app/.output /app/.output
+COPY src ./src
+COPY config ./config
+COPY types ./types
 
 # Set environment variables
 ENV NODE_ENV=production

@@ -90,8 +90,9 @@ export default createStack("${name}")
   // Regenerate and reload Kong configuration
   try {
     const swarmConfigDir = getSwarmConfigDir()
-    await execAsync("npm run kong:generate", { cwd: swarmConfigDir })
-    await execAsync("npm run kong:reload", { cwd: swarmConfigDir })
+    // Use tsx directly to run the scripts
+    await execAsync("tsx src/generate-kong-config.ts", { cwd: swarmConfigDir })
+    await execAsync("tsx src/reload-kong.ts", { cwd: swarmConfigDir })
   } catch (error) {
     console.error("Failed to regenerate Kong config:", error)
     throw error
