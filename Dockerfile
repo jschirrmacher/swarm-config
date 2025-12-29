@@ -2,14 +2,11 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files
-COPY package*.json ./
-
-# Install all dependencies (skip postinstall hooks for Docker build)
-RUN npm ci --ignore-scripts
-
-# Copy entire project (including web-ui)
+# Copy entire project first (needed for postinstall hooks)
 COPY . .
+
+# Install all dependencies
+RUN npm ci
 
 # Build web-ui application
 RUN npm run build

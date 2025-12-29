@@ -392,9 +392,30 @@ docker build -t swarm-config-ui:latest . || {
 }
 
 if docker images | grep -q swarm-config-ui; then
+  # Save and load image on all swarm nodes to ensure consistency
+  echo "  Distributing image to all swarm nodes..."
+  docker save swarm-config-ui:latest | docker load
+  
+  # If there are worker nodes, distribute the image to them
+  worker_nodes=$(docker node ls --filter role=worker -q 2>/dev/null || true)
+  if [ -n "$worker_nodes" ]; then
+    echo "  Copying image to worker nodes..."
+    for node in $worker_nodes; do
+      node_ip=$(docker node inspect "$node" --format '{{.Status.Addr}}' 2>/dev/null || true)
+      if [ -n "$node_ip" ]; then
+        echo "    → $node_ip"
+        docker save swarm-config-ui:latest | ssh "$node_ip" docker load 2>/dev/null || true
+      fi
+    done
+  fi
+  
   echo "  Deploying Web UI stack..."
   export DOMAIN
-  docker stack deploy -c config/stacks/swarm-config-ui.yaml swarm-config
+  docker stack deploy --detach=true -c config/stacks/swarm-config-ui.yaml swarm-config
+  
+  # Force update the service to use the new image
+  echo "  Forcing service update with new image..."
+  docker service update --image swarm-config-ui:latest --force swarm-config_ui 2>/dev/null || true
   
   echo "  Regenerating Kong configuration with Web UI route..."
   npm run kong:generate
