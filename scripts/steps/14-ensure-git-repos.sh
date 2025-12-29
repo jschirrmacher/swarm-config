@@ -10,6 +10,7 @@ SWARM_CONFIG_DIR="${SWARM_CONFIG_DIR:-/var/apps/swarm-config}"
 # Find all apps with .repo-config.json
 echo "  Scanning for apps with configuration..."
 declare -a APPS_TO_CHECK
+declare -a APPS_TO_FIX
 
 for app_dir in "$WORKSPACE_BASE"/*; do
   if [ ! -d "$app_dir" ]; then continue; fi
@@ -23,25 +24,29 @@ for app_dir in "$WORKSPACE_BASE"/*; do
   
   # Only process apps with .repo-config.json
   if [ -f "$app_dir/.repo-config.json" ]; then
-    owner=$(jq -r '.owner' "$app_dir/.repo-config.json" 2>/dev/null || echo "")
-    if [ -z "$owner" ]; then
-      echo "  ⚠️  No owner found in config for $app_name, skipping"
-      continue
+    owner=$(jq -r '.owner // empty' "$app_dir/.repo-config.json" 2>/dev/null || echo "")
+    if [ -z "$owner" ] || [ "$owner" = "null" ]; then
+      echo "  📦 Found app without owner: $app_name"
+      APPS_TO_FIX+=("$app_name")
+    else
+      echo "  📦 Found app: $app_name (owner: $owner)"
+      APPS_TO_CHECK+=("$app_name|$owner")
     fi
-    
-    echo "  📦 Found app: $app_name (owner: $owner)"
-    APPS_TO_CHECK+=("$app_name|$owner")
   fi
 done
 
-if [ ${#APPS_TO_CHECK[@]} -eq 0 ]; then
-  echo "  ℹ️  No configured apps found"
+# Handle apps without owner if any found
+if [ ${#APPS_TO_FIX[@]} -gt 0 ]; then
   echo ""
-  return 0
+  echo "  ⚠️  Found ${#APPS_TO_FIX[@]} app(s) without owner:"
+  for app_name in "${APPS_TO_FIX[@]}"; do
+    echo "      - $app_name"
+  done
+  echo ""
+  echo "  Please run Step 13 (migrate-legacy-apps.sh) first to set owners."
+  echo "  Or manually add 'owner' field to .repo-config.json files."
+  echo ""
 fi
-
-echo "  Found ${#APPS_TO_CHECK[@]} configured app(s)"
-echo ""
 
 # Check and create repositories
 created_count=0
