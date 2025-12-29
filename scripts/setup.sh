@@ -1,466 +1,57 @@
 #!/bin/bash
-set -e
+# Swarm Config Setup Script
+# Main orchestration script
 
-echo "🚀 Starting initial server setup..."
+set -e  # Exit on error
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STEPS_DIR="$SCRIPT_DIR/steps"
+
+# Source common functions
+source "$SCRIPT_DIR/lib/common.sh"
+
+echo "╔════════════════════════════════════════════════════════════════╗"
+echo "║            Swarm Config - Server Setup & Installation          ║"
+echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
-
-# Check if running as root
-if [ "$EUID" -ne 0 ]; then
-  echo "❌ Please run as root (use sudo)"
-  exit 1
-fi
-
-# Step 1: Update system and install Git
-echo "📦 Step 1: Installing Git and system updates..."
-apt update
-apt upgrade -y
-apt install -y git curl
-
-echo "✅ Git installed"
+echo "This script will set up your server with:"
+echo "  • Docker & Docker Swarm"
+echo "  • UFW Firewall"
+echo "  • Team user accounts from SSH keys"
+echo "  • Kong API Gateway with Let's Encrypt SSL"
+echo "  • Swarm Config Web UI"
+echo "  • Optional: GlusterFS for distributed storage"
 echo ""
-
-# Step 1.5: Install and configure Docker
-echo "📦 Step 1.5: Installing Docker..."
-apt install -y docker.io
-
-echo "✅ Docker installed"
-echo ""
-
-# Step 1.6: Initialize Docker Swarm
-echo "🐳 Step 1.6: Initializing Docker Swarm..."
-
-# Check if Docker Swarm is already active
-SWARM_STATE=$(docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null || echo "inactive")
-
-if [ "$SWARM_STATE" = "active" ]; then
-  echo "✅ Docker Swarm already initialized"
-else
-  echo "  Initializing Docker Swarm..."
-  docker swarm init
-  echo "✅ Docker Swarm initialized"
-fi
-echo ""
-
-# Step 1.7: Install and configure UFW Firewall
-echo "🔥 Step 1.7: Configuring UFW Firewall..."
-apt install -y ufw
-
-# Allow necessary ports
-ufw allow ssh
-ufw allow http
-ufw allow https
-
-# Enable firewall (non-interactive)
-ufw --force enable
-
-echo "✅ UFW Firewall configured (ports: 22, 80, 443, 9000)"
-echo ""
-
-# Step 2: Install Node.js globally via NodeSource
-echo "📦 Step 2: Installing Node.js 24 LTS globally..."
-
-# Add NodeSource repository for Node.js 24.x
-curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-
-# Install Node.js (includes npm)
-apt install -y nodejs
-
-# Verify installation
-NODE_VERSION=$(node --version)
-NPM_VERSION=$(npm --version)
-echo "✅ Node.js $NODE_VERSION installed globally"
-echo "✅ npm $NPM_VERSION installed globally"
-echo ""
-
-# Step 3: Create workspace and clone repository
-echo "📁 Step 3: Setting up workspace..."
-mkdir -p /var/apps
-cd /var/apps
-
-if [ -d "swarm-config" ]; then
-  echo "⚠️  swarm-config directory already exists, updating..."
-  cd swarm-config
-  
-  # Check if remote URL uses SSH and switch to HTTPS if needed
-  REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
-  if [[ "$REMOTE_URL" == git@github.com:* ]]; then
-    echo "  🔄 Switching remote URL from SSH to HTTPS..."
-    git remote set-url origin https://github.com/jschirrmacher/swarm-config.git
-  fi
-  
-  # Backup config directories to preserve local-only files
-  BACKUP_DIR=$(mktemp -d)
-  echo "  📦 Backing up local configuration..."
-  cp -r config "$BACKUP_DIR/" 2>/dev/null || true
-  cp .swarm-config "$BACKUP_DIR/" 2>/dev/null || true
-  cp config.ts "$BACKUP_DIR/" 2>/dev/null || true
-  
-  # Update repository
-  git fetch origin next
-  git reset --hard origin/next
-  
-  # Restore .swarm-config if it existed
-  if [ -f "$BACKUP_DIR/.swarm-config" ]; then
-    cp "$BACKUP_DIR/.swarm-config" .swarm-config
-    echo "  ✅ Restored .swarm-config"
-  fi
-  
-  # Restore config.ts if it existed (legacy)
-  if [ -f "$BACKUP_DIR/config.ts" ]; then
-    cp "$BACKUP_DIR/config.ts" config.ts
-    echo "  📦 Found legacy config.ts - migrating to config/ directories..."
-    
-    # Run migration script
-    tsx src/migrate-config.ts || echo "  ⚠️  Automatic migration failed - manual migration required"
-  fi
-  
-  # Restore only files that don't exist in the repository
-  echo "  📝 Restoring local-only configuration files..."
-  if [ -d "$BACKUP_DIR/config" ]; then
-    cd "$BACKUP_DIR/config"
-    find . -type f -name "*.ts" | while read -r file; do
-      TARGET_FILE="/var/apps/swarm-config/config/$file"
-      # Only restore if file doesn't exist after git reset (= not in repo)
-      if [ ! -f "$TARGET_FILE" ]; then
-        cp --parents "$file" "/var/apps/swarm-config/config/" 2>/dev/null || true
-        echo "    Restored: config/$file"
-      fi
-    done
-  fi
-  rm -rf "$BACKUP_DIR"
-  
-  echo "  ✅ Updated to latest version (local-only files preserved)"
-else
-  echo "Cloning swarm-config repository (branch: next)..."
-  git clone -b next https://github.com/jschirrmacher/swarm-config.git
-  cd swarm-config
-  echo "✅ Repository cloned from next branch"
-fi
-
-# Ensure we're in the correct directory for next steps
-cd /var/apps/swarm-config
-
-# Step 4: Create config file if it doesn't exist
-echo ""
-echo "📝 Step 4: Checking configuration..."
-
-if [ ! -f ".swarm-config" ]; then
-  echo "Creating .swarm-config file..."
-  
-  # Ask for domain name - redirect from /dev/tty to work with curl | bash
-  read -p "Enter your base domain (e.g., example.com): " DOMAIN < /dev/tty
-  
-  # Ask for technical contact email for Let's Encrypt
-  read -p "Enter technical contact email for SSL certificates: " TECH_EMAIL < /dev/tty
-  
-  # Create .swarm-config with user input
-  cat > .swarm-config << EOF
-# Swarm Config - Server Configuration
-
-# Base domain for your server
-# Apps will be available at <appname>.<DOMAIN>
-DOMAIN=${DOMAIN}
-
-# Technical contact email for Let's Encrypt SSL certificates
-TECH_EMAIL=${TECH_EMAIL}
-EOF
-  
-  echo "✅ Created .swarm-config with domain: ${DOMAIN} and email: ${TECH_EMAIL}"
-else
-  echo ".swarm-config already exists"
-  
-  # Load existing configuration
-  source .swarm-config
-  echo "  Using existing domain: ${DOMAIN}"
-  
-  # Check if TECH_EMAIL is set, if not ask for it
-  if [ -z "$TECH_EMAIL" ]; then
-    echo ""
-    read -p "Technical contact email not found. Enter email for SSL certificates: " TECH_EMAIL < /dev/tty
-    echo "" >> .swarm-config
-    echo "# Technical contact email for Let's Encrypt SSL certificates" >> .swarm-config
-    echo "TECH_EMAIL=${TECH_EMAIL}" >> .swarm-config
-    echo "  Updated .swarm-config with email: ${TECH_EMAIL}"
-  fi
-  echo "✅ Configuration loaded"
-fi
-echo ""
-
-# Step 5: Install npm dependencies
-echo "📦 Step 5: Installing npm dependencies..."
-# Disable Nuxt telemetry prompt for non-interactive installation
-export NUXT_TELEMETRY_DISABLED=1
-npm install --prefix /var/apps/swarm-config
-echo "✅ Dependencies installed"
-echo ""
-
-# Step 6: Create team users from SSH keys
-echo "👥 Step 6: Creating team users from SSH authorized_keys..."
-
-# Check if authorized_keys exists
-if [ -f "/root/.ssh/authorized_keys" ]; then
-  # Extract usernames from SSH keys (3rd field in each line)
-  # Normalize usernames: keep only alphanumeric and underscore, convert to lowercase
-  RAW_USERNAMES=$(grep -v '^#' /root/.ssh/authorized_keys | grep -v '^$' | awk '{print $3}')
-  
-  # Normalize and deduplicate usernames
-  USERNAMES=""
-  for RAW_USER in $RAW_USERNAMES; do
-    # Extract only alphanumeric and underscore characters, convert to lowercase
-    NORMALIZED=$(echo "$RAW_USER" | sed 's/[^a-zA-Z0-9_]//g' | tr '[:upper:]' '[:lower:]')
-    
-    # Ensure username starts with a letter (Linux requirement)
-    if [[ "$NORMALIZED" =~ ^[a-z] ]] && [ -n "$NORMALIZED" ]; then
-      # Add to list if not already present
-      if ! echo "$USERNAMES" | grep -q -w "$NORMALIZED"; then
-        USERNAMES="$USERNAMES $NORMALIZED"
-      fi
-    else
-      echo "  ⚠️  Skipping invalid username from SSH key: $RAW_USER (normalized: $NORMALIZED)"
-    fi
-  done
-  
-  # Trim leading space
-  USERNAMES=$(echo "$USERNAMES" | xargs)
-  
-  if [ -n "$USERNAMES" ]; then
-    # Create team group if it doesn't exist
-    if ! getent group team > /dev/null 2>&1; then
-      addgroup team
-      echo "  Created 'team' group"
-    fi
-    
-    # Configure passwordless sudo for team group
-    echo "  Configuring passwordless sudo for team group..."
-    echo "%team ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers.d/team
-    chmod 0440 /etc/sudoers.d/team
-    echo "  ✅ Passwordless sudo configured for team group"
-    
-    # Prepare Kong consumers directory and data directory for passwords
-    CONSUMERS_DIR="/var/apps/swarm-config/config/consumers"
-    DATA_DIR="/var/apps/swarm-config/data"
-    mkdir -p "$DATA_DIR"
-    PASSWORDS_FILE="$DATA_DIR/.passwords.txt"
-    > "$PASSWORDS_FILE"  # Clear passwords file
-    chmod 600 "$PASSWORDS_FILE"
-    
-    for USERNAME in $USERNAMES; do
-      # Double-check normalization (should already be normalized)
-      USERNAME=$(echo "$USERNAME" | sed 's/[^a-zA-Z0-9_]//g' | tr '[:upper:]' '[:lower:]')
-      
-      echo "  Setting up user: $USERNAME"
-      
-      # Create user if doesn't exist
-      if ! id "$USERNAME" > /dev/null 2>&1; then
-        adduser "$USERNAME" --ingroup team --disabled-password --gecos ""
-      fi
-      
-      # Add to required groups
-      usermod -aG sudo "$USERNAME"
-      usermod -aG docker "$USERNAME"
-      
-      # Setup SSH directory
-      mkdir -p "/home/$USERNAME/.ssh"
-      chmod 700 "/home/$USERNAME/.ssh"
-      
-      # Copy authorized_keys
-      cp /root/.ssh/authorized_keys "/home/$USERNAME/.ssh/authorized_keys"
-      chmod 600 "/home/$USERNAME/.ssh/authorized_keys"
-      chown -R "$USERNAME:team" "/home/$USERNAME/.ssh"
-      
-      # Generate Kong consumer with secure password
-      PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
-      CONSUMER_FILE="$CONSUMERS_DIR/${USERNAME}.ts"
-      
-      cat > "$CONSUMER_FILE" <<EOF
-import type { Consumer } from "../../src/Consumer.js"
-
-// Auto-generated consumer for SSH user: ${USERNAME}
-// Generated on: $(date -Iseconds)
-const consumer: Consumer = {
-  username: "${USERNAME}",
-  consumerName: "${USERNAME}",
-  password: "${PASSWORD}"
-}
-
-export default consumer
-EOF
-      
-      # Save password to reference file
-      echo "${USERNAME}: ${PASSWORD}" >> "$PASSWORDS_FILE"
-      
-      echo "  ✅ User $USERNAME configured (OS + Kong consumer)"
-    done
-    
-    echo "✅ Team users and Kong consumers created"
-    echo "📋 Passwords saved to: $PASSWORDS_FILE"
-  else
-    echo "⚠️  No usernames found in authorized_keys"
-  fi
-else
-  echo "⚠️  /root/.ssh/authorized_keys not found, skipping team user creation"
-fi
-echo ""
-
-# Step 7: Configure SSH security
-echo "🔒 Step 7: Configuring SSH security..."
-
-# Only configure SSH security if team users were created
-if [ -n "$USERNAMES" ]; then
-  # Disable root login and password authentication
-  sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-  sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-  
-  # Ensure settings are present if not found
-  if ! grep -q '^PermitRootLogin' /etc/ssh/sshd_config; then
-    echo "" >> /etc/ssh/sshd_config
-    echo "# Security settings added by initial-setup" >> /etc/ssh/sshd_config
-    echo "PermitRootLogin no" >> /etc/ssh/sshd_config
-  fi
-  
-  if ! grep -q '^PasswordAuthentication' /etc/ssh/sshd_config; then
-    echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
-  fi
-  
-  # Restart SSH service
-  service ssh restart
-  
-  echo "✅ SSH security configured (root login and password auth disabled)"
-  echo "⚠️  IMPORTANT: Make sure you can login with your team user before closing this session!"
-else
-  echo "⚠️  Skipping SSH security configuration (no team users created)"
-fi
-echo ""
-
-# Step 8: Create Kong network
-echo "🌐 Step 8: Creating Kong network..."
-
-if docker network ls --filter name=kong-net --format '{{.Name}}' | grep -q '^kong-net$'; then
-  echo "✅ kong-net network already exists"
-else
-  docker network create --scope=swarm --attachable -d overlay kong-net
-  echo "✅ kong-net network created"
-fi
-echo ""
-
-# Step 9: Generate Kong configuration and deploy stack
-echo "🦍 Step 9: Generating Kong configuration and deploying Kong stack..."
-
-cd /var/apps/swarm-config
-
-# Generate Kong configuration
-echo "  Generating Kong configuration..."
-npx tsx src/generate-kong-config.ts
-
-# Deploy Kong stack
-echo "  Deploying Kong stack..."
-docker stack deploy -c config/stacks/kong.yaml kong
-
-# Wait for Kong to be ready
-echo "  Waiting for Kong to start..."
+echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
 sleep 5
+echo ""
 
-# Check if Kong service is running
-RETRY_COUNT=0
-MAX_RETRIES=30
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if docker service ls --filter name=kong_kong --format "{{.Replicas}}" | grep -q "1/1"; then
-    echo "✅ Kong stack deployed and running"
-    break
-  fi
-  
-  RETRY_COUNT=$((RETRY_COUNT + 1))
-  if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-    echo "  Kong still starting... ($RETRY_COUNT/$MAX_RETRIES)"
-    sleep 2
-  else
-    echo "⚠️  Kong deployment initiated but taking longer than expected"
-    echo "  Check status with: docker service ls | grep kong"
+# Execute all setup steps in order
+for step_file in "$STEPS_DIR"/*.sh; do
+  if [ -f "$step_file" ]; then
+    source "$step_file"
   fi
 done
-echo ""
 
-# Step 10: Build and Deploy Web UI
-echo "🎨 Step 10: Building and deploying Swarm Config Web UI..."
-cd /var/apps/swarm-config
-
-echo "  Building Web UI Docker image..."
-docker build -t swarm-config-ui:latest . || {
-  echo "⚠️  Web UI build failed, but continuing..."
-  echo "  You can build it manually later with:"
-  echo "  cd /var/apps/swarm-config && docker build -t swarm-config-ui:latest ."
-}
-
-if docker images | grep -q swarm-config-ui; then
-  # Save and load image on all swarm nodes to ensure consistency
-  echo "  Distributing image to all swarm nodes..."
-  docker save swarm-config-ui:latest | docker load
-  
-  # If there are worker nodes, distribute the image to them
-  worker_nodes=$(docker node ls --filter role=worker -q 2>/dev/null || true)
-  if [ -n "$worker_nodes" ]; then
-    echo "  Copying image to worker nodes..."
-    for node in $worker_nodes; do
-      node_ip=$(docker node inspect "$node" --format '{{.Status.Addr}}' 2>/dev/null || true)
-      if [ -n "$node_ip" ]; then
-        echo "    → $node_ip"
-        docker save swarm-config-ui:latest | ssh "$node_ip" docker load 2>/dev/null || true
-      fi
-    done
-  fi
-  
-  echo "  Deploying Web UI stack..."
-  export DOMAIN
-  docker stack deploy --detach=true -c config/stacks/swarm-config-ui.yaml swarm-config
-  
-  # Force update the service to use the new image
-  echo "  Forcing service update with new image..."
-  docker service update --image swarm-config-ui:latest --force swarm-config_ui 2>/dev/null || true
-  
-  echo "  Regenerating Kong configuration with Web UI route..."
-  npx tsx src/generate-kong-config.ts
-  npx tsx src/reload-kong.ts
-  
-  echo "✅ Web UI deployed"
-  echo "  Access at: https://config.$DOMAIN"
-else
-  echo "⚠️  Web UI image not available, skipping deployment"
-fi
-echo ""
-
-# Step 11: Optional GlusterFS installation
-echo "💾 Step 11: GlusterFS installation (optional)..."
-echo "GlusterFS is needed for multi-node clusters with distributed storage."
-echo "For single-node setups, you can skip this."
-echo ""
-
-read -p "Do you want to install GlusterFS? (y/N): " INSTALL_GLUSTER < /dev/tty
-
-if [[ "$INSTALL_GLUSTER" =~ ^[Yy]$ ]]; then
-  echo "  Installing GlusterFS..."
-  apt install -y glusterfs-server
-  systemctl enable glusterd
-  systemctl start glusterd
-  echo "✅ GlusterFS installed and started"
-  echo "ℹ️  See docs/MULTI-NODE-SETUP.md for cluster configuration"
-else
-  echo "⏭️  Skipping GlusterFS installation"
-fi
-echo ""
-
-# Final instructions
-echo "✅ Initial setup complete!"
+echo "╔════════════════════════════════════════════════════════════════╗"
+echo "║                    Installation Complete! 🎉                    ║"
+echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 echo "🎉 Services are now running:"
 echo "  • Kong API Gateway: https://$DOMAIN"
-echo "  • Web UI (Repository Management): https://config.$DOMAIN"
+echo "  • Web UI: https://config.$DOMAIN"
 echo ""
 echo "Next steps:"
-echo "1. Create repositories via Web UI: https://config.$DOMAIN"
-echo "2. Or through the API: POST https://config.${DOMAIN}/api/repositories/create"
-echo "3. View all services: docker service ls"
-echo "4. View Kong routes: docker exec \$(docker ps -q -f name=kong) kong routes list"
+echo "  1. Access Web UI: https://config.$DOMAIN"
+echo "  2. Create your first app repository"
+echo "  3. Push your code: git push production main"
+echo ""
+echo "For team users:"
+echo "  • Check ~/.swarm-config-password for Web UI credentials"
+echo "  • SSH access configured for all authorized_keys users"
 echo ""
 echo "📚 Documentation:"
 echo "  • For app developers: /var/apps/swarm-config/docs/APP-DEVELOPER.md"
 echo "  • For administrators: /var/apps/swarm-config/docs/ADMIN-SETUP.md"
+echo "  • GitHub: https://github.com/jschirrmacher/swarm-config"
+echo ""
