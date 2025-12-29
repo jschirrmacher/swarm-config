@@ -39,6 +39,10 @@ fi
 
 # Deploy stack
 echo "  Deploying Web UI stack..."
+# Load domain from .swarm-config
+if [ -f /var/apps/swarm-config/.swarm-config ]; then
+  source /var/apps/swarm-config/.swarm-config
+fi
 export DOMAIN
 docker stack deploy --detach=true -c config/stacks/swarm-config-ui.yaml swarm-config
 
