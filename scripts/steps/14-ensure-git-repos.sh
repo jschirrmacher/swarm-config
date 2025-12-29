@@ -7,6 +7,9 @@ WORKSPACE_BASE="${WORKSPACE_BASE:-/var/apps}"
 REPOS_BASE="${GIT_REPO_BASE:-/home}"
 SWARM_CONFIG_DIR="${SWARM_CONFIG_DIR:-/var/apps/swarm-config}"
 
+# Set default branch name to 'main'
+git config --global init.defaultBranch main
+
 # Find all apps with .repo-config.json
 echo "  Scanning for apps with configuration..."
 declare -a APPS_TO_CHECK

@@ -39,6 +39,7 @@ if [ -d "swarm-config" ]; then
   cp config.ts "$BACKUP_DIR/" 2>/dev/null || true
   
   # Update repository
+  git checkout next
   git fetch origin next
   git reset --hard origin/next
   
