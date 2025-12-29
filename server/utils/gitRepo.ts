@@ -87,12 +87,25 @@ export default createStack("${name}")
   await mkdir(servicesDir, { recursive: true })
   await writeFile(serviceFile, serviceContent)
 
-  // Regenerate and reload Kong configuration
+  // Regenerate and reload Kong configuration via API endpoints
   try {
-    const swarmConfigDir = getSwarmConfigDir()
-    // Use tsx directly to run the scripts
-    await execAsync("tsx src/generate-kong-config.ts", { cwd: swarmConfigDir })
-    await execAsync("tsx src/reload-kong.ts", { cwd: swarmConfigDir })
+    const baseUrl = "http://localhost:3000"
+
+    // Generate new Kong config
+    const generateResponse = await fetch(`${baseUrl}/api/kong/generate`, {
+      method: "POST",
+    })
+    if (!generateResponse.ok) {
+      throw new Error(`Generate failed: ${await generateResponse.text()}`)
+    }
+
+    // Reload Kong
+    const reloadResponse = await fetch(`${baseUrl}/api/kong/reload`, {
+      method: "POST",
+    })
+    if (!reloadResponse.ok) {
+      throw new Error(`Reload failed: ${await reloadResponse.text()}`)
+    }
   } catch (error) {
     console.error("Failed to regenerate Kong config:", error)
     throw error

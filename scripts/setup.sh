@@ -350,7 +350,7 @@ cd /var/apps/swarm-config
 
 # Generate Kong configuration
 echo "  Generating Kong configuration..."
-npm run kong:generate
+npx tsx src/generate-kong-config.ts
 
 # Deploy Kong stack
 echo "  Deploying Kong stack..."
@@ -418,8 +418,8 @@ if docker images | grep -q swarm-config-ui; then
   docker service update --image swarm-config-ui:latest --force swarm-config_ui 2>/dev/null || true
   
   echo "  Regenerating Kong configuration with Web UI route..."
-  npm run kong:generate
-  npm run kong:reload
+  npx tsx src/generate-kong-config.ts
+  npx tsx src/reload-kong.ts
   
   echo "✅ Web UI deployed"
   echo "  Access at: https://config.$DOMAIN"

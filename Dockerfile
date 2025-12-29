@@ -19,15 +19,11 @@ RUN apk add --no-cache wget git
 
 WORKDIR /app
 
-# Copy package files and install node dependencies
-COPY package*.json ./
-RUN npm ci --omit=dev && npm install -g tsx
-
-# Copy all application files (combined in one layer)
+# Copy built application (includes all server utilities and API endpoints)
 COPY --from=builder /app/.output /app/.output
-COPY src ./src
+
+# Copy config directory for Kong configuration generation
 COPY config ./config
-COPY types ./types
 
 # Set environment variables
 ENV NODE_ENV=production
