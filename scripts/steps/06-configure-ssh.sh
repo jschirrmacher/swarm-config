@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 8: Configure SSH security
 
-echo "🔒 Step 8: Configuring SSH security..."
+echo "🔒 Step 6: Configuring SSH security..."
 
 if [ -z "$USERNAMES" ]; then
   echo "⚠️  Skipping SSH security (no team users created)"

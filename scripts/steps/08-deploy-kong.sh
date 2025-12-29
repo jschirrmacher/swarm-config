@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 10: Deploy Kong API Gateway
 
-echo "🦍 Step 10: Deploying Kong API Gateway..."
+echo "🦍 Step 8: Deploying Kong API Gateway..."
 
 cd /var/apps/swarm-config
 

@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 5: Install and configure UFW Firewall
 
-echo "🔥 Step 5: Configuring UFW Firewall..."
+echo "🔥 Step 4: Configuring UFW Firewall..."
 
 apt install -y ufw
 

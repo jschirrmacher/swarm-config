@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 7: Create team users from SSH keys
 
-echo "👥 Step 7: Creating team users from SSH authorized_keys..."
+echo "👥 Step 5: Creating team users from SSH authorized_keys..."
 
 if [ ! -f "/root/.ssh/authorized_keys" ]; then
   echo "⚠️  /root/.ssh/authorized_keys not found, skipping team user creation"

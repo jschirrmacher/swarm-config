@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 4: Install Docker and initialize Docker Swarm
 
-echo "🐳 Step 4: Installing Docker and initializing Swarm..."
+echo "🐳 Step 3: Installing Docker and initializing Swarm..."
 
 # Check if Docker is already installed and working
 if command -v docker &> /dev/null && docker ps &> /dev/null; then

@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 13: Migrate legacy apps to swarm-config
 
-echo "🔄 Step 13: Migrating legacy apps to swarm-config..."
+echo "🔄 Step 11: Migrating legacy apps to swarm-config..."
 
 # Get all regular users from the system (skip root and system users)
 mapfile -t AVAILABLE_USERS < <(awk -F: '$3 >= 1000 && $3 < 60000 && $1 != "nobody" {print $1}' /etc/passwd)

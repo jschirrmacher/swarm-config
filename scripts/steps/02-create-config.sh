@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 3: Create swarm-config configuration file
 
-echo "📝 Step 3: Creating swarm-config configuration..."
+echo "📝 Step 2: Creating swarm-config configuration..."
 
 CONFIG_FILE="/var/apps/swarm-config/.swarm-config"
 

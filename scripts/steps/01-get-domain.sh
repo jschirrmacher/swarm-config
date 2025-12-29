@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 2: Get domain configuration
 
-echo "🌐 Step 2: Getting domain configuration..."
+echo "🌐 Step 1: Getting domain configuration..."
 
 # Check if .swarm-config exists
 if [ -f "/var/apps/swarm-config/.swarm-config" ]; then

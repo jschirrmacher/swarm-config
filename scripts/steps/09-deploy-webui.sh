@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 11: Build and deploy Web UI
 
-echo "🎨 Step 11: Building and deploying Swarm Config Web UI..."
+echo "🎨 Step 9: Building and deploying Swarm Config Web UI..."
 
 cd /var/apps/swarm-config
 

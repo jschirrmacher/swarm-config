@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 12: Optional GlusterFS installation
 
-echo "💾 Step 12: GlusterFS installation (optional)..."
+echo "💾 Step 10: GlusterFS installation (optional)..."
 echo "GlusterFS is needed for multi-node clusters with distributed storage."
 echo "For single-node setups, you can skip this."
 echo ""

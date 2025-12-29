@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 14: Ensure Git repositories exist for all apps
 
-echo "🔍 Step 14: Ensuring Git repositories for all apps..."
+echo "🔍 Step 12: Ensuring Git repositories for all apps..."
 
 WORKSPACE_BASE="${WORKSPACE_BASE:-/var/apps}"
 REPOS_BASE="${GIT_REPO_BASE:-/home}"

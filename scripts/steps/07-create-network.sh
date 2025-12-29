@@ -1,7 +1,6 @@
 #!/bin/bash
-# Step 9: Create Kong network
 
-echo "🌐 Step 9: Creating Kong network..."
+echo "🌐 Step 7: Creating Kong network..."
 
 if docker network ls --filter name=kong-net --format '{{.Name}}' | grep -q '^kong-net$'; then
   echo "✅ kong-net network already exists"

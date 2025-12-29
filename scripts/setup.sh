@@ -4,49 +4,100 @@
 
 set -e  # Exit on error
 
-GITHUB_REPO="https://raw.githubusercontent.com/jschirrmacher/swarm-config/next"
-
-# Always download files first when lib/common.sh is not accessible
-# This handles both curl | bash and direct execution scenarios
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
-
-if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/lib/common.sh" ]; then
-  # Running via stdin (curl | bash) or files not available
-  echo "📦 Downloading setup files..."
-  TEMP_DIR="/tmp/swarm-config-setup-$$"
-  mkdir -p "$TEMP_DIR"/{lib,steps}
+# Function: Check root privileges
+check_root() {
+  echo "🔐 Checking root privileges..."
   
-  echo "  → Downloading common library..."
-  if ! curl -fsSL "$GITHUB_REPO/scripts/lib/common.sh" -o "$TEMP_DIR/lib/common.sh"; then
-    echo "❌ Failed to download common.sh"
+  if [ "$EUID" -ne 0 ]; then
+    echo "  ❌ This script must be run as root"
+    echo "  Please run: sudo bash setup.sh"
+    echo ""
     exit 1
   fi
   
-  echo "  → Downloading setup steps..."
-  for step in 01-check-root 02-get-domain 03-create-config 04-install-docker 05-install-firewall 06-install-node-and-workspace 07-create-users 08-configure-ssh 09-create-network 10-deploy-kong 11-deploy-webui 12-install-glusterfs 13-migrate-legacy-apps 14-ensure-git-repos; do
-    if ! curl -fsSL "$GITHUB_REPO/scripts/steps/${step}.sh" -o "$TEMP_DIR/steps/${step}.sh"; then
-      echo "❌ Failed to download ${step}.sh"
-      exit 1
+  echo "  ✅ Running as root"
+  echo ""
+}
+
+# Function: Install Node.js and clone/update repository
+install_node_and_workspace() {
+  echo "📦 Installing Node.js and setting up workspace..."
+
+  # Install Node.js 24 LTS via NodeSource
+  echo "  Installing Node.js 24 LTS..."
+  curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+  apt install -y nodejs git curl jq
+
+  NODE_VERSION=$(node --version)
+  echo "  ✅ Node.js $NODE_VERSION installed"
+
+  # Setup workspace
+  echo "  Setting up workspace..."
+  mkdir -p /var/apps
+  cd /var/apps
+
+  if [ -d "swarm-config" ]; then
+    echo "  ⚠️  swarm-config directory already exists, updating..."
+    
+    chown -R root:root /var/apps/swarm-config
+    cd swarm-config
+    
+    REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+    if [[ "$REMOTE_URL" == git@github.com:* ]]; then
+      echo "    🔄 Switching remote URL from SSH to HTTPS..."
+      git remote set-url origin https://github.com/jschirrmacher/swarm-config.git
     fi
-  done
-  
-  SCRIPT_DIR="$TEMP_DIR"
-  STEPS_DIR="$TEMP_DIR/steps"
-  echo "✓ All files downloaded to $TEMP_DIR"
-else
-  # Files are available locally
-  STEPS_DIR="$SCRIPT_DIR/steps"
-  echo "✓ Using local files from $SCRIPT_DIR"
-fi
+    
+    BACKUP_DIR=$(mktemp -d)
+    echo "    📦 Backing up local configuration..."
+    cp -r config "$BACKUP_DIR/" 2>/dev/null || true
+    cp .swarm-config "$BACKUP_DIR/" 2>/dev/null || true
+    cp config.ts "$BACKUP_DIR/" 2>/dev/null || true
+    
+    git checkout next
+    git fetch origin next
+    git reset --hard origin/next
+    
+    if [ -f "$BACKUP_DIR/.swarm-config" ]; then
+      cp "$BACKUP_DIR/.swarm-config" .swarm-config
+      echo "    ✅ Restored .swarm-config"
+    fi
+    
+    if [ -f "$BACKUP_DIR/config.ts" ]; then
+      cp "$BACKUP_DIR/config.ts" config.ts
+      echo "    📦 Found legacy config.ts - migrating..."
+      npx tsx src/migrate-config.ts || echo "    ⚠️  Migration failed - manual migration required"
+    fi
+    
+    echo "    📝 Restoring local-only configuration files..."
+    if [ -d "$BACKUP_DIR/config" ]; then
+      cd "$BACKUP_DIR/config"
+      find . -type f -name "*.ts" | while read -r file; do
+        TARGET_FILE="/var/apps/swarm-config/config/$file"
+        if [ ! -f "$TARGET_FILE" ]; then
+          cp --parents "$file" "/var/apps/swarm-config/config/" 2>/dev/null || true
+          echo "      Restored: config/$file"
+        fi
+      done
+    fi
+    rm -rf "$BACKUP_DIR"
+    cd /var/apps/swarm-config
+    
+    echo "    ✅ Updated to latest version"
+  else
+    echo "  Cloning swarm-config repository..."
+    git clone -b next https://github.com/jschirrmacher/swarm-config.git
+    cd swarm-config
+    echo "  ✅ Repository cloned"
+  fi
 
-# Verify common.sh exists before sourcing
-if [ ! -f "$SCRIPT_DIR/lib/common.sh" ]; then
-  echo "❌ Error: $SCRIPT_DIR/lib/common.sh not found"
-  exit 1
-fi
+  echo "  Installing npm dependencies..."
+  export NUXT_TELEMETRY_DISABLED=1
+  npm install
 
-# Source common functions
-source "$SCRIPT_DIR/lib/common.sh"
+  echo "✅ Workspace ready"
+  echo ""
+}
 
 # Handle domain from command-line argument or environment variable
 if [ -n "$1" ]; then
@@ -72,7 +123,15 @@ echo "  • Swarm Config Web UI"
 echo "  • Optional: GlusterFS for distributed storage"
 echo ""
 
-# Execute all setup steps in order
+# Execute initial steps
+check_root
+install_node_and_workspace
+
+# Execute remaining steps from local repository
+STEPS_DIR="/var/apps/swarm-config/scripts/steps"
+echo "📂 Running remaining steps from repository..."
+echo ""
+
 for step_file in "$STEPS_DIR"/*.sh; do
   if [ -f "$step_file" ]; then
     source "$step_file"
@@ -94,12 +153,6 @@ echo "  3. Push your code: git push production main"
 echo ""
 echo "For team users:"
 echo "  • Check ~/.swarm-config-password for Web UI credentials"
-echo ""
-
-# Cleanup temporary files if downloaded
-if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
-  rm -rf "$TEMP_DIR"
-fi
 echo "  • SSH access configured for all authorized_keys users"
 echo ""
 echo "📚 Documentation:"
