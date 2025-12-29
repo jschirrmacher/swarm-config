@@ -132,9 +132,14 @@ STEPS_DIR="/var/apps/swarm-config/scripts/steps"
 echo "📂 Running remaining steps from repository..."
 echo ""
 
-for step_file in "$STEPS_DIR"/*.sh; do
+for step_file in "$STEPS_DIR"/*; do
   if [ -f "$step_file" ]; then
-    source "$step_file"
+    # Execute TypeScript files with tsx, bash files with source
+    if [[ "$step_file" == *.ts ]]; then
+      npx tsx "$step_file"
+    elif [[ "$step_file" == *.sh ]]; then
+      source "$step_file"
+    fi
   fi
 done
 

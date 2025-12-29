@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "👥 Step 5: Creating team users from SSH authorized_keys..."
+echo "👥 Step 4: Creating team users from SSH authorized_keys..."
 
 if [ ! -f "/root/.ssh/authorized_keys" ]; then
   echo "⚠️  /root/.ssh/authorized_keys not found, skipping team user creation"
@@ -45,11 +45,7 @@ echo "  ✅ Passwordless sudo configured"
 
 # Prepare directories
 CONSUMERS_DIR="/var/apps/swarm-config/config/consumers"
-DATA_DIR="/var/apps/swarm-config/data"
-mkdir -p "$DATA_DIR"
-PASSWORDS_FILE="$DATA_DIR/.passwords.txt"
-> "$PASSWORDS_FILE"
-chmod 600 "$PASSWORDS_FILE"
+mkdir -p "$CONSUMERS_DIR"
 
 # Create each user
 for USERNAME in $USERNAMES; do
@@ -94,9 +90,6 @@ const consumer: Consumer = {
 export default consumer
 EOF
   
-  # Save password
-  echo "${USERNAME}: ${PASSWORD}" >> "$PASSWORDS_FILE"
-  
   # Save password to user's home
   USER_PASSWORD_FILE="/home/$USERNAME/.swarm-config-password"
   cat > "$USER_PASSWORD_FILE" <<EOF
@@ -121,7 +114,7 @@ EOF
 done
 
 echo "✅ Team users created: $USERNAMES"
-echo "📋 Passwords saved to: $PASSWORDS_FILE"
+echo "📋 Passwords saved to each user's home directory in .swarm-config-password"
 
 # Export for SSH security step
 export USERNAMES
