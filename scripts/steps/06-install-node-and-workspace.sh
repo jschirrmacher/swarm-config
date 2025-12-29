@@ -6,7 +6,7 @@ echo "📦 Step 6: Installing Node.js and setting up workspace..."
 # Install Node.js 24 LTS via NodeSource
 echo "  Installing Node.js 24 LTS..."
 curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-apt install -y nodejs git curl
+apt install -y nodejs git curl jq
 
 NODE_VERSION=$(node --version)
 echo "  ✅ Node.js $NODE_VERSION installed"
