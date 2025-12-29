@@ -110,14 +110,14 @@ while read oldrev newrev refname; do
     
     if docker stack ls 2>/dev/null | grep -q "^${APPNAME} "; then
       echo "📦 Updating existing stack..."
-      docker stack deploy -c docker-compose.yml ${APPNAME}
+      docker stack deploy --detach=true -c docker-compose.yml ${APPNAME}
       
       # Force service update to ensure new image is pulled
       echo "🔄 Forcing service update..."
       docker service update --force ${APPNAME}_${APPNAME}
     else
       echo "📦 Creating new stack..."
-      docker stack deploy -c docker-compose.yml ${APPNAME}
+      docker stack deploy --detach=true -c docker-compose.yml ${APPNAME}
     fi
     
     echo ""

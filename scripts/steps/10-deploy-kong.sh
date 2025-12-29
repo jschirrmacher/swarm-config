@@ -11,13 +11,10 @@ npx tsx src/generate-kong-config.ts
 
 # Deploy Kong stack
 echo "  Deploying Kong stack..."
-docker stack deploy -c config/stacks/kong.yaml kong
+docker stack deploy --detach=false -c config/stacks/kong.yaml kong
 
 # Wait for Kong to be ready
-echo "  Waiting for Kong to start..."
-sleep 5
-
-# Check if Kong service is running
+echo "  Waiting for Kong to be ready..."
 RETRY_COUNT=0
 MAX_RETRIES=30
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
