@@ -5,7 +5,7 @@ log_info "🔐 Step 1: Checking root privileges..."
 
 if [ "$EUID" -ne 0 ]; then
   log_error "This script must be run as root"
-  echo "Please run: curl -sSL https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash"
+  echo "Please run: curl -sSL https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash -s your-domain.com"
   exit 1
 fi
 

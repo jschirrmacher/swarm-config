@@ -84,11 +84,15 @@ export function createStack(stack: string) {
       const url = "http://" + name + ":" + port
       const routes = [] as RouteFactory[]
       const plugins = [] as PluginFactory[]
+      let routeCounter = 0
 
       const result = {
-        addRoute(host: string, options?: RouteOptions) {
+        addRoute(host: string, options?: RouteOptions, routePlugins?: PluginFactory[]) {
           options = { ...options, hosts: (options?.hosts || []).concat(host) }
-          routes.push(createRoute(name, options))
+          // Generate unique route name by appending counter if multiple routes exist
+          const routeName = routeCounter > 0 ? `${name}_${routeCounter}` : name
+          routeCounter++
+          routes.push(createRoute(routeName, options, routePlugins))
           return result
         },
 

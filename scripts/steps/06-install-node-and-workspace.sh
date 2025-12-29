@@ -18,6 +18,10 @@ cd /var/apps
 
 if [ -d "swarm-config" ]; then
   echo "  ⚠️  swarm-config directory already exists, updating..."
+  
+  # Ensure correct ownership first (fixes git dubious ownership warning)
+  chown -R root:root /var/apps/swarm-config
+  
   cd swarm-config
   
   # Switch SSH to HTTPS if needed

@@ -25,7 +25,7 @@ Verwenden Sie das automatisierte Setup-Skript, um alle Basis-Komponenten zu inst
 
 ```bash
 # Direkter Download und Ausführung
-curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash
+curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash -s your-domain.com
 ```
 
 Das Skript führt folgende Schritte automatisch aus:

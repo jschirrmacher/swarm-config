@@ -145,13 +145,13 @@ function getAuthHeaders(): HeadersInit {
   if (import.meta.dev) {
     return {}
   }
-  const auth = localStorage.getItem('swarm-config-auth')
-  return auth ? { 'Authorization': `Basic ${auth}` } : {}
+  const token = localStorage.getItem('swarm-config-token')
+  return token ? { 'Authorization': `Bearer ${token}` } : {}
 }
 
 // Logout function
 function logout() {
-  localStorage.removeItem('swarm-config-auth')
+  localStorage.removeItem('swarm-config-token')
   router.push('/login')
 }
 

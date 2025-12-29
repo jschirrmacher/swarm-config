@@ -23,8 +23,10 @@ Complete Docker Swarm infrastructure with Kong API Gateway and Git-based CI/CD d
 ### Installation
 
 ```bash
-curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash
+curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash -s your-domain.com
 ```
+
+Replace `your-domain.com` with your actual domain name.
 
 This automated script sets up everything: Docker Swarm, firewall, Node.js, users, SSH security, Kong Gateway, and Web UI.
 
@@ -102,8 +104,10 @@ For **contributors** developing and extending swarm-config.
 ### Installation
 
 ```bash
-curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash
+curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash -s your-domain.com
 ```
+
+Replace `your-domain.com` with your actual domain name.
 
 This automated script sets up everything: Docker Swarm, firewall, Node.js, users, SSH security, Kong Gateway, and Web UI.
 
