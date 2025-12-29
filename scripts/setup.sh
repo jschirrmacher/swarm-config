@@ -23,7 +23,7 @@ if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/lib/common.sh" ]; then
   fi
   
   echo "  → Downloading setup steps..."
-  for step in 01-check-root 02-get-domain 03-create-config 04-install-docker 05-install-firewall 06-install-node-and-workspace 07-create-users 08-configure-ssh 09-create-network 10-deploy-kong 11-deploy-webui 12-install-glusterfs; do
+  for step in 01-check-root 02-get-domain 03-create-config 04-install-docker 05-install-firewall 06-install-node-and-workspace 07-create-users 08-configure-ssh 09-create-network 10-deploy-kong 11-deploy-webui 12-install-glusterfs 13-migrate-legacy-apps; do
     if ! curl -fsSL "$GITHUB_REPO/scripts/steps/${step}.sh" -o "$TEMP_DIR/steps/${step}.sh"; then
       echo "❌ Failed to download ${step}.sh"
       exit 1

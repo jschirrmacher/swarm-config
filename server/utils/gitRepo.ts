@@ -129,6 +129,7 @@ export async function listRepositories(
 
   const repos: RepoConfig[] = []
 
+  // Search for repositories in new structure: /var/apps/username/appname/
   try {
     const { stdout } = await execAsync(
       `find "${ownerWorkspaceDir}" -maxdepth 2 -type f -name ".repo-config.json" 2>/dev/null || true`,
@@ -145,7 +146,32 @@ export async function listRepositories(
       }
     }
   } catch (error) {
-    // Directory doesn't exist or other error - return empty array
+    // Directory doesn't exist or other error - continue to legacy search
+  }
+
+  // Search for legacy repositories in old structure: /var/apps/appname/
+  // These are apps that existed before the user-based directory structure
+  try {
+    const { stdout } = await execAsync(
+      `find "${workspaceBaseDir}" -maxdepth 2 -type f -name ".repo-config.json" -path "${workspaceBaseDir}/*/.repo-config.json" ! -path "${workspaceBaseDir}/${owner}/*" 2>/dev/null || true`,
+    )
+    const legacyConfigFiles = stdout.trim().split("\n").filter(Boolean)
+
+    for (const configPath of legacyConfigFiles) {
+      try {
+        const content = await readFile(configPath, "utf-8")
+        const config = JSON.parse(content) as RepoConfig
+
+        // Only include legacy apps that belong to this owner
+        if (config.owner === owner) {
+          repos.push(config)
+        }
+      } catch (error) {
+        console.warn(`Failed to read legacy config ${configPath}:`, error)
+      }
+    }
+  } catch (error) {
+    // No legacy apps or error - that's ok
   }
 
   return repos

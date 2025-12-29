@@ -1,5 +1,5 @@
 // Debug endpoint to check environment variables
-export default defineEventHandler(event => {
+export default defineEventHandler(() => {
   const config = useRuntimeConfig()
 
   return {
