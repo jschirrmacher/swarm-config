@@ -1,6 +1,10 @@
 import { generateKongConfig } from "~/server/utils/kongConfig"
+import { requireAuth } from "~/server/utils/auth"
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async event => {
+  // Require JWT authentication (or use OS user in development)
+  await requireAuth(event)
+
   try {
     const config = await generateKongConfig(true) // silent mode
 

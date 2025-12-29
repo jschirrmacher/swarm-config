@@ -1,9 +1,13 @@
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
+import { requireAuth } from "~/server/utils/auth"
 
 const execAsync = promisify(exec)
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async event => {
+  // Require JWT authentication (or use OS user in development)
+  await requireAuth(event)
+
   try {
     // Get Kong container name
     const { stdout: containerList } = await execAsync(

@@ -10,6 +10,15 @@
           <div v-if="currentUser" class="user-info">
             <span class="user-label">Logged in as:</span>
             <span class="user-name">{{ currentUser }}</span>
+            <button @click="logout" class="btn-logout" title="Logout">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path
+                  d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z" />
+                <path
+                  d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z" />
+              </svg>
+              Logout
+            </button>
           </div>
         </div>
       </div>
@@ -123,18 +132,40 @@ const error = ref('')
 const successMessage = ref('')
 const copySuccess = ref('')
 const currentUser = ref('')
+const router = useRouter()
 
 const newRepo = ref<CreateRepoRequest>({
   name: '',
   port: 3000
 })
 
+// Get auth headers from localStorage
+function getAuthHeaders(): HeadersInit {
+  // In development mode, skip auth headers
+  if (import.meta.dev) {
+    return {}
+  }
+  const auth = localStorage.getItem('swarm-config-auth')
+  return auth ? { 'Authorization': `Basic ${auth}` } : {}
+}
+
+// Logout function
+function logout() {
+  localStorage.removeItem('swarm-config-auth')
+  router.push('/login')
+}
+
 async function loadCurrentUser() {
   try {
-    const response = await fetch('/api/user')
+    const response = await fetch('/api/user', {
+      headers: getAuthHeaders()
+    })
     if (response.ok) {
-      const data = await response.json()
+      const data = await response.json() as { username: string }
       currentUser.value = data.username
+    } else if (response.status === 401) {
+      // Unauthorized - redirect to login
+      logout()
     }
   } catch (err) {
     console.error('Failed to load current user:', err)
@@ -146,9 +177,15 @@ async function loadRepositories() {
   error.value = ''
 
   try {
-    const data = await $fetch<Repository[]>('/api/repositories')
+    const data = await $fetch<Repository[]>('/api/repositories', {
+      headers: getAuthHeaders()
+    })
     repositories.value = data
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.statusCode === 401) {
+      logout()
+      return
+    }
     error.value = 'Failed to load repositories'
     console.error(err)
   } finally {
@@ -166,7 +203,8 @@ async function createRepository() {
   try {
     const response = await $fetch('/api/repositories/create', {
       method: 'POST',
-      body: newRepo.value
+      body: newRepo.value,
+      headers: getAuthHeaders()
     })
 
     if (response.success && response.repository) {
@@ -181,7 +219,11 @@ async function createRepository() {
     } else {
       error.value = response.error || 'Failed to create repository'
     }
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.statusCode === 401) {
+      logout()
+      return
+    }
     error.value = 'Failed to create repository'
     console.error(err)
   } finally {
@@ -235,9 +277,8 @@ onMounted(() => {
 
 .user-info {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 1rem;
 }
 
 .user-label {
@@ -251,6 +292,25 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.2);
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
+}
+
+.btn-logout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .header h1 {

@@ -32,8 +32,12 @@ export async function createGitRepository(
   // Initialize bare git repository
   await execAsync(`git init --bare "${repoPath}"`)
 
-  // Set ownership to the repository owner
-  await execAsync(`chown -R ${owner}:${owner} "${repoPath}"`)
+  // Set ownership to the repository owner (skip group on macOS/dev)
+  try {
+    await execAsync(`chown -R ${owner} "${repoPath}"`)
+  } catch (error) {
+    console.warn(`Could not set ownership for ${repoPath}:`, error)
+  }
 
   // Copy post-receive hook from swarm-config
   const hookSource = join(getSwarmConfigDir(), "hooks", "post-receive")

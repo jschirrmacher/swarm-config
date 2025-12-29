@@ -1,7 +1,8 @@
 export default defineEventHandler(async event => {
-  const { getCurrentUser } = await import("~/server/utils/gitRepo")
+  const { requireAuth } = await import("~/server/utils/auth")
 
-  const username = await getCurrentUser(event)
+  // Require JWT authentication (or use OS user in development)
+  const username = await requireAuth(event)
 
   return {
     username,

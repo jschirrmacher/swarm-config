@@ -3,10 +3,10 @@ import {
   createGitRepository,
   createWorkspace,
   createKongService,
-  getCurrentUser,
   validateRepoName,
   type RepoConfig,
 } from "~/server/utils/gitRepo"
+import { requireAuth } from "~/server/utils/auth"
 
 export default defineEventHandler(async (event): Promise<CreateRepoResponse> => {
   const config = useRuntimeConfig()
@@ -29,7 +29,7 @@ export default defineEventHandler(async (event): Promise<CreateRepoResponse> => 
   }
 
   try {
-    const owner = await getCurrentUser(event)
+    const owner = await requireAuth(event)
     const port = body.port || 3000
 
     const repoConfig: RepoConfig = {

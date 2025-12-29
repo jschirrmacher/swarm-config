@@ -1,11 +1,12 @@
 import type { Repository } from "~/types"
-import { listRepositories, getCurrentUser } from "~/server/utils/gitRepo"
+import { listRepositories } from "~/server/utils/gitRepo"
+import { requireAuth } from "~/server/utils/auth"
 
 export default defineEventHandler(async (event): Promise<Repository[]> => {
   const config = useRuntimeConfig()
 
   try {
-    const owner = await getCurrentUser(event)
+    const owner = await requireAuth(event)
     const repos = await listRepositories(owner, config.gitRepoBase, config.workspaceBase)
 
     return repos.map(repo => ({
