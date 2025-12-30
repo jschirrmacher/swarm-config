@@ -1,10 +1,6 @@
-import { createStack } from "../src/Service.js"
-import { getDomain } from "../src/config.js"
-
-// Portainer service for Docker/Kubernetes cluster management
-// Domain is automatically read from .swarm-config
-const domain = getDomain()
+import { createStack } from "../../src/Service.js"
+import { getDomain } from "../../src/config.js"
 
 export default createStack("portainer")
   .addService("portainer", 9000)
-  .addRoute(`portainer.${domain}`)
+    .addRoute(`portainer.${getDomain()}`)

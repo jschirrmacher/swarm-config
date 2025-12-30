@@ -54,9 +54,8 @@ install_node_and_workspace() {
     cp .swarm-config "$BACKUP_DIR/" 2>/dev/null || true
     cp config.ts "$BACKUP_DIR/" 2>/dev/null || true
     
-    git checkout next
-    git fetch origin next
-    git reset --hard origin/next
+    git fetch origin
+    git checkout -B next origin/next
     
     if [ -f "$BACKUP_DIR/.swarm-config" ]; then
       cp "$BACKUP_DIR/.swarm-config" .swarm-config

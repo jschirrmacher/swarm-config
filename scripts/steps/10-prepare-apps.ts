@@ -9,7 +9,7 @@ console.log('')
 
 // Load .env file if it exists
 const envPath = resolve(process.cwd(), '.env')
-if (existsSync(envPath)) {
+if (existsSync(envPath) && statSync(envPath).isFile()) {
   const envContent = readFileSync(envPath, 'utf-8')
   envContent.split('\n').forEach(line => {
     const match = line.match(/^([^=]+)=(.*)$/)

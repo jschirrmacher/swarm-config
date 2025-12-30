@@ -1,18 +1,11 @@
-import { createStack } from "../src/Service.js"
-import { getDomain } from "../src/config.js"
+import { createStack } from "../../src/Service.js"
 
-// Monitoring stack with Grafana and Prometheus
-// Creates grafana.<domain> and prometheus.<domain>
-// Domain is automatically read from .swarm-config
-const domain = getDomain()
-
-const monitoring = createStack("monitoring")
-monitoring
-  .addService("prometheus", 9090)
-  .addRoute(`prometheus.${domain}`)
-  .addPlugin("basic-auth")
-monitoring
-  .addService("grafana", 3000)
-  .addRoute(`grafana.${domain}`)
-
-export default monitoring
+export function createMonitoringStack(stackName: string, domain: string) {
+  const monitoringStack = createStack(stackName)
+  monitoringStack
+    .addService("prometheus", 9090)
+    .addRoute(`prometheus.${domain}`)
+    .addPlugin("basic-auth")
+  monitoringStack.addService("grafana", 3000).addRoute(`grafana.${domain}`)
+  return monitoringStack
+}

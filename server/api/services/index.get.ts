@@ -1,19 +1,5 @@
-import { readdirSync, readFileSync } from "fs"
+import { readdirSync } from "fs"
 import { join } from "path"
-
-interface ServiceConfig {
-  name: string
-  url?: string
-  routes?: Array<{
-    name: string
-    hosts?: string[]
-    paths?: string[]
-    preserve_host?: boolean
-    strip_path?: boolean
-    protocols?: string[]
-  }>
-  plugins?: Array<{ name: string; config?: Record<string, unknown> }>
-}
 
 export default defineEventHandler(async () => {
   try {
@@ -24,14 +10,7 @@ export default defineEventHandler(async () => {
 
     const services = files.map(file => {
       const name = file.replace(".ts", "")
-      const filePath = join(servicesDir, file)
-      const content = readFileSync(filePath, "utf-8")
-
-      return {
-        name,
-        file,
-        hasExample: files.includes(file.replace(".ts", ".ts.example")),
-      }
+      return { name, file, hasExample: files.includes(file.replace(".ts", ".ts.example")) }
     })
 
     return services
