@@ -7,7 +7,7 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
 
   try {
     const owner = await requireAuth(event)
-    const repos = await listRepositories(owner, config.gitRepoBase, config.workspaceBase)
+    const repos = await listRepositories(owner, config.workspaceBase)
 
     return repos.map(repo => {
       // For legacy apps, use the old structure (no username subdirectory)

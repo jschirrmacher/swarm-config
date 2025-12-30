@@ -43,28 +43,22 @@ async function selectOwner(users: string[]): Promise<string> {
     return users[0]!
   }
 
-  if (process.stdin.isTTY) {
-    console.log('  Available users:')
-    users.forEach((user, i) => console.log(`    ${i + 1}. ${user}`))
-    console.log('')
+  console.log('  Available users:')
+  users.forEach((user, i) => console.log(`    ${i + 1}. ${user}`))
+  console.log('')
 
-    const rl = createInterface({ input: process.stdin, output: process.stdout })
-    const answer = await new Promise<string>((resolve) => {
-      rl.question(`  Select user (1-${users.length}): `, resolve)
-    })
-    rl.close()
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  const answer = await new Promise<string>((resolve) => {
+    rl.question(`  Select user (1-${users.length}): `, resolve)
+  })
+  rl.close()
 
-    const choice = parseInt(answer, 10)
-    if (choice >= 1 && choice <= users.length) {
-      return users[choice - 1]!
-    }
-    
-    console.log('  ⚠️  Invalid selection, skipping migration')
-    console.log('')
-    process.exit(0)
+  const choice = parseInt(answer, 10)
+  if (choice >= 1 && choice <= users.length) {
+    return users[choice - 1]!
   }
-
-  console.log(`  Using first user in non-interactive mode: ${users[0]}`)
+  
+  console.log('  ⚠️  Invalid selection, using first user')
   return users[0]!
 }
 
@@ -153,26 +147,40 @@ if (availableUsers.length === 0) {
   process.exit(0)
 }
 
-const selectedUser = await selectOwner(availableUsers)
-console.log(`  Using owner: ${selectedUser}`)
-
-// Check for legacy apps
-const entries = readdirSync(workspaceBase, { withFileTypes: true })
-const dirs = entries.filter(
-  (entry) => entry.isDirectory() && entry.name !== 'swarm-config' && entry.name !== selectedUser
+const allDirs = (readdirSync(workspaceBase, { withFileTypes: true })).filter(
+  (entry) => entry.isDirectory() && entry.name !== 'swarm-config'
 )
 
-if (dirs.length === 0) {
-  console.log(`  ℹ️  No legacy apps found in ${workspaceBase}`)
+if (allDirs.length === 0) {
+  console.log(`  ℹ️  No apps found in ${workspaceBase}`)
   console.log('')
   process.exit(0)
 }
 
-console.log(`  Found ${dirs.length} potential legacy app(s)`)
-console.log('  Processing apps...')
-console.log('')
+// Find apps that need migration (no config or no owner)
+const legacyApps = allDirs.filter(dir => {
+  try {
+    const config = JSON.parse(readFileSync(join(workspaceBase, dir.name, '.repo-config.json'), 'utf-8'))
+    return !config.owner // Config exists but no owner
+  } catch (error) {
+    return true // No config file
+  }
+})
 
-const { migrated, updated, skipped} = dirs.reduce((counts, dir) => {
+let selectedUser = ''
+
+if (legacyApps.length > 0) {
+  console.log(`  Found ${legacyApps.length} legacy app(s) that need migration`)
+  selectedUser = await selectOwner(availableUsers)
+  console.log(`  Using owner: ${selectedUser}`)
+} else {
+  console.log(`  ℹ️  No legacy apps found - checking repositories for existing apps`)
+}
+
+console.log('')
+console.log('  Processing apps...')
+
+const { migrated, updated, reposEnsured } = allDirs.reduce((counts, dir) => {
   const appDir = join(workspaceBase, dir.name)
   const appName = dir.name
 
@@ -197,9 +205,10 @@ const { migrated, updated, skipped} = dirs.reduce((counts, dir) => {
       createGitRepository(appName, selectedUser)
       counts.updated++
     } else {
-      // Already fully migrated
-      console.log(`  ✅ Already migrated: ${appName}`)
-      counts.skipped++
+      // Already has owner - just ensure repo exists
+      console.log(`  ✓ Checking repository for: ${appName}`)
+      createGitRepository(appName, config.owner)
+      counts.reposEnsured++
     }
   } catch (error) {
     // Create new config
@@ -215,9 +224,9 @@ const { migrated, updated, skipped} = dirs.reduce((counts, dir) => {
     createGitRepository(appName, selectedUser)
     counts.migrated++
   }
-  
+
   return counts
-}, { migrated: 0, updated: 0, skipped: 0 })
+}, { migrated: 0, updated: 0, reposEnsured: 0 })
 
 console.log('')
 if (migrated > 0) {
@@ -226,7 +235,7 @@ if (migrated > 0) {
 if (updated > 0) {
   console.log(`  ✅ Updated ${updated} app(s)`)
 }
-if (skipped > 0) {
-  console.log(`  ℹ️ Skipped ${skipped} already migrated app(s)`)
+if (reposEnsured > 0) {
+  console.log(`  ✓ Ensured repositories for ${reposEnsured} app(s)`)
 }
 console.log('')

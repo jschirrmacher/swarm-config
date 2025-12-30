@@ -1,6 +1,6 @@
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
-import { access, mkdir, writeFile, readFile } from "node:fs/promises"
+import { access, mkdir, writeFile, readFile, readdir } from "node:fs/promises"
 import { join } from "node:path"
 import { constants } from "node:fs"
 import { getCookie, getHeader } from "h3"
@@ -60,7 +60,7 @@ export async function createWorkspace(
   baseDir: string,
   config: RepoConfig,
 ): Promise<string> {
-  const workspaceDir = join(baseDir, owner, name)
+  const workspaceDir = join(baseDir, name)
 
   // Create workspace directory structure
   await mkdir(workspaceDir, { recursive: true, mode: 0o755 })
@@ -121,60 +121,32 @@ export default createStack("${name}")
 
 export async function listRepositories(
   owner: string,
-  gitBaseDir: string,
   workspaceBaseDir: string,
 ): Promise<RepoConfig[]> {
-  const ownerGitDir = join(gitBaseDir, owner)
-  const ownerWorkspaceDir = join(workspaceBaseDir, owner)
-
-  const repos: RepoConfig[] = []
-
-  // Search for repositories in new structure: /var/apps/username/appname/
   try {
-    const { stdout } = await execAsync(
-      `find "${ownerWorkspaceDir}" -maxdepth 2 -type f -name ".repo-config.json" 2>/dev/null || true`,
-    )
-    const configFiles = stdout.trim().split("\n").filter(Boolean)
-
-    for (const configPath of configFiles) {
-      try {
-        const content = await readFile(configPath, "utf-8")
-        const config = JSON.parse(content) as RepoConfig
-        repos.push(config)
-      } catch (error) {
-        console.warn(`Failed to read config ${configPath}:`, error)
-      }
-    }
-  } catch (error) {
-    // Directory doesn't exist or other error - continue to legacy search
-  }
-
-  // Search for legacy repositories in old structure: /var/apps/appname/
-  // These are apps that existed before the user-based directory structure
-  try {
-    const { stdout } = await execAsync(
-      `find "${workspaceBaseDir}" -maxdepth 2 -type f -name ".repo-config.json" -path "${workspaceBaseDir}/*/.repo-config.json" ! -path "${workspaceBaseDir}/${owner}/*" 2>/dev/null || true`,
-    )
-    const legacyConfigFiles = stdout.trim().split("\n").filter(Boolean)
-
-    for (const configPath of legacyConfigFiles) {
-      try {
-        const content = await readFile(configPath, "utf-8")
-        const config = JSON.parse(content) as RepoConfig
-
-        // Only include legacy apps that belong to this owner
-        if (config.owner === owner) {
-          repos.push(config)
+    const entries = await readdir(workspaceBaseDir, { withFileTypes: true })
+    
+    const configPromises = entries
+      .filter(entry => entry.isDirectory() && entry.name !== 'swarm-config')
+      .map(async (entry) => {
+        const configPath = join(workspaceBaseDir, entry.name, '.repo-config.json')
+        
+        try {
+          await access(configPath, constants.R_OK)
+          const content = await readFile(configPath, "utf-8")
+          const config = JSON.parse(content) as RepoConfig
+          return config.owner === owner ? config : null
+        } catch (error) {
+          return null
         }
-      } catch (error) {
-        console.warn(`Failed to read legacy config ${configPath}:`, error)
-      }
-    }
-  } catch (error) {
-    // No legacy apps or error - that's ok
-  }
+      })
 
-  return repos
+    const configs = await Promise.all(configPromises)
+    return configs.filter((config): config is RepoConfig => config !== null)
+  } catch (error) {
+    console.warn("Failed to search for repositories:", error)
+    return []
+  }
 }
 
 export async function getCurrentUser(event?: any): Promise<string> {
