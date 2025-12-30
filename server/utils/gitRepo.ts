@@ -127,7 +127,7 @@ export async function listRepositories(
     const entries = await readdir(workspaceBaseDir, { withFileTypes: true })
     
     const configPromises = entries
-      .filter(entry => entry.isDirectory() && entry.name !== 'swarm-config')
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
       .map(async (entry) => {
         const configPath = join(workspaceBaseDir, entry.name, '.repo-config.json')
         
@@ -135,7 +135,9 @@ export async function listRepositories(
           await access(configPath, constants.R_OK)
           const content = await readFile(configPath, "utf-8")
           const config = JSON.parse(content) as RepoConfig
-          return config.owner === owner ? config : null
+          // In dev mode or if no owner specified, return all repos
+          // Otherwise filter by owner
+          return (!owner || config.owner === owner) ? config : null
         } catch (error) {
           return null
         }

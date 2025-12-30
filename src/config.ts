@@ -5,7 +5,7 @@
  * Reads configuration from .swarm-config file or environment variables
  */
 
-import { readFileSync, existsSync } from "fs"
+import { readFileSync, writeFileSync, existsSync } from "fs"
 import { resolve } from "path"
 
 interface Config {
@@ -45,7 +45,7 @@ export function getSwarmConfig(): Config {
         const [key, ...valueParts] = line.split("=")
         const value = valueParts.join("=").trim()
         if (key && value) {
-          config[key as keyof Config] = value
+          config[key as keyof Config] = value as any
         }
       }
     })
@@ -56,7 +56,7 @@ export function getSwarmConfig(): Config {
     }
 
     // Merge with defaults
-    const mergedConfig = {
+    const mergedConfig: Config = {
       DOMAIN: config.DOMAIN || defaults.DOMAIN,
     }
 
@@ -68,6 +68,24 @@ export function getSwarmConfig(): Config {
     }
     throw error
   }
+}
+
+/**
+ * Saves configuration to .swarm-config file
+ */
+export function saveSwarmConfig(config: Config): void {
+  const configPath = resolve(process.cwd(), ".swarm-config")
+  
+  const content = `# Swarm Config Configuration
+# Generated on: ${new Date().toISOString()}
+
+DOMAIN=${config.DOMAIN}
+`
+
+  writeFileSync(configPath, content, "utf-8")
+  
+  // Clear cache to force reload
+  cachedConfig = null
 }
 
 /**

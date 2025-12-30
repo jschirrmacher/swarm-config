@@ -1,14 +1,37 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 import { execSync } from 'child_process'
 import { readdirSync, readFileSync, writeFileSync, statSync, chmodSync, existsSync, mkdirSync, copyFileSync } from 'fs'
-import { join, dirname } from 'path'
+import { join, dirname, resolve } from 'path'
 import { createInterface } from 'readline'
 
-console.log('🔄 Step 10: Migrating legacy apps to swarm-config...')
+console.log('🔄 Step 10: Preparing apps and services...')
+console.log('')
+
+// Load .env file if it exists
+const envPath = resolve(process.cwd(), '.env')
+if (existsSync(envPath)) {
+  const envContent = readFileSync(envPath, 'utf-8')
+  envContent.split('\n').forEach(line => {
+    const match = line.match(/^([^=]+)=(.*)$/)
+    if (match && match[1] && match[2] && !line.startsWith('#')) {
+      const key = match[1].trim()
+      const value = match[2].trim()
+      if (!process.env[key]) {
+        process.env[key] = value
+      }
+    }
+  })
+  console.log('  ✓ Loaded configuration from .env')
+}
 
 const workspaceBase = process.env.WORKSPACE_BASE || '/var/apps'
 const reposBase = process.env.GIT_REPO_BASE || '/home'
-const swarmConfigDir = process.env.SWARM_CONFIG_DIR || '/var/apps/swarm-config'
+const swarmConfigDir = join(workspaceBase, 'swarm-config')
+
+console.log(`  Workspace: ${workspaceBase}`)
+console.log(`  Git repos: ${reposBase}`)
+console.log(`  Swarm config: ${swarmConfigDir}`)
+console.log('')
 
 // Set default branch name to 'main'
 execSync('git config --global init.defaultBranch main')
@@ -23,17 +46,37 @@ interface AppConfig {
 
 // Get all regular users from the system
 function getAvailableUsers(): string[] {
-  const passwdContent = readFileSync('/etc/passwd', 'utf-8')
-  return passwdContent
-    .split('\n')
-    .filter(line => line.trim())
-    .map(line => line.split(':'))
-    .filter(fields => {
-      const uid = parseInt(fields[2] || '0', 10)
-      const username = fields[0]
-      return uid >= 1000 && uid < 60000 && username !== 'nobody'
-    })
-    .map(fields => fields[0]!)
+  // Try to get from environment variable first (for local dev)
+  const envUser = process.env.DEFAULT_USER || process.env.USER
+  
+  try {
+    const passwdContent = readFileSync('/etc/passwd', 'utf-8')
+    const users = passwdContent
+      .split('\n')
+      .filter(line => line.trim())
+      .map(line => line.split(':'))
+      .filter(fields => {
+        const uid = parseInt(fields[2] || '0', 10)
+        const username = fields[0]
+        return uid >= 1000 && uid < 60000 && username !== 'nobody'
+      })
+      .map(fields => fields[0]!)
+    
+    // If no users found (e.g., on macOS in dev), use current user
+    if (users.length === 0 && envUser) {
+      console.log(`  ℹ️  No regular system users found, using current user: ${envUser}`)
+      return [envUser]
+    }
+    
+    return users
+  } catch (error) {
+    // Fallback to current user if /etc/passwd is not readable
+    if (envUser) {
+      console.log(`  ℹ️  Using current user: ${envUser}`)
+      return [envUser]
+    }
+    return []
+  }
 }
 
 // Select owner user interactively or use default
@@ -95,6 +138,30 @@ function detectPort(appDir: string): number {
   return 3000
 }
 
+// Create service configuration file for an app
+function createServiceConfig(appName: string, port: number): void {
+  const servicesDir = join(swarmConfigDir, 'config', 'services')
+  const servicePath = join(servicesDir, `${appName}.ts`)
+  
+  if (existsSync(servicePath)) {
+    return // Service config already exists
+  }
+
+  // Create service configuration from template
+  const serviceContent = `import { createStack } from "../../src/Service.js"
+import { getDomain } from "../../src/config.js"
+
+const domain = getDomain()
+
+export default createStack("${appName}")
+  .addService("${appName}", ${port})
+  .addRoute(\`${appName}.\${domain}\`)
+`
+
+  writeFileSync(servicePath, serviceContent, 'utf-8')
+  console.log(`  ✓ Created service config: ${appName}.ts`)
+}
+
 // Create git repository for an app
 function createGitRepository(appName: string, owner: string): void {
   const repoPath = join(reposBase, owner, `${appName}.git`)
@@ -148,7 +215,7 @@ if (availableUsers.length === 0) {
 }
 
 const allDirs = (readdirSync(workspaceBase, { withFileTypes: true })).filter(
-  (entry) => entry.isDirectory() && entry.name !== 'swarm-config'
+  (entry) => entry.isDirectory() && !entry.name.startsWith('.')
 )
 
 if (allDirs.length === 0) {
@@ -184,6 +251,7 @@ const { migrated, updated, reposEnsured } = allDirs.reduce((counts, dir) => {
   const appDir = join(workspaceBase, dir.name)
   const appName = dir.name
 
+  // Process app migration/repository setup
   const port = detectPort(appDir)
   let createdAt: string
   try {
@@ -193,25 +261,23 @@ const { migrated, updated, reposEnsured } = allDirs.reduce((counts, dir) => {
     createdAt = new Date().toISOString()
   }
 
-  // Check if already has .repo-config.json
   const configPath = join(appDir, '.repo-config.json')
   try {
     const config = JSON.parse(readFileSync(configPath, 'utf-8'))
     if (!config.owner) {
-      // Update existing config with owner
       console.log(`  🔧 Updating config for: ${appName}`)
       config.owner = selectedUser
       saveAppConfig(appName, config)
       createGitRepository(appName, selectedUser)
+      createServiceConfig(appName, port)
       counts.updated++
     } else {
-      // Already has owner - just ensure repo exists
       console.log(`  ✓ Checking repository for: ${appName}`)
       createGitRepository(appName, config.owner)
+      createServiceConfig(appName, port)
       counts.reposEnsured++
     }
   } catch (error) {
-    // Create new config
     console.log(`  📦 Migrating app: ${appName} (port: ${port})`)
     const config: AppConfig = {
       name: appName,
@@ -222,6 +288,7 @@ const { migrated, updated, reposEnsured } = allDirs.reduce((counts, dir) => {
     }
     saveAppConfig(appName, config)
     createGitRepository(appName, selectedUser)
+    createServiceConfig(appName, port)
     counts.migrated++
   }
 

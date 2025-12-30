@@ -1,5 +1,7 @@
 import { readFileSync, existsSync } from "fs"
 import { join } from "path"
+import { parseServiceConfig } from "../../utils/parseService"
+import { getSwarmConfig } from "../../../src/config"
 
 export default defineEventHandler(async event => {
   const name = getRouterParam(event, "name")
@@ -20,7 +22,19 @@ export default defineEventHandler(async event => {
     const examplePath = join(servicesDir, `${name}.ts.example`)
     const hasExample = existsSync(examplePath)
 
-    return { name, content, hasExample, linesOfCode: content.split("\n").length, path: filePath }
+    // Try to parse the service configuration
+    const parsed = parseServiceConfig(content)
+    const config = getSwarmConfig()
+
+    return { 
+      name, 
+      content, 
+      hasExample, 
+      path: filePath,
+      parsed,  // Will be null for special cases like acme.ts
+      isStructured: parsed !== null,
+      domain: config.DOMAIN
+    }
   } catch (error: any) {
     if (error.statusCode) {
       throw error

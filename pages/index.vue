@@ -84,7 +84,7 @@ async function createRepository() {
     })
 
     if (response.success && response.repository) {
-      successMessage.value = `Repository "${response.repository.name}" created successfully!`
+      successMessage.value = `Project "${response.repository.name}" created successfully!`
       newRepo.value = { name: '', port: 3000 }
       await loadRepositories()
 
@@ -93,14 +93,14 @@ async function createRepository() {
         successMessage.value = ''
       }, 5000)
     } else {
-      error.value = response.error || 'Failed to create repository'
+      error.value = response.error || 'Failed to create project'
     }
   } catch (err: any) {
     if (err?.statusCode === 401) {
       logout()
       return
     }
-    error.value = 'Failed to create repository'
+    error.value = 'Failed to create project'
     console.error(err)
   } finally {
     creating.value = false
@@ -132,21 +132,22 @@ onMounted(() => {
 
 <template>
   <div class="layout">
-    <AppHeader subtitle="Repository Management" :current-user="currentUser" :show-logout="true" @logout="logout" />
+    <AppHeader subtitle="Project Management" :current-user="currentUser" :show-logout="true" @logout="logout" />
 
     <main class="main">
       <div class="container">
         <section class="hero">
-          <h2>Your Repositories</h2>
-          <p>Create and manage Git repositories for automated deployment. Click on a repository to view its
+          <h2>Your Projects</h2>
+          <p>Create and manage projects with Git repositories for automated deployment. Click on a project to view and
+            edit its
             configuration.</p>
         </section>
 
         <section class="repos-section">
-          <AppLoading v-if="loading" text="Loading repositories..." />
+          <AppLoading v-if="loading" text="Loading projects..." />
 
           <div v-else-if="repositories.length === 0" class="empty-state">
-            <p>No repositories yet. Create your first one below!</p>
+            <p>No projects yet. Create your first one below!</p>
           </div>
 
           <div v-else class="repos-grid">
@@ -191,24 +192,26 @@ onMounted(() => {
         </section>
 
         <section class="create-section">
-          <h3>Create New Repository</h3>
+          <h3>Create New Project</h3>
           <form @submit.prevent="createRepository" class="create-form">
-            <div class="form-group">
-              <label for="repoName">Repository Name</label>
-              <input id="repoName" v-model="newRepo.name" type="text" placeholder="my-awesome-app" pattern="[a-z0-9-]+"
-                required :disabled="creating" />
-              <small>Only lowercase letters, numbers, and hyphens</small>
-            </div>
+            <div class="service-basics">
+              <div class="form-group">
+                <label for="repoName">Project Name</label>
+                <input id="repoName" v-model="newRepo.name" type="text" placeholder="my-awesome-app"
+                  pattern="[a-z0-9-]+" required :disabled="creating" class="form-input" />
+                <small>Only lowercase letters, numbers, and hyphens</small>
+              </div>
 
-            <div class="form-group">
-              <label for="repoPort">Port</label>
-              <input id="repoPort" v-model.number="newRepo.port" type="number" min="1000" max="65535" placeholder="3000"
-                :disabled="creating" />
-              <small>Port your application listens on (Kong Gateway route will be created automatically)</small>
+              <div class="form-group">
+                <label for="repoPort">Port</label>
+                <input id="repoPort" v-model.number="newRepo.port" type="number" min="1000" max="65535"
+                  placeholder="3000" :disabled="creating" class="form-input" />
+                <small>Port your application listens on</small>
+              </div>
             </div>
 
             <button type="submit" class="btn btn-primary" :disabled="creating">
-              {{ creating ? 'Creating...' : '+ Create Repository' }}
+              {{ creating ? 'Creating...' : '+ Create Project' }}
             </button>
           </form>
 
@@ -254,6 +257,79 @@ onMounted(() => {
   font-size: 1.1rem;
 }
 
+.services-section {
+  margin-top: 2rem;
+  margin-bottom: 3rem;
+}
+
+.services-section h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.service-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.service-card:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+  transform: translateY(-2px);
+}
+
+.service-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.service-header h4 {
+  color: #667eea;
+  font-size: 1rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.service-badge {
+  background: #f0f0f0;
+  color: #666;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.service-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.service-file {
+  color: #999;
+  font-size: 0.875rem;
+  font-family: monospace;
+}
+
+.service-example-badge {
+  font-size: 1rem;
+}
+
 .create-section {
   background: white;
   padding: 2rem;
@@ -271,6 +347,27 @@ onMounted(() => {
 .create-form {
   max-width: 600px;
   margin: 0 auto;
+}
+
+.service-basics {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .form-group {

@@ -31,7 +31,6 @@ export default defineEventHandler(async () => {
         name,
         file,
         hasExample: files.includes(file.replace(".ts", ".ts.example")),
-        linesOfCode: content.split("\n").length,
       }
     })
 
