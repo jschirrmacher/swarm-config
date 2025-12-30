@@ -18,9 +18,12 @@ function handleLogout() {
   <header class="header">
     <div class="container">
       <div class="header-content">
-        <div>
-          <h1>🐳 Swarm Config</h1>
-          <p class="subtitle">{{ subtitle }}</p>
+        <div class="title-section">
+          <span class="logo">🐳</span>
+          <div>
+            <h1>Swarm Config</h1>
+            <p class="subtitle">{{ subtitle }}</p>
+          </div>
         </div>
         <div v-if="currentUser" class="user-info">
           <span class="user-label">Logged in as:</span>
@@ -58,6 +61,17 @@ function handleLogout() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo {
+  font-size: 3.5rem;
+  line-height: 1;
 }
 
 h1 {
