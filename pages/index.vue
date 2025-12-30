@@ -1,113 +1,3 @@
-<template>
-  <div class="layout">
-    <header class="header">
-      <div class="container">
-        <div class="header-content">
-          <div>
-            <h1>🐳 Swarm Config</h1>
-            <p class="subtitle">Repository Management</p>
-          </div>
-          <div v-if="currentUser" class="user-info">
-            <span class="user-label">Logged in as:</span>
-            <span class="user-name">{{ currentUser }}</span>
-            <button @click="logout" class="btn-logout" title="Logout">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path
-                  d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z" />
-                <path
-                  d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z" />
-              </svg>
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <main class="main">
-      <div class="container">
-        <section class="hero">
-          <h2>Your Repositories</h2>
-          <p>Create and manage Git repositories for automated deployment</p>
-        </section>
-
-        <section class="repos-section">
-          <div v-if="loading" class="loading">
-            Loading repositories...
-          </div>
-
-          <div v-else-if="repositories.length === 0" class="empty-state">
-            <p>No repositories yet. Create your first one below!</p>
-          </div>
-
-          <div v-else class="repos-grid">
-            <div v-for="repo in repositories" :key="repo.name" class="repo-card">
-              <div class="repo-content">
-                <h3 class="repo-title">
-                  <a v-if="repo.kongRoute" :href="repo.kongRoute" target="_blank" rel="noopener">
-                    {{ repo.name }}
-                  </a>
-                  <span v-else>{{ repo.name }}</span>
-                </h3>
-                <div class="url-with-copy">
-                  <code>{{ repo.gitUrl }}</code>
-                  <button @click="copyGitUrl(repo.gitUrl)" class="btn-icon" title="Copy Git URL">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                      <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
-                      <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="copySuccess" class="alert alert-success copy-alert">
-            {{ copySuccess }}
-          </div>
-        </section>
-
-        <section class="create-section">
-          <h3>Create New Repository</h3>
-          <form @submit.prevent="createRepository" class="create-form">
-            <div class="form-group">
-              <label for="repoName">Repository Name</label>
-              <input id="repoName" v-model="newRepo.name" type="text" placeholder="my-awesome-app" pattern="[a-z0-9-]+"
-                required :disabled="creating" />
-              <small>Only lowercase letters, numbers, and hyphens</small>
-            </div>
-
-            <div class="form-group">
-              <label for="repoPort">Port</label>
-              <input id="repoPort" v-model.number="newRepo.port" type="number" min="1000" max="65535" placeholder="3000"
-                :disabled="creating" />
-              <small>Port your application listens on (Kong Gateway route will be created automatically)</small>
-            </div>
-
-            <button type="submit" class="btn btn-primary" :disabled="creating">
-              {{ creating ? 'Creating...' : '+ Create Repository' }}
-            </button>
-          </form>
-
-          <div v-if="error" class="alert alert-error">
-            {{ error }}
-          </div>
-
-          <div v-if="successMessage" class="alert alert-success">
-            {{ successMessage }}
-          </div>
-        </section>
-      </div>
-    </main>
-
-    <footer class="footer">
-      <div class="container">
-        <p>Swarm Config - Docker Swarm CI/CD Platform</p>
-      </div>
-    </footer>
-  </div>
-</template>
-
 <script setup lang="ts">
 import type { Repository, CreateRepoRequest } from '~/types'
 
@@ -240,73 +130,107 @@ onMounted(() => {
 })
 </script>
 
+<template>
+  <div class="layout">
+    <AppHeader subtitle="Repository Management" :current-user="currentUser" :show-logout="true" @logout="logout" />
+
+    <main class="main">
+      <div class="container">
+        <section class="hero">
+          <h2>Your Repositories</h2>
+          <p>Create and manage Git repositories for automated deployment. Click on a repository to view its
+            configuration.</p>
+        </section>
+
+        <section class="repos-section">
+          <AppLoading v-if="loading" text="Loading repositories..." />
+
+          <div v-else-if="repositories.length === 0" class="empty-state">
+            <p>No repositories yet. Create your first one below!</p>
+          </div>
+
+          <div v-else class="repos-grid">
+            <div v-for="repo in repositories" :key="repo.name" class="repo-card">
+              <div class="repo-content">
+                <div class="repo-header">
+                  <h3 class="repo-title">
+                    <NuxtLink :to="`/services/${repo.name}`" class="config-link">
+                      {{ repo.name }}
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" class="config-icon">
+                        <path
+                          d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z" />
+                        <path
+                          d="M6.854 4.646a.5.5 0 0 1 0 .708L4.207 8l2.647 2.646a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708 0zm2.292 0a.5.5 0 0 0 0 .708L11.793 8l-2.647 2.646a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708 0z" />
+                      </svg>
+                    </NuxtLink>
+                  </h3>
+                  <a v-if="repo.kongRoute" :href="repo.kongRoute" target="_blank" rel="noopener" class="external-link"
+                    title="Open app">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path
+                        d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z" />
+                      <path
+                        d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z" />
+                    </svg>
+                  </a>
+                </div>
+                <div class="url-with-copy">
+                  <code>{{ repo.gitUrl }}</code>
+                  <button @click="copyGitUrl(repo.gitUrl)" class="btn-icon" title="Copy Git URL">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
+                      <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <AppAlert type="success" :message="copySuccess" />
+        </section>
+
+        <section class="create-section">
+          <h3>Create New Repository</h3>
+          <form @submit.prevent="createRepository" class="create-form">
+            <div class="form-group">
+              <label for="repoName">Repository Name</label>
+              <input id="repoName" v-model="newRepo.name" type="text" placeholder="my-awesome-app" pattern="[a-z0-9-]+"
+                required :disabled="creating" />
+              <small>Only lowercase letters, numbers, and hyphens</small>
+            </div>
+
+            <div class="form-group">
+              <label for="repoPort">Port</label>
+              <input id="repoPort" v-model.number="newRepo.port" type="number" min="1000" max="65535" placeholder="3000"
+                :disabled="creating" />
+              <small>Port your application listens on (Kong Gateway route will be created automatically)</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary" :disabled="creating">
+              {{ creating ? 'Creating...' : '+ Create Repository' }}
+            </button>
+          </form>
+
+          <AppAlert type="error" :message="error" />
+          <AppAlert type="success" :message="successMessage" />
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <p>Swarm Config - Docker Swarm CI/CD Platform</p>
+      </div>
+    </footer>
+  </div>
+</template>
+
 <style scoped>
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
-}
-
-.header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 2rem 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2rem;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.user-label {
-  font-size: 0.85rem;
-  opacity: 0.8;
-}
-
-.user-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-}
-
-.btn-logout {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 6px;
-  color: white;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-logout:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-.header h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.subtitle {
-  opacity: 0.9;
-  font-size: 1.1rem;
 }
 
 .main {
@@ -435,35 +359,10 @@ onMounted(() => {
   background: #e0e0e0;
 }
 
-.alert {
-  padding: 1rem;
-  border-radius: 4px;
-  margin-top: 1rem;
-}
-
-.alert-error {
-  background: #fee;
-  color: #c00;
-  border: 1px solid #fcc;
-}
-
-.alert-success {
-  background: #efe;
-  color: #060;
-  border: 1px solid #cfc;
-}
-
-.copy-alert {
-  max-width: 400px;
-  margin: 1rem auto;
-  text-align: center;
-}
-
 .repos-section {
   margin-top: 2rem;
 }
 
-.loading,
 .empty-state {
   text-align: center;
   padding: 3rem;
@@ -492,6 +391,13 @@ onMounted(() => {
 
 .repo-content {
   display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.repo-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 1rem;
 }
@@ -500,17 +406,44 @@ onMounted(() => {
   color: #667eea;
   font-size: 1rem;
   margin: 0;
-  min-width: 200px;
+  flex: 1;
+}
+
+.config-link {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.config-link:hover {
+  color: #5568d3;
+}
+
+.config-icon {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.config-link:hover .config-icon {
+  opacity: 1;
+}
+
+.external-link {
+  color: #667eea;
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s;
   flex-shrink: 0;
 }
 
-.repo-title a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.repo-title a:hover {
-  text-decoration: underline;
+.external-link:hover {
+  background: #f0f0f0;
+  color: #5568d3;
 }
 
 .repo-date {
