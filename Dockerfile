@@ -14,8 +14,8 @@ RUN npm run build
 # Production stage
 FROM node:24-alpine
 
-# Install system dependencies
-RUN apk add --no-cache wget git
+# Install system dependencies including Docker CLI
+RUN apk add --no-cache wget git docker-cli
 
 WORKDIR /app
 
