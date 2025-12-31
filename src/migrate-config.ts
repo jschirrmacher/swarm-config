@@ -174,7 +174,7 @@ function generateServiceCode(stackServices: any[]): string {
 /**
  * Detects the type of stack and generates appropriate migration
  */
-function migrateStackService(stack: any, configSource: string, stats: MigrationStats): void {
+function migrateStackService(stack: any, stats: MigrationStats): void {
   if (!stack || typeof stack.get !== "function") {
     console.log("  ⚠️  Skipping invalid stack (no get() method)")
     return
@@ -213,76 +213,86 @@ function migrateStackService(stack: any, configSource: string, stats: MigrationS
     return
   }
 
-  // Check if this is a Portainer stack
-  if (firstService.name.includes("_portainer") && firstService.url.includes(":9000")) {
-    const hostname = firstService.routes[0]?.hosts[0] || ""
-    const file = join("config/infrastructure", "portainer.ts")
-    const content = `import { createPortainerStack } from "../../src/PortainerStack.js"
-
-// Portainer - Docker management UI
-// Migrated from config.ts
-
-export default createPortainerStack("${stackName}", "${hostname}")
-`
-    writeFileSync(file, content)
-    console.log("  ✓ Migrated infrastructure: portainer")
-    stats.count++
+  // Skip swarm-config (handled separately)
+  if (stackName === "swarm-config") {
+    console.log(`  ⏭️  Skipping service: swarm-config (infrastructure)`)
     return
   }
 
-  // Check if this is a Monitoring stack (has prometheus + grafana)
+  // Check if this is a Portainer or Monitoring stack - these remain as examples
   if (
-    services.some((s: any) => s.name.includes("_prometheus")) &&
-    services.some((s: any) => s.name.includes("_grafana"))
+    (firstService.name.includes("_portainer") && firstService.url.includes(":9000")) ||
+    (services.some((s: any) => s.name.includes("_prometheus")) &&
+      services.some((s: any) => s.name.includes("_grafana")))
   ) {
-    const domain = firstService.routes[0]?.hosts[0]?.replace(/^prometheus\./, "") || ""
-    const file = join("config/infrastructure", "monitoring.ts")
-    const content = `import { createMonitoringStack } from "../../src/MonitoringStack.js"
-
-// Monitoring Stack - Prometheus & Grafana
-// Migrated from config.ts
-
-export default createMonitoringStack("${stackName}", "${domain}")
-`
-    writeFileSync(file, content)
-    console.log("  ✓ Migrated infrastructure: monitoring")
-    stats.count++
+    console.log(`  ⏭️  Skipping infrastructure service: ${stackName} (kept as example)`)
     return
   }
 
-  // Regular service - generate from structure
-  const file = join("config/services", `${stackName}.ts`)
+  // Regular service - migrate to /var/apps/<stackName>/service.ts
+  const workspaceBase = process.env.WORKSPACE_BASE || "/var/apps"
+  const projectDir = join(workspaceBase, stackName)
+  const serviceFile = join(projectDir, "service.ts")
+
+  // Create project directory if it doesn't exist
+  mkdirSync(projectDir, { recursive: true })
+  
+  // Extract port from first service
+  const portMatch = firstService.url.match(/:(\d+)$/)
+  const port = portMatch ? portMatch[1] : "3000"
+  
+  // Get domain from first route
+  const domain = firstService.routes[0]?.hosts[0]?.replace(new RegExp(`^${stackName}\\.`), "") || "example.com"
+  
   const serviceCode = generateServiceCode(services)
 
-  const content = `import { createStack } from "../../src/Service.js"
+  const content = `import { createStack } from "../swarm-config/src/Service.js"
 
 // ${stackName} - Migrated from config.ts
 
 export default createStack("${stackName}")
     ${serviceCode}
 `
-  writeFileSync(file, content)
-  console.log(`  ✓ Migrated service: ${stackName}`)
+  writeFileSync(serviceFile, content)
+  console.log(`  ✓ Migrated service: ${stackName} -> /var/apps/${stackName}/service.ts`)
+  
+  // Also create a basic docker-compose.yaml
+  const composeContent = `services:
+  ${stackName}:
+    image: \${IMAGE_NAME:-${stackName}:latest}
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "\${PORT:-${port}}:${port}"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - kong-net
+    labels:
+      - "com.docker.stack.namespace=${stackName}"
+
+networks:
+  kong-net:
+    external: true
+`
+  writeFileSync(join(projectDir, "docker-compose.yaml"), composeContent)
+  console.log(`  ✓ Created docker-compose.yaml for ${stackName}`)
+  
   stats.count++
 }
 
 /**
- * Migrates services from config.ts to config/services/ and config/infrastructure/
+ * Migrates services from config.ts to /var/apps/<project>/service.ts
  */
 function migrateServices(config: any, configPath: string, stats: MigrationStats): void {
   if (!config.services || !Array.isArray(config.services) || config.services.length === 0) {
     return
   }
 
-  mkdirSync("config/services", { recursive: true })
-  mkdirSync("config/infrastructure", { recursive: true })
-
-  // Read source for reference (in case we need to preserve comments or special formatting)
-  const configSource = readFileSync(configPath, "utf-8")
-
   // Work directly with the service objects
   for (const service of config.services) {
-    migrateStackService(service, configSource, stats)
+    migrateStackService(service, stats)
   }
 }
 

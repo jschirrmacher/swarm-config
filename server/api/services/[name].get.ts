@@ -11,16 +11,16 @@ export default defineEventHandler(async event => {
   }
 
   try {
-    const servicesDir = join(process.cwd(), "config", "services")
-    const filePath = join(servicesDir, `${name}.ts`)
+    const workspaceBase = process.env.WORKSPACE_BASE || "/var/apps"
+    const projectDir = join(workspaceBase, name)
+    const filePath = join(projectDir, "service.ts")
 
     if (!existsSync(filePath)) {
       throw createError({ statusCode: 404, message: `Service '${name}' not found` })
     }
 
     const content = readFileSync(filePath, "utf-8")
-    const examplePath = join(servicesDir, `${name}.ts.example`)
-    const hasExample = existsSync(examplePath)
+    // No more example files in project directories
 
     // Try to parse the service configuration
     const parsed = parseServiceConfig(content)
@@ -29,7 +29,6 @@ export default defineEventHandler(async event => {
     return { 
       name, 
       content, 
-      hasExample, 
       path: filePath,
       parsed,  // Will be null for special cases like acme.ts
       isStructured: parsed !== null,

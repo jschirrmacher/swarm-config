@@ -1,8 +1,39 @@
-import { writeFile, readdir } from "fs/promises"
+import { writeFile, readdir, stat } from "fs/promises"
 import { resolve, join } from "path"
 import { dump } from "js-yaml"
 
-// Load TypeScript modules from a directory
+// Load service.ts files from project directories in /var/apps
+async function loadProjectServices(silent = false) {
+  const workspaceBase = process.env.WORKSPACE_BASE || "/var/apps"
+  const modules = []
+
+  try {
+    const entries = await readdir(workspaceBase, { withFileTypes: true })
+    
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const serviceFile = join(workspaceBase, entry.name, "service.ts")
+        
+        try {
+          await stat(serviceFile)
+          const module = await import(`file://${serviceFile}`)
+          if (module.default) {
+            modules.push(module.default)
+            if (!silent) console.log(`  ✓ ${entry.name}/service.ts`)
+          }
+        } catch (error) {
+          // service.ts doesn't exist or can't be loaded - skip
+        }
+      }
+    }
+  } catch (error) {
+    if (!silent) console.log(`  ℹ No projects found in ${workspaceBase}`)
+  }
+
+  return modules
+}
+
+// Load TypeScript modules from a directory (for plugins and consumers)
 async function loadModules(dirName: string, silent = false) {
   const dir = resolve(process.cwd(), "config", dirName)
   const modules = []
@@ -35,7 +66,7 @@ export async function generateKongConfig(silent = false) {
 
   // Load all configuration modules
   const [services, plugins, consumers] = await Promise.all([
-    loadModules("services", silent),
+    loadProjectServices(silent),
     loadModules("plugins", silent),
     loadModules("consumers", silent),
   ])

@@ -43,7 +43,7 @@ export default defineEventHandler(async (event): Promise<CreateRepoResponse> => 
     const repoPath = await createGitRepository(body.name, owner, config.gitRepoBase)
 
     // Create workspace
-    const workspaceDir = await createWorkspace(body.name, owner, config.workspaceBase, repoConfig)
+    const workspaceDir = await createWorkspace(body.name, config.workspaceBase, repoConfig)
 
     // Create Kong service (always enabled)
     await createKongService(body.name, port, config.domain)

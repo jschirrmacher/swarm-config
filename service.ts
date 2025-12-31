@@ -1,6 +1,6 @@
-import { createStack } from "../../src/Service.js"
-import { getDomain } from "../../src/config.js"
-import { createPlugin } from "../../src/Plugin.js"
+import { createStack } from "./src/Service.js"
+import { getDomain } from "./src/config.js"
+import { createPlugin } from "./src/Plugin.js"
 
 const domain = getDomain()
 

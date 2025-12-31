@@ -98,7 +98,6 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
   try {
     const owner = await requireAuth(event)
     const repos = await listRepositories(owner, config.workspaceBase)
-    const activeStacksDir = join(process.cwd(), "config", "stacks", "active")
 
     return repos.map(repo => {
       // For legacy apps, use the old structure (no username subdirectory)
@@ -107,11 +106,11 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
         ? `${config.workspaceBase}/${repo.name}`
         : `${config.workspaceBase}/${owner}/${repo.name}`
 
-      // Check if there's a corresponding active stack file
-      const stackFile = join(activeStacksDir, `${repo.name}.yaml`)
-      const hasStack = existsSync(stackFile)
+      // Check if there's a docker-compose.yaml in the project directory
+      const composeFile = join(config.workspaceBase, repo.name, "docker-compose.yaml")
+      const hasStack = existsSync(composeFile)
       
-      // Get Docker status only if stack file exists in active directory
+      // Get Docker status only if docker-compose.yaml exists
       const dockerStack = hasStack ? getDockerStatus(repo.name) : { exists: false, running: 0, total: 0 }
 
       return {

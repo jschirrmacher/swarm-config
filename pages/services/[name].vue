@@ -179,7 +179,7 @@ function removeRoute(serviceIndex: string | number, routeIndex: string | number)
           <div class="service-header">
             <h2>{{ service.name }}</h2>
             <div class="service-meta">
-              <span v-if="service.hasExample" class="badge badge-info">Has example</span>
+
             </div>
           </div>
 

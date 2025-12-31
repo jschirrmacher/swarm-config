@@ -138,28 +138,51 @@ function detectPort(appDir: string): number {
   return 3000
 }
 
-// Create service configuration file for an app
+// Create service configuration file and docker-compose for an app
 function createServiceConfig(appName: string, port: number): void {
-  const servicesDir = join(swarmConfigDir, 'config', 'services')
-  const servicePath = join(servicesDir, `${appName}.ts`)
+  const appDir = join(workspaceBase, appName)
+  const servicePath = join(appDir, 'service.ts')
+  const composePath = join(appDir, 'docker-compose.yaml')
   
-  if (existsSync(servicePath)) {
-    return // Service config already exists
-  }
-
-  // Create service configuration from template
-  const serviceContent = `import { createStack } from "../../src/Service.js"
-import { getDomain } from "../../src/config.js"
-
-const domain = getDomain()
+  // Get domain from environment
+  const domain = process.env.DOMAIN || 'example.com'
+  
+  // Create service.ts if it doesn't exist
+  if (!existsSync(servicePath)) {
+    const serviceContent = `import { createStack } from "../swarm-config/src/Service.js"
 
 export default createStack("${appName}")
   .addService("${appName}", ${port})
-  .addRoute(\`${appName}.\${domain}\`)
+  .addRoute("${appName}.${domain}")
 `
+    writeFileSync(servicePath, serviceContent, 'utf-8')
+    console.log(`  ✓ Created service.ts`)
+  }
 
-  writeFileSync(servicePath, serviceContent, 'utf-8')
-  console.log(`  ✓ Created service config: ${appName}.ts`)
+  // Create docker-compose.yaml if it doesn't exist
+  if (!existsSync(composePath)) {
+    const composeContent = `services:
+  ${appName}:
+    image: \${IMAGE_NAME:-${appName}:latest}
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "\${PORT:-${port}}:${port}"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - kong-net
+    labels:
+      - "com.docker.stack.namespace=${appName}"
+
+networks:
+  kong-net:
+    external: true
+`
+    writeFileSync(composePath, composeContent, 'utf-8')
+    console.log(`  ✓ Created docker-compose.yaml`)
+  }
 }
 
 // Create git repository for an app

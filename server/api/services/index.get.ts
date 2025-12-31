@@ -83,31 +83,33 @@ function getDockerStatus(stackName: string): { exists: boolean; running: number;
 
 export default defineEventHandler(async () => {
   try {
-    const servicesDir = join(process.cwd(), "config", "services")
-    const activeStacksDir = join(process.cwd(), "config", "stacks", "active")
+    const workspaceBase = process.env.WORKSPACE_BASE || "/var/apps"
     
-    const files = readdirSync(servicesDir).filter(
-      file => file.endsWith(".ts") && !file.endsWith(".example"),
-    )
+    // Read all project directories (excluding swarm-config itself)
+    const projectDirs = readdirSync(workspaceBase, { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory() && dirent.name !== "swarm-config")
+      .map(dirent => dirent.name)
 
-    const services = files.map(file => {
-      const name = file.replace(".ts", "")
-      
-      // Check if there's a corresponding active stack file
-      const stackFile = join(activeStacksDir, `${name}.yaml`)
-      const hasStack = existsSync(stackFile)
-      
-      // Get Docker status only if stack file exists in active directory
-      const dockerStatus = hasStack ? getDockerStatus(name) : { exists: false, running: 0, total: 0 }
-      
-      return {
-        name,
-        file,
-        hasExample: files.includes(file.replace(".ts", ".ts.example")),
-        hasStack,
-        dockerStack: dockerStatus,
-      }
-    })
+    const services = projectDirs
+      .filter(name => {
+        const serviceFile = join(workspaceBase, name, "service.ts")
+        return existsSync(serviceFile)
+      })
+      .map(name => {
+        // Check if there's a docker-compose.yaml file
+        const composeFile = join(workspaceBase, name, "docker-compose.yaml")
+        const hasStack = existsSync(composeFile)
+        
+        // Get Docker status only if docker-compose.yaml exists
+        const dockerStatus = hasStack ? getDockerStatus(name) : { exists: false, running: 0, total: 0 }
+        
+        return {
+          name,
+          file: "service.ts",
+          hasStack,
+          dockerStack: dockerStatus,
+        }
+      })
 
     return services
   } catch (error) {

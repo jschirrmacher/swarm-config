@@ -56,7 +56,6 @@ export async function createGitRepository(
 
 export async function createWorkspace(
   name: string,
-  owner: string,
   baseDir: string,
   config: RepoConfig,
 ): Promise<string> {
@@ -77,24 +76,42 @@ PORT=${config.port}
   const configPath = join(workspaceDir, ".repo-config.json")
   await writeFile(configPath, JSON.stringify(config, null, 2), { mode: 0o644 })
 
+  // Create service.ts template
+  const domain = process.env.DOMAIN || "example.com"
+  const serviceContent = `import { createStack } from "../../../swarm-config/src/Service.js"
+
+export default createStack("${name}")
+  .addService("${name}", ${config.port})
+  .addRoute("${name}.${domain}")
+`
+  await writeFile(join(workspaceDir, "service.ts"), serviceContent, { mode: 0o644 })
+
+  // Create docker-compose.yaml template
+  const composeContent = `services:
+  ${name}:
+    image: \${IMAGE_NAME:-${name}:latest}
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "\${PORT:-${config.port}}:${config.port}"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - kong-net
+    labels:
+      - "com.docker.stack.namespace=${name}"
+
+networks:
+  kong-net:
+    external: true
+`
+  await writeFile(join(workspaceDir, "docker-compose.yaml"), composeContent, { mode: 0o644 })
+
   return workspaceDir
 }
 
 export async function createKongService(name: string, port: number, domain: string): Promise<void> {
-  const servicesDir = join(getSwarmConfigDir(), "config", "services")
-  const serviceFile = join(servicesDir, `${name}.ts`)
-
-  const serviceContent = `import { createStack } from "../../src/Service.js"
-
-export default createStack("${name}")
-  .addService("${name}", ${port})
-  .addRoute("${name}.${domain}")
-`
-
-  await mkdir(servicesDir, { recursive: true })
-  await writeFile(serviceFile, serviceContent)
-
-  // Regenerate and reload Kong configuration via API endpoints
   try {
     const baseUrl = "http://localhost:3000"
 

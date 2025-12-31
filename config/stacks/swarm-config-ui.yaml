@@ -7,11 +7,12 @@ services:
       - NODE_ENV=production
       - GIT_REPO_BASE=/home
       - WORKSPACE_BASE=/var/apps
-      - DOMAIN=${DOMAIN:-example.com}
     volumes:
-      - /home:/home
+      - /home:/home:ro
       - /var/apps:/var/apps
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/apps/swarm-config/.swarm-config:/app/.swarm-config:ro
+      - /var/apps/swarm-config/config:/app/config:ro
     networks:
       - kong-net
     deploy:

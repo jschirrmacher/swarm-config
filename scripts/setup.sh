@@ -64,7 +64,7 @@ install_node_and_workspace() {
     
     if [ -f "$BACKUP_DIR/config.ts" ]; then
       cp "$BACKUP_DIR/config.ts" config.ts
-      echo "    📦 Found legacy config.ts - migrating..."
+      echo "    📦 Found legacy config.ts - migrating to new structure..."
       npx tsx src/migrate-config.ts || echo "    ⚠️  Migration failed - manual migration required"
     fi
     
