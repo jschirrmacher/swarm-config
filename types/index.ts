@@ -6,6 +6,12 @@ export interface Repository {
   kongRoute: string
   createdAt: string
   owner: string
+  hasStack?: boolean
+  dockerStack?: {
+    exists: boolean
+    running: number
+    total: number
+  }
 }
 
 export interface CreateRepoRequest {

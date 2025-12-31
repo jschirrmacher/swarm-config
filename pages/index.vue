@@ -53,9 +53,7 @@ async function loadRepositories() {
   error.value = ''
 
   try {
-    const data = await $fetch<Repository[]>('/api/repositories', {
-      headers: getAuthHeaders()
-    })
+    const data = await $fetch<Repository[]>('/api/repositories', { headers: getAuthHeaders() })
     repositories.value = data
   } catch (err: any) {
     if (err?.statusCode === 401) {
@@ -165,15 +163,28 @@ onMounted(() => {
                       </svg>
                     </NuxtLink>
                   </h3>
-                  <a v-if="repo.kongRoute" :href="repo.kongRoute" target="_blank" rel="noopener" class="external-link"
-                    title="Open app">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                      <path
-                        d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z" />
-                      <path
-                        d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z" />
-                    </svg>
-                  </a>
+                  <div class="repo-actions">
+                    <span v-if="repo.hasStack && repo.dockerStack" class="docker-status">
+                      <span v-if="repo.dockerStack.exists"
+                        :class="['status-badge', repo.dockerStack.running === repo.dockerStack.total ? 'status-running' : 'status-partial']"
+                        :title="`${repo.dockerStack.running}/${repo.dockerStack.total} containers running`">
+                        {{ repo.dockerStack.running === repo.dockerStack.total ? '●' : '◐' }}
+                        {{ repo.dockerStack.running }}/{{ repo.dockerStack.total }}
+                      </span>
+                      <span v-else class="status-badge status-stopped" title="No containers running">
+                        ○ stopped
+                      </span>
+                    </span>
+                    <a v-if="repo.kongRoute" :href="repo.kongRoute" target="_blank" rel="noopener" class="external-link"
+                      title="Open app">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path
+                          d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z" />
+                        <path
+                          d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z" />
+                      </svg>
+                    </a>
+                  </div>
                 </div>
                 <div class="url-with-copy">
                   <code>{{ repo.gitUrl }}</code>
@@ -270,24 +281,70 @@ onMounted(() => {
 
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.5rem;
 }
 
 .service-card {
   background: white;
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition: all 0.2s;
-  text-decoration: none;
-  color: inherit;
-  display: block;
 }
 
 .service-card:hover {
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-  transform: translateY(-2px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.service-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.service-name {
+  color: #667eea;
+  font-size: 1rem;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.service-name:hover {
+  color: #5568d3;
+}
+
+.service-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.status-running {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-partial {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-stopped {
+  background: #f8d7da;
+  color: #721c24;
 }
 
 .service-header {
@@ -484,6 +541,18 @@ onMounted(() => {
 
 .repo-card:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+
+.repo-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.docker-status {
+  display: flex;
+  align-items: center;
 }
 
 .repo-content {
