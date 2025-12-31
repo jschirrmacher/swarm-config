@@ -23,6 +23,7 @@ function isSwarmActive(): boolean {
 function getDockerStatus(stackName: string): { exists: boolean; running: number; total: number } {
   try {
     const swarmActive = isSwarmActive()
+    console.log(`[getDockerStatus] Stack: ${stackName}, Swarm active: ${swarmActive}`)
 
     if (swarmActive) {
       // On server with Swarm: check if stack exists
@@ -34,6 +35,9 @@ function getDockerStatus(stackName: string): { exists: boolean; running: number;
         .trim()
         .split("\n")
         .filter(Boolean)
+
+      console.log(`[getDockerStatus] All stacks:`, stacks)
+      console.log(`[getDockerStatus] Looking for '${stackName}', found: ${stacks.includes(stackName)}`)
 
       if (!stacks.includes(stackName)) {
         return { exists: false, running: 0, total: 0 }
@@ -49,6 +53,8 @@ function getDockerStatus(stackName: string): { exists: boolean; running: number;
         .split("\n")
         .filter(Boolean)
 
+      console.log(`[getDockerStatus] Services replicas for ${stackName}:`, services)
+
       let totalRunning = 0
       let totalReplicas = 0
 
@@ -60,6 +66,7 @@ function getDockerStatus(stackName: string): { exists: boolean; running: number;
         }
       }
 
+      console.log(`[getDockerStatus] Result: running=${totalRunning}, total=${totalReplicas}`)
       return { exists: true, running: totalRunning, total: totalReplicas }
     } else {
       // Local without Swarm: check running containers by name prefix
@@ -80,6 +87,7 @@ function getDockerStatus(stackName: string): { exists: boolean; running: number;
       return { exists: true, running: containers.length, total: containers.length }
     }
   } catch (error) {
+    console.error(`[getDockerStatus] Error checking status for ${stackName}:`, error)
     return { exists: false, running: 0, total: 0 }
   }
 }
