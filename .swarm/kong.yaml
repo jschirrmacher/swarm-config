@@ -3,29 +3,28 @@
 services:
   - name: swarm-config_ui
     url: http://swarm-config_ui:3000
+    routes:
+      - name: swarm-config-base
+        hosts:
+          - config.justso.de
+        paths:
+          - /
+        protocols:
+          - https
+        preserve_host: true
+        strip_path: false
 
-routes:
-  - name: swarm-config-base
-    hosts:
-      - config.justso.de
-    paths:
-      - /
-    protocols:
-      - https
-    preserve_host: true
-    strip_path: false
-
-  - name: swarm-config-auth
-    hosts:
-      - config.justso.de
-    paths:
-      - /api/auth/login
-    protocols:
-      - https
-    preserve_host: true
-    strip_path: false
-    plugins:
-      - name: basic-auth
+      - name: swarm-config-auth
+        hosts:
+          - config.justso.de
+        paths:
+          - /api/auth/login
+        protocols:
+          - https
+        preserve_host: true
+        strip_path: false
+        plugins:
+          - name: basic-auth
 
 # Global Plugins for all services
 plugins:

@@ -82,18 +82,16 @@ PORT=${config.port}
   const serviceContent = `services:
   - name: ${name}_${name}
     url: http://${name}_${name}:${config.port}
-
-routes:
-  - name: ${name}_${name}
-    hosts:
-      - ${name}.${domain}
-    paths:
-      - /
-    protocols:
-      - https
-    preserve_host: true
-    strip_path: false
-    service: ${name}_${name}
+    routes:
+      - name: ${name}_${name}
+        hosts:
+          - ${name}.${domain}
+        paths:
+          - /
+        protocols:
+          - https
+        preserve_host: true
+        strip_path: false
 `
   await writeFile(join(workspaceDir, ".swarm/kong.yaml"), serviceContent, { mode: 0o644 })
 

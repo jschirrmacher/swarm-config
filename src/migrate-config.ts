@@ -352,7 +352,13 @@ async function migrateConfig() {
 
     if (hasJsImports) {
       console.log("  🔧 Fixing .js imports to .ts for migration...")
-      configContent = configContent.replace(/from\s+["'](.+?)\.js["']/g, 'from "$1.ts"')
+
+      // Remove imports for PortainerStack and MonitoringStack (no longer exist)
+      configContent = configContent
+        .replace(/from\s+["'](.+?)\.js["']/g, 'from "$1.ts"')
+        .replace(/import\s+\{[^}]*createPortainerStack[^}]*\}\s+from\s+["'][^"']+["'];?\s*/g, "")
+        .replace(/import\s+\{[^}]*createMonitoringStack[^}]*\}\s+from\s+["'][^"']+["'];?\s*/g, "")
+
       const tempConfigPath = join(process.cwd(), "config.temp.ts")
 
       try {

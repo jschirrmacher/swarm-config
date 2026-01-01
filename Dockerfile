@@ -22,9 +22,6 @@ WORKDIR /app
 # Copy built application (includes all server utilities and API endpoints)
 COPY --from=builder /app/.output /app/.output
 
-# Copy config directory for Kong configuration generation
-COPY config ./config
-
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
