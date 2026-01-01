@@ -141,25 +141,42 @@ function detectPort(appDir: string): number {
 // Create service configuration file and docker-compose for an app
 function createServiceConfig(appName: string, port: number): void {
   const appDir = join(workspaceBase, appName)
-  const servicePath = join(appDir, 'service.ts')
-  const composePath = join(appDir, 'docker-compose.yaml')
+  const swarmDir = join(appDir, '.swarm')
+  const servicePath = join(swarmDir, 'kong.yaml')
+  const composePath = join(swarmDir, 'docker-compose.yaml')
+  
+  // Create .swarm directory if it doesn't exist
+  if (!existsSync(swarmDir)) {
+    mkdirSync(swarmDir, { recursive: true })
+  }
   
   // Get domain from environment
   const domain = process.env.DOMAIN || 'example.com'
   
-  // Create service.ts if it doesn't exist
+  // Create .swarm/kong.yaml if it doesn't exist
   if (!existsSync(servicePath)) {
-    const serviceContent = `import { createStack } from "../swarm-config/src/Service.js"
+    const serviceContent = `services:
+  - name: ${appName}_${appName}
+    url: http://${appName}_${appName}:${port}
 
-export default createStack("${appName}")
-  .addService("${appName}", ${port})
-  .addRoute("${appName}.${domain}")
+routes:
+  - name: ${appName}_${appName}
+    hosts:
+      - ${appName}.${domain}
+    paths:
+      - /
+    protocols:
+      - https
+    preserve_host: true
+    strip_path: false
+    https_redirect_status_code: 302
+    service: ${appName}_${appName}
 `
     writeFileSync(servicePath, serviceContent, 'utf-8')
-    console.log(`  ✓ Created service.ts`)
+    console.log(`  ✓ Created .swarm/kong.yaml`)
   }
 
-  // Create docker-compose.yaml if it doesn't exist
+  // Create .swarm/docker-compose.yaml if it doesn't exist
   if (!existsSync(composePath)) {
     const composeContent = `services:
   ${appName}:
@@ -181,7 +198,7 @@ networks:
     external: true
 `
     writeFileSync(composePath, composeContent, 'utf-8')
-    console.log(`  ✓ Created docker-compose.yaml`)
+    console.log(`  ✓ Created .swarm/docker-compose.yaml`)
   }
 }
 

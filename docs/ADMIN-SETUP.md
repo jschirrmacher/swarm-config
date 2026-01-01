@@ -8,8 +8,7 @@ Das System besteht aus:
 
 - **Docker Swarm** - Container-Orchestrierung
 - **Kong Gateway** - API Gateway mit automatischem SSL/TLS
-- **Portainer** - Web UI für Container-Management
-- **Prometheus + Grafana** - Monitoring
+- **Swarm Config UI** - Web UI für Repository- und Service-Management
 - **Git-basierte CI/CD** - Automatisches Deployment
 
 ## Voraussetzungen
@@ -54,8 +53,6 @@ Das Skript führt folgende Schritte automatisch aus:
 
 Nach dem Setup sind Kong und die Web UI bereits einsatzbereit!
 
-**Alternative (manuell):** Falls Sie die Schritte einzeln durchführen möchten, siehe Abschnitt "Manuelle Installation" am Ende dieses Dokuments.
-
 ### Schritt 2: Web UI für Self-Service Repository-Management
 
 Die Web UI wurde automatisch durch das setup.sh Skript installiert und ist verfügbar unter:
@@ -88,84 +85,22 @@ Sie können weitere optionale Services konfigurieren:
 
 #### Kong-Konfiguration anpassen (Optional)
 
-Sie können optionale Kong-Plugins und Service-Beispiele konfigurieren:
-
-```bash
-cd /var/apps/swarm-config
-
-# Beispiel-Plugins (optional)
-cp config/plugins/prometheus.ts.example config/plugins/prometheus.ts
-cp config/plugins/bot-detection.ts.example config/plugins/bot-detection.ts
-cp config/plugins/request-size-limiting.ts.example config/plugins/request-size-limiting.ts
-
-# Beispiel-Services (optional)
-cp config/services/portainer.ts.example config/services/portainer.ts
-cp config/services/monitoring.ts.example config/services/monitoring.ts
-
-# Beispiel-Consumer für Authentifizierung (optional)
-cp config/consumers/joachim.ts.example config/consumers/your-username.ts
-
-# Konfigurationen anpassen
-nano config/plugins/prometheus.ts
-nano config/services/portainer.ts
-```
-
 ### Kong YAML generieren
 
 ```bash
 npm run kong:generate
 ```
 
-### Kong Stack deployen
+### Swarm Config Stack deployen
 
-In Portainer:
-
-1. "Stacks" → "Add stack"
-2. "Repository" auswählen
-3. Repository URL: `https://github.com/jschirrmacher/swarm-config.git`
-4. Compose path: `config/stacks/kong.yaml`
-5. "Deploy the stack" klicken
-
-Optional: "GitOps updates" aktivieren für automatische Updates.
-
-## Portainer (Optional)
-
-Portainer ist ein Web-UI für Container-Management und **optional**.
-
-### Installation
+Der komplette Stack (Kong, Redis, UI) wird über Docker Compose deployt:
 
 ```bash
-docker stack deploy -c config/stacks/init.yaml init
+cd /var/apps/swarm-config
+docker stack deploy -c .swarm/docker-compose.yaml swarm-config
 ```
 
-### Zugriff
-
-Nach der Installation ist Portainer verfügbar unter: `https://your-server:9000`
-
-**Wichtig:** Bei erster Anmeldung als "Environment Address" eingeben: `agent:9001`
-
-### Stacks über Portainer deployen
-
-Mit Portainer können Sie Stacks komfortabel über die Web-UI deployen:
-
-1. "Stacks" → "Add stack"
-2. "Repository" auswählen
-3. Repository URL eingeben
-4. Compose path angeben
-5. Optional: "GitOps updates" aktivieren
-
-## Monitoring deployen (Optional)
-
-```bash
-# Monitoring-Konfiguration anpassen
-cp config/infrastructure/monitoring.ts.example config/infrastructure/monitoring.ts
-nano config/infrastructure/monitoring.ts
-
-# Kong-Config neu generieren
-npm run kong:generate
-
-# In Portainer monitoring.yaml als Stack deployen
-```
+**Wichtig:** Dieser Befehl wird automatisch vom setup.sh Skript ausgeführt.
 
 ## Wartung
 
@@ -198,13 +133,16 @@ Details siehe [APP-DEVELOPER.md](./APP-DEVELOPER.md)
 
 ```bash
 # Kong Logs
-docker service logs -f kong_kong
+docker service logs -f swarm-config_kong
 
-# Portainer Logs
-docker service logs -f init_portainer
+# UI Logs
+docker service logs -f swarm-config_ui
+
+# Redis Logs
+docker service logs -f swarm-config_redis
 
 # Alle Services eines Stacks
-docker stack ps myapp
+docker stack ps swarm-config
 ```
 
 ### Updates durchführen
@@ -236,55 +174,6 @@ docker e-Netzwerk prüfen
 docker network ls
 docker network inspect kong-net
 ```
-
-### Portainer reagiert nicht
-
-```bash
-# Portainer neu starten
-docker service update --force init_portainer
-
-# Logs prüfen
-docker service logs init_portainer
-```
-
-## Manuelle Schritte (nur wenn setup.sh fehlschlägt)
-
-Falls das setup.sh Skript Probleme meldet, können diese manuell behoben werden:
-
-### Docker und Basis-Pakete installieren
-
-```bash
-sudo apt update
-sudo apt upgrade -y
-sudo apt install -y docker.io git curl
-
-# Docker Swarm initialisieren
-sudo docker swarm init
-```
-
-### Node.js installieren
-
-```bash
-# Via nvm (empfohlen)
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-source ~/.bashrc
-nvm install 24
-nvm use 24
-nvm alias default 24
-```
-
-### Firewall konfigurieren
-
-````bash
-sudo ufw allow ssh
-sudo ufw allow http
-sudoAutomatische Sicherheitsupdates
-
-```bash
-sudo apt install -y unattended-upgrades
-dpkg-reconfigure -plow unattended-upgrades
-# -> yes auswählen
-````
 
 ## Multi-Node Cluster (Optional)
 
@@ -320,14 +209,6 @@ sudo mount -t glusterfs server-1:/storage-vol1 /var/volumes
 echo 'server-1:/storage-vol1 /var/volumes glusterfs defaults,_netdev 0 0' | sudo tee -a /etc/fstab
 ```
 
-### Automatische Sicherheitsupdates
-
-```bash
-apt install -y unattended-upgrades
-dpkg-reconfigure -plow unattended-upgrades
-# -> yes auswählen
-```
-
 ## Sicherheit
 
 ### Best Practices
@@ -337,64 +218,23 @@ dpkg-reconfigure -plow unattended-upgrades
 3. **Updates**: Automatische Sicherheitsupdates aktivieren (siehe oben)
 4. **SSL/TLS**: Kong ACME Plugin für automatische Zertifikate
 5. **Secrets**: Nie in Git committen, nur in `/var/apps/<app>/.env`
-6. **Monitoring**: Prometheus Alerts konfigurieren
 
 ### Wichtige Verzeichnisse
 
 ```
 /var/apps/                      # App-Daten und .env Dateien
-/home/<user>/<repo>.git/        # Bare Git Repositories in User Home
-/var/volumes/                   # GlusterFS Mount (bei Multi-Node)
-/var/apps/swarm-config/         # Zentrale Konfiguration
+/homeSSL/TLS**: Kong ACME Plugin für automatische Zertifikate
+4. **Secrets**: Nie in Git committen, nur in `/var/apps/<app>/.env`
+
+### Wichtige Verzeichnisse
+
 ```
 
-## Manuelle Installation
+/var/apps/ # App-Daten und .env Dateien
+/home/<user>/<repo>.git/ # Bare Git Repositories in User Home
+/var/volumes/ # GlusterFS Mount (bei Multi-Node)
+/var/apps/swarm-config/ # Zentrale Konfiguration
 
-Falls Sie die Installation lieber Schritt für Schritt manuell durchführen möchten:
+```sterFS
 
-### Git und Node.js installieren
-
-```bash
-# System aktualisieren
-sudo apt update
-sudo apt upgrade -y
-
-# Git installieren
-sudo apt install -y git curl
-
-# Node.js (aktuelle LTS) installieren via nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-source ~/.bashrc
-nvm install 24
-nvm use 24
-nvm alias default 24
-
-# Node.js Version prüfen
-node --version  # Sollte v24.x.x anzeigen
-```
-
-### Repository klonen
-
-```bash
-# Arbeitsverzeichnis erstellen
-sudo mkdir -p /var/apps
-cd /var/apps
-
-# Repository klonen
-sudo git clone https://github.com/jschirrmacher/swarm-config.git
-cd swarm-config
-
-# Konfiguration einrichten
-  echo "DOMAIN=your-domain.com" | sudo tee .swarm-config
-  sudo nano .swarm-config  # Domain anpassen
-
-Danach weiter mit Schritt 2 des Schnellstarts (Kong Gateway konfigurieren).
-
-## Weitere Ressourcen
-
-- [APP-DEVELOPER.md](./APP-DEVELOPER.md) - Für App-Entwickler
-- [CONTRIBUTING.md](./CONTRIBUTING.md) - Für swarm-config Entwickler
-- [Kong Dokumentation](https://docs.konghq.com/)
-- [Docker Swarm Dokumentation](https://docs.docker.com/engine/swarm/)
-- [MULTI-NODE-SETUP.md](./MULTI-NODE-SETUP.md) - Multi-Node Cluster mit GlusterFS
 ```

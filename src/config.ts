@@ -2,79 +2,34 @@
 /**
  * Server Configuration
  *
- * Reads configuration from .swarm-config file or environment variables
+ * Reads configuration from environment variables (.env file)
  */
-
-import { readFileSync, writeFileSync, existsSync } from "fs"
-import { resolve } from "path"
 
 interface Config {
   DOMAIN: string
 }
 
-let cachedConfig: Config | null = null
-
 /**
- * Reads the .swarm-config file and returns the configuration values
+ * Returns the configuration from environment variables
  */
 export function getSwarmConfig(): Config {
-  if (cachedConfig) {
-    return cachedConfig
+  const domain = process.env.DOMAIN
+  
+  if (!domain) {
+    throw new Error("DOMAIN not set in environment variables. Check your .env file.")
   }
 
-  const configPath = resolve(process.cwd(), ".swarm-config")
-  const defaults: Config = {
-    DOMAIN: process.env.DOMAIN || "example.com",
-  }
-
-  // If no config file exists, return defaults
-  if (!existsSync(configPath)) {
-    console.warn("⚠️  No .swarm-config file found. Using defaults.")
-    console.warn("   Run the setup.sh script to configure your domain.")
-    cachedConfig = defaults
-    return defaults
-  }
-
-  try {
-    const content = readFileSync(configPath, "utf-8")
-    const config: Partial<Config> = {}
-
-    content.split("\n").forEach(line => {
-      line = line.trim()
-      if (line && !line.startsWith("#")) {
-        const [key, ...valueParts] = line.split("=")
-        const value = valueParts.join("=").trim()
-        if (key && value) {
-          config[key as keyof Config] = value as any
-        }
-      }
-    })
-
-    // Validate required fields
-    if (!config.DOMAIN && !defaults.DOMAIN) {
-      throw new Error("DOMAIN not set in .swarm-config")
-    }
-
-    // Merge with defaults
-    const mergedConfig: Config = {
-      DOMAIN: config.DOMAIN || defaults.DOMAIN,
-    }
-
-    cachedConfig = mergedConfig
-    return mergedConfig
-  } catch (error) {
-    if (error instanceof Error && "code" in error && (error as any).code === "ENOENT") {
-      throw new Error(".swarm-config file not found. Run setup.sh to create it.")
-    }
-    throw error
+  return {
+    DOMAIN: domain,
   }
 }
 
 /**
- * Saves configuration to .swarm-config file
+ * Returns the domain from environment variables
  */
-export function saveSwarmConfig(config: Config): void {
-  const configPath = resolve(process.cwd(), ".swarm-config")
+export function getDomain(): string {
+  return getSwarmConfig().DOMAIN
+}
   
   const content = `# Swarm Config Configuration
 # Generated on: ${new Date().toISOString()}

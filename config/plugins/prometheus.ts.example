@@ -1,4 +1,0 @@
-import { createPrometheusPlugin } from "../../src/Plugin.js"
-
-// Prometheus plugin for monitoring and metrics collection
-export default createPrometheusPlugin()

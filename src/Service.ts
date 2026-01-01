@@ -1,5 +1,6 @@
 import { getDomains, registerDomain } from "./DomainRegister.js"
 import { createPlugin, type Plugin, type PluginFactory } from "./Plugin.js"
+import yaml from "js-yaml"
 
 interface Route {
   name: string
@@ -9,6 +10,7 @@ interface Route {
   strip_path: boolean
   https_redirect_status_code: number
   protocols: string[]
+  plugins?: Plugin[]
 }
 
 type RouteOptions = Partial<Route>
@@ -129,6 +131,33 @@ export function createStack(stack: string) {
 
     get() {
       return services.map(service => service.get())
+    },
+
+    toYAML() {
+      const servicesData = services.map(service => service.get())
+      
+      return yaml.dump({
+        services: servicesData.map(s => ({
+          name: s.name,
+          url: s.url,
+        })),
+        routes: servicesData.flatMap(s => 
+          s.routes.map(r => ({
+            name: r.name,
+            hosts: r.hosts,
+            paths: r.paths,
+            protocols: r.protocols,
+            preserve_host: r.preserve_host,
+            strip_path: r.strip_path,
+            https_redirect_status_code: r.https_redirect_status_code,
+            service: s.name,
+            ...(r.plugins && r.plugins.length > 0 ? { plugins: r.plugins } : {}),
+          }))
+        ),
+        ...(servicesData.some(s => s.plugins.length > 0) ? {
+          plugins: servicesData.flatMap(s => s.plugins)
+        } : {}),
+      })
     },
   }
 }

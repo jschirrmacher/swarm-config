@@ -1,9 +1,0 @@
-import { createStack } from "../src/Service.js"
-import { getDomain } from "../src/config.js"
-
-// Example: OwnCloud file hosting service
-// Domain is automatically read from .swarm-config
-const domain = getDomain()
-export default createStack("owncloud")
-  .addService("owncloud", 8080)
-  .addRoute(`files.${domain}`)

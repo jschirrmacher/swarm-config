@@ -1,4 +1,0 @@
-import { createPlugin } from "../../src/Plugin.js"
-
-// Request size limiting to prevent large payload attacks
-export default createPlugin("request-size-limiting")

@@ -63,6 +63,7 @@ export async function createWorkspace(
 
   // Create workspace directory structure
   await mkdir(workspaceDir, { recursive: true, mode: 0o755 })
+  await mkdir(join(workspaceDir, ".swarm"), { recursive: true, mode: 0o755 })
   await mkdir(join(workspaceDir, "data"), { recursive: true, mode: 0o755 })
 
   // Create .env file
@@ -76,17 +77,28 @@ PORT=${config.port}
   const configPath = join(workspaceDir, ".repo-config.json")
   await writeFile(configPath, JSON.stringify(config, null, 2), { mode: 0o644 })
 
-  // Create service.ts template
+  // Create .swarm/kong.yaml template
   const domain = process.env.DOMAIN || "example.com"
-  const serviceContent = `import { createStack } from "../../../swarm-config/src/Service.js"
+  const serviceContent = `services:
+  - name: ${name}_${name}
+    url: http://${name}_${name}:${config.port}
 
-export default createStack("${name}")
-  .addService("${name}", ${config.port})
-  .addRoute("${name}.${domain}")
+routes:
+  - name: ${name}_${name}
+    hosts:
+      - ${name}.${domain}
+    paths:
+      - /
+    protocols:
+      - https
+    preserve_host: true
+    strip_path: false
+    https_redirect_status_code: 302
+    service: ${name}_${name}
 `
-  await writeFile(join(workspaceDir, "service.ts"), serviceContent, { mode: 0o644 })
+  await writeFile(join(workspaceDir, ".swarm/kong.yaml"), serviceContent, { mode: 0o644 })
 
-  // Create docker-compose.yaml template
+  // Create .swarm/docker-compose.yaml template
   const composeContent = `services:
   ${name}:
     image: \${IMAGE_NAME:-${name}:latest}
@@ -106,7 +118,7 @@ networks:
   kong-net:
     external: true
 `
-  await writeFile(join(workspaceDir, "docker-compose.yaml"), composeContent, { mode: 0o644 })
+  await writeFile(join(workspaceDir, ".swarm/docker-compose.yaml"), composeContent, { mode: 0o644 })
 
   return workspaceDir
 }

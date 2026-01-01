@@ -1,0 +1,88 @@
+version: "3.8"
+
+services:
+  kong:
+    image: kong:alpine
+    user: root
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /config/kong.yaml
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: '0.0.0.0:8001'
+      KONG_LUA_SSL_TRUSTED_CERTIFICATE: /etc/ssl/certs/ca-certificates.crt
+    volumes:
+      - /var/apps/swarm-config/generated:/config
+    networks:
+      - internal
+      - kong-net
+    ports:
+      - target: 8000
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 8443
+        published: 443
+        protocol: tcp
+        mode: host
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  redis:
+    image: redis:alpine
+    user: "1001:1001"
+    command: redis-server
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    volumes:
+      - /var/apps/swarm-config/redis-data:/data
+      - /var/apps/swarm-config/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - internal
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  ui:
+    image: swarm-config-ui:latest
+    environment:
+      - NODE_ENV=production
+      - GIT_REPO_BASE=/home
+      - WORKSPACE_BASE=/var/apps
+    volumes:
+      - /home:/home:ro
+      - /var/apps:/var/apps
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/apps/swarm-config/.env:/app/.env:ro
+    networks:
+      - kong-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+networks:
+  internal:
+  kong-net:
+    external: true

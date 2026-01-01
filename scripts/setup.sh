@@ -51,15 +51,15 @@ install_node_and_workspace() {
     BACKUP_DIR=$(mktemp -d)
     echo "    📦 Backing up local configuration..."
     cp -r config "$BACKUP_DIR/" 2>/dev/null || true
-    cp .swarm-config "$BACKUP_DIR/" 2>/dev/null || true
+    cp .env "$BACKUP_DIR/" 2>/dev/null || true
     cp config.ts "$BACKUP_DIR/" 2>/dev/null || true
     
     git fetch origin
     git checkout -B next origin/next
     
-    if [ -f "$BACKUP_DIR/.swarm-config" ]; then
-      cp "$BACKUP_DIR/.swarm-config" .swarm-config
-      echo "    ✅ Restored .swarm-config"
+    if [ -f "$BACKUP_DIR/.env" ]; then
+      cp "$BACKUP_DIR/.env" .env
+      echo "    ✅ Restored .env"
     fi
     
     if [ -f "$BACKUP_DIR/config.ts" ]; then

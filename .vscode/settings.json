@@ -4,7 +4,7 @@
   ],
   "yaml.schemas": {
     "https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json": [
-      "config/stacks/*.yaml"
+      "stacks/*.yaml"
     ]
   }
 }

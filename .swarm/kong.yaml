@@ -1,0 +1,54 @@
+# swarm-config Kong Gateway Configuration
+
+services:
+  - name: swarm-config_ui
+    url: http://swarm-config_ui:3000
+
+routes:
+  - name: swarm-config-base
+    hosts:
+      - config.justso.de
+    paths:
+      - /
+    protocols:
+      - https
+    preserve_host: true
+    strip_path: false
+    https_redirect_status_code: 302
+
+  - name: swarm-config-auth
+    hosts:
+      - config.justso.de
+    paths:
+      - /api/auth/login
+    protocols:
+      - https
+    preserve_host: true
+    strip_path: false
+    https_redirect_status_code: 302
+    plugins:
+      - name: basic-auth
+
+# Global Plugins for all services
+plugins:
+  # ACME Plugin for automatic SSL/TLS certificate management via Let's Encrypt
+  - name: acme
+    config:
+      account_email: ${TECH_EMAIL}
+      tos_accepted: true
+      storage: redis
+      storage_config:
+        redis:
+          host: redis
+          port: 6379
+      # domains are automatically set from all registered domains
+
+  # Bot Detection to identify and reject bot traffic
+  - name: bot-detection
+
+  # Request Size Limiting to prevent large payload attacks
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10
+      size_unit: megabytes
+      require_content_length: false

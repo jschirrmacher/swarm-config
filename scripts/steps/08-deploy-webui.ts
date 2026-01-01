@@ -71,7 +71,7 @@ const domain = config.DOMAIN
 // Deploy stack
 console.log('  Deploying Web UI stack...')
 try {
-  docker('stack deploy --detach=true -c config/stacks/swarm-config-ui.yaml swarm-config', {
+  docker('stack deploy --detach=true -c .swarm/docker-compose.yaml swarm-config', {
     env: { ...process.env, DOMAIN: domain }
   })
 } catch (error) {

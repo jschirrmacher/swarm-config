@@ -8,36 +8,44 @@ Diese Anleitung ist für Entwickler, die am swarm-config Projekt selbst arbeiten
 
 ```
 swarm-config/
-├── config/                 # Deklarative Konfiguration
-│   ├── stacks/            # Docker Stack YAML Definitionen
-│   ├── services/          # Kong Service Definitionen (auto-generiert)
-│   ├── infrastructure/    # Infrastruktur Services (manuell)
-│   ├── plugins/           # Globale Kong Plugins
-│   └── consumers/         # Authentifizierungs-Consumer
+├── .swarm/                     # Deployment Konfiguration
+│   ├── kong.yaml              # Kong Routes, Services & globale Plugins
+│   └── docker-compose.yaml    # Kong, Redis, UI Stack
 │
-├── src/                   # TypeScript Source Code
-│   ├── generate-kong-config.ts  # Kong YAML Generator
-│   ├── install-hooks.ts         # Git Hooks Installer
-│   │
+├── stacks/                     # Infrastructure Stacks
+│   ├── kong.yaml              # (veraltet, nun in .swarm/)
+│   ├── monitoring.yaml        # Prometheus/Grafana Stack
+│   ├── portainer.yaml         # Portainer Stack
+│   └── ...                    # Weitere Infrastructure Stacks
+│
+├── src/                        # TypeScript Source Code
+│   ├── generate-kong-config.ts # Kong YAML Generator
+│   ├── install-hooks.ts        # Git Hooks Installer
 │   ├── Service.ts              # Service Builder
 │   ├── Plugin.ts               # Plugin Builder
-│   ├── PortainerStack.ts       # Portainer Config
-│   └── MonitoringStack.ts      # Monitoring Config
+│   ├── DomainRegister.ts       # Domain Management
+│   └── ...
 │
-├── server/                # Nuxt Server (API Routes)
-│   ├── api/                  # REST API Endpoints
-│   └── utils/                # Server Utilities
+├── server/                     # Nuxt Server (API Routes)
+│   ├── api/                   # REST API Endpoints
+│   └── utils/                 # Server Utilities (Kong generator, Git repos)
 │
-├── hooks/                 # Git Hook Templates
-│   ├── post-receive      # Server-side Deployment
-│   ├── pre-commit        # Local Code Quality
-│   └── pre-push          # Local Tests
+├── pages/                      # Nuxt Pages (Web UI)
+│   ├── index.vue              # Dashboard
+│   ├── login.vue              # Authentication
+│   └── services/              # Service Management
 │
-├── utils/
-│   └── version.ts        # Semantic Versioning
+├── scripts/                    # Setup & Deployment Scripts
+│   ├── setup.sh               # Server Bootstrap
+│   └── steps/                 # Individual Setup Steps
+│
+├── hooks/                      # Git Hook Templates
+│   ├── post-receive           # Server-side Deployment
+│   ├── pre-commit             # Local Code Quality
+│   └── pre-push               # Local Tests
 │
 └── generated/
-    └── kong.yaml         # Generiertes Kong Config (DO NOT EDIT)
+    └── kong.yaml              # Generiertes Kong Config (DO NOT EDIT)
 ```
 
 ### Datenfluss
@@ -45,10 +53,14 @@ swarm-config/
 #### 1. Kong-Konfiguration Generierung
 
 ```
-config/services/*.ts
-config/infrastructure/*.ts   →  generate-kong-config.ts  →  generated/kong.yaml
-config/plugins/*.ts                                            ↓
-config/consumers/*.ts                                       Kong reload
+/var/apps/*/.swarm/kong.yaml # App-spezifische Kong-Konfigurationen (YAML)
+.swarm/kong.yaml             # swarm-config's eigene Konfiguration + globale Plugins
+                ↓
+        generate-kong-config.ts
+                ↓
+        generated/kong.yaml
+                ↓
+            Kong reload
 ```
 
 #### 2. App Deployment
@@ -58,15 +70,14 @@ git push production main
     ↓
 post-receive hook
     ↓
+Kopiere .swarm/kong.yaml → /var/apps/myapp/kong.yaml
+Kopiere .swarm/docker-compose.yaml → /var/apps/myapp/docker-compose.yaml
+    ↓
 Docker build
     ↓
 Docker deploy
     ↓
-server-setup.sh (bei erstem Deploy)
-    ↓
-config/services/myapp.ts erstellt
-    ↓
-npm run kong:generate
+npm run kong:generate (Kong neu generieren)
 ```
 
 #### 3. Server Bootstrap
@@ -187,19 +198,34 @@ Neue Checks werden automatisch von `bootstrap-server.ts` geladen.
 
 **Hinweis:** Die meisten grundlegenden Checks (Docker, UFW, Node.js, Team-Users, SSH-Security) wurden ins `setup.sh` Skript ausgelagert und sind nicht mehr als separate Checks vorhanden.
 
-#### 2. Kong Service Builder
+#### 2. Kong Configuration (YAML)
 
-Fluent API für Service-Definitionen:
+Developers manage Kong configuration via YAML in their repositories:
 
-```typescript
-// config/services/example.ts
-import { createStack } from "../../src/Service.js"
+```yaml
+# App repository: .swarm/kong.yaml
+services:
+  - name: example_example
+    url: http://example_example:3000
 
-export default createStack("example")
-  .addService("example", 3000)
-  .addRoute("example.justso.de")
-  .addPlugin("rate-limiting", { minute: 100 })
+routes:
+  - name: example_example
+    hosts:
+      - example.justso.de
+    paths:
+      - /
+    protocols:
+      - https
+    preserve_host: true
+    service: example_example
+
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 100
 ```
+
+This file is copied to `/var/apps/example/kong.yaml` on deployment.
 
 #### 3. Plugin System
 
@@ -325,25 +351,15 @@ docker run --rm -v $PWD/generated:/config kong:3.0 \
   kong config parse /config/kong.yaml
 ```
 
-### Bootstrap Tests
-
-```bash
-# Ohne Änderungen
-npm run bootstrap
-
-# Mit Auto-Fix (benötigt sudo)
-sudo npm run bootstrap:fix
-```
-
 ### Docker Stack Tests
 
 ```bash
 # Stack lokal deployen
 docker swarm init  # Falls noch nicht initialisiert
-docker stack deploy -c config/stacks/kong.yaml test-kong
+docker stack deploy -c .swarm/docker-compose.yaml test-swarm-config
 
 # Cleanup
-docker stack rm test-kong
+docker stack rm test-swarm-config
 ```
 
 ## Deployment Workflow
@@ -361,9 +377,6 @@ git commit -m "feat: add new check"
 ### 2. Testen
 
 ```bash
-# Bootstrap tests
-npm run bootstrap
-
 # Kong config validieren
 npm run kong:generate
 ```
@@ -395,41 +408,59 @@ npm run kong:generate
 
 ## Neue Features hinzufügen
 
-### Neuer Kong Plugin Helper
+### Standard-Plugins anpassen
 
-1. In `src/Plugin.ts`:
+Die Standard-Plugins (acme, bot-detection, request-size-limiting) sind direkt in `.swarm/kong.yaml` definiert:
 
-```typescript
-export function createMyPlugin(config: MyConfig) {
-  return {
-    name: "my-plugin",
-    config,
-    get() {
-      return {
-        name: "my-plugin",
-        config: {
-          // Plugin-spezifische Konfiguration
-          ...config,
-        },
-      }
-    },
-  }
-}
+```yaml
+# .swarm/kong.yaml
+plugins:
+  - name: acme
+    config:
+      account_email: ${TECH_EMAIL}
+      # ...
+  - name: bot-detection
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10
+      size_unit: megabytes
 ```
 
-2. Beispiel erstellen: `config/plugins/my-plugin.ts.example`
+**Hinweise:**
 
-3. Dokumentieren in README
+- Diese Plugins gelten global für alle Services
+- Änderungen direkt in `.swarm/kong.yaml` vornehmen
+- Umgebungsvariablen mit `${VAR_NAME}` Syntax
+- ACME-Domains werden automatisch in `kongConfig.ts` gesetzt
 
-### Neuer Git Hook
+### Neues optionales globales Plugin
 
-1. Hook erstellen: `hooks/my-hook`
-2. Executable machen: `chmod +x hooks/my-hook`
-3. In `install-hooks.ts` hinzufügen:
+Optionale Plugins (wie Prometheus) werden als auskommentierte Einträge in `.swarm/kong.yaml` definiert:
 
-```typescript
-await fetchHook("my-hook")
+```yaml
+# .swarm/kong.yaml
+plugins:
+  # Standard-Plugins (acme, bot-detection, request-size-limiting)
+
+  # Optional: Prometheus Plugin for monitoring
+  - name: prometheus
+    config:
+      status_code_metrics: true
+      latency_metrics: true
+      bandwidth_metrics: true
+      upstream_health_metrics: true
 ```
+
+**Aktivierung:**
+
+1. Plugin-Eintrag in `.swarm/kong.yaml` hinzufügen (wie oben gezeigt)
+2. `npm run kong:generate` ausführen
+
+**Hinweise:**
+
+- Alle Plugins in `.swarm/kong.yaml` gelten global
+- Umgebungsvariablen mit `${VAR_NAME}` Syntax möglich
+- ACME-Domains werden automatisch in `kongConfig.ts` gesetzt
 
 ## Debugging
 
@@ -521,20 +552,6 @@ function createService(config: any) {}
 
 ## Dokumentation
 
-### Code Comments
-
-```typescript
-/**
- * Load TypeScript modules from a directory
- *
- * @param dirName - Directory name relative to config/
- * @returns Array of loaded module exports
- */
-async function loadModules(dirName: string) {
-  // Implementation
-}
-```
-
 ### README Updates
 
 Bei neuen Features immer README.md aktualisieren:
@@ -544,39 +561,11 @@ Bei neuen Features immer README.md aktualisieren:
 - Welche Konfiguration ist nötig?
 - Beispiele hinzufügen
 
-## Release Management
-
-### Versioning
-
-Semantic Versioning (SemVer) verwenden:
-
-```bash
-# Patch: Bugfixes
-npm run version:bump patch
-
-# Minor: Neue Features (backwards compatible)
-npm run version:bump minor
-
-# Major: Breaking Changes
-npm run version:bump major
-```
-
-### Git Tags
-
-```bash
-# Tag erstellen
-npm run version:tag
-
-# Tag pushen
-git push origin v2.0.0
-```
-
 ## Support
 
 Bei Fragen oder Problemen:
 
 - GitHub Issues: https://github.com/jschirrmacher/swarm-config/issues
-- Email: tech@justso.de
 
 ## License
 

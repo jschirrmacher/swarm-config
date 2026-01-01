@@ -13,27 +13,16 @@ export default defineEventHandler(async event => {
   try {
     const workspaceBase = process.env.WORKSPACE_BASE || "/var/apps"
     const projectDir = join(workspaceBase, name)
-    const filePath = join(projectDir, "service.ts")
+    const filePath = join(projectDir, "kong.yaml")
 
     if (!existsSync(filePath)) {
       throw createError({ statusCode: 404, message: `Service '${name}' not found` })
     }
 
     const content = readFileSync(filePath, "utf-8")
-    // No more example files in project directories
-
-    // Try to parse the service configuration
-    const parsed = parseServiceConfig(content)
     const config = getSwarmConfig()
 
-    return { 
-      name, 
-      content, 
-      path: filePath,
-      parsed,  // Will be null for special cases like acme.ts
-      isStructured: parsed !== null,
-      domain: config.DOMAIN
-    }
+    return { name, content, path: filePath, domain: config.DOMAIN }
   } catch (error: any) {
     if (error.statusCode) {
       throw error

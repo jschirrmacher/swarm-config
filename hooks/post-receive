@@ -42,14 +42,38 @@ while read oldrev newrev refname; do
     
     cd "$WORK_DIR"
     
+    # Copy/update deployment config files to permanent app directory
+    echo "🔧 Managing deployment configuration files..."
+    
+    # Handle .swarm/kong.yaml (Kong configuration) - optional
+    if [ -f ".swarm/kong.yaml" ]; then
+      echo "  ✓ Copying .swarm/kong.yaml from repository"
+      cp .swarm/kong.yaml "$APP_DIR/kong.yaml"
+    elif [ ! -f "$APP_DIR/kong.yaml" ]; then
+      echo "  ℹ️  No .swarm/kong.yaml in repo or on server - Kong config will use defaults"
+    else
+      echo "  ✓ Keeping existing kong.yaml on server"
+    fi
+    
+    # Handle .swarm/docker-compose.yaml - required
+    if [ -f ".swarm/docker-compose.yaml" ]; then
+      echo "  ✓ Copying .swarm/docker-compose.yaml from repository"
+      cp .swarm/docker-compose.yaml "$APP_DIR/docker-compose.yaml"
+    elif [ ! -f "$APP_DIR/docker-compose.yaml" ]; then
+      echo "  ❌ Error: No .swarm/docker-compose.yaml found in repository or on server!"
+      echo "  📝 Please create .swarm/docker-compose.yaml in your repository"
+      exit 1
+    else
+      echo "  ✓ Using existing docker-compose.yaml on server"
+    fi
+    
+    COMPOSE_FILE="$APP_DIR/docker-compose.yaml"
+    
+    echo ""
+    
     # Verify required files exist
     if [ ! -f "Dockerfile" ]; then
       echo "❌ Error: Dockerfile not found!"
-      exit 1
-    fi
-    
-    if [ ! -f "docker-compose.yml" ]; then
-      echo "❌ Error: docker-compose.yml not found!"
       exit 1
     fi
     
@@ -110,14 +134,22 @@ while read oldrev newrev refname; do
     
     if docker stack ls 2>/dev/null | grep -q "^${APPNAME} "; then
       echo "📦 Updating existing stack..."
-      docker stack deploy --detach=true -c docker-compose.yml ${APPNAME}
+      docker stack deploy --detach=true -c "$COMPOSE_FILE" ${APPNAME}
       
       # Force service update to ensure new image is pulled
       echo "🔄 Forcing service update..."
       docker service update --force ${APPNAME}_${APPNAME}
     else
       echo "📦 Creating new stack..."
-      docker stack deploy --detach=true -c docker-compose.yml ${APPNAME}
+      docker stack deploy --detach=true -c "$COMPOSE_FILE" ${APPNAME}
+    fi
+    
+    # Regenerate Kong configuration if kong.yaml exists
+    if [ -f "$APP_DIR/kong.yaml" ]; then
+      echo ""
+      echo "🔄 Regenerating Kong configuration..."
+      cd /var/apps/swarm-config
+      npm run kong:generate --silent && npm run kong:reload --silent || echo "⚠️  Kong reload failed (may need manual intervention)"
     fi
     
     echo ""

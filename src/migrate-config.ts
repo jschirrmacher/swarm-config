@@ -229,13 +229,14 @@ function migrateStackService(stack: any, stats: MigrationStats): void {
     return
   }
 
-  // Regular service - migrate to /var/apps/<stackName>/service.ts
+  // Regular service - migrate to /var/apps/<stackName>/.swarm/kong.yaml
   const workspaceBase = process.env.WORKSPACE_BASE || "/var/apps"
   const projectDir = join(workspaceBase, stackName)
-  const serviceFile = join(projectDir, "service.ts")
+  const swarmDir = join(projectDir, ".swarm")
+  const serviceFile = join(swarmDir, "kong.yaml")
 
-  // Create project directory if it doesn't exist
-  mkdirSync(projectDir, { recursive: true })
+  // Create .swarm directory if it doesn't exist
+  mkdirSync(swarmDir, { recursive: true })
   
   // Extract port from first service
   const portMatch = firstService.url.match(/:(\d+)$/)
@@ -244,19 +245,52 @@ function migrateStackService(stack: any, stats: MigrationStats): void {
   // Get domain from first route
   const domain = firstService.routes[0]?.hosts[0]?.replace(new RegExp(`^${stackName}\\.`), "") || "example.com"
   
-  const serviceCode = generateServiceCode(services)
-
-  const content = `import { createStack } from "../swarm-config/src/Service.js"
-
-// ${stackName} - Migrated from config.ts
-
-export default createStack("${stackName}")
-    ${serviceCode}
-`
-  writeFileSync(serviceFile, content)
-  console.log(`  ✓ Migrated service: ${stackName} -> /var/apps/${stackName}/service.ts`)
+  // Generate YAML format
+  const yamlServices = services.map((s: any) => ({
+    name: s.name,
+    url: s.url,
+  }))
   
-  // Also create a basic docker-compose.yaml
+  const yamlRoutes = services.flatMap((s: any) => 
+    s.routes.map((r: any) => ({
+      name: r.name,
+      hosts: r.hosts,
+      paths: r.paths,
+      protocols: r.protocols,
+      preserve_host: r.preserve_host,
+      strip_path: r.strip_path,
+      https_redirect_status_code: r.https_redirect_status_code,
+      service: s.name,
+      ...(r.plugins && r.plugins.length > 0 ? { plugins: r.plugins } : {}),
+    }))
+  )
+  
+  const yamlPlugins = services.flatMap((s: any) => s.plugins || [])
+  
+  // Convert to YAML string manually (since we don't have js-yaml in migration script)
+  let content = `# ${stackName} - Migrated from config.ts
+
+services:
+${yamlServices.map((s: any) => `  - name: ${s.name}\n    url: ${s.url}`).join("\n")}
+
+routes:
+${yamlRoutes.map((r: any) => {
+  let routeYaml = `  - name: ${r.name}\n    hosts:\n${r.hosts.map((h: string) => `      - ${h}`).join("\n")}\n    paths:\n${r.paths.map((p: string) => `      - ${p}`).join("\n")}\n    protocols:\n${r.protocols.map((p: string) => `      - ${p}`).join("\n")}\n    preserve_host: ${r.preserve_host}\n    strip_path: ${r.strip_path}\n    https_redirect_status_code: ${r.https_redirect_status_code}\n    service: ${r.service}`
+  if (r.plugins) {
+    routeYaml += `\n    plugins:\n${r.plugins.map((p: any) => `      - name: ${p.name}${p.config ? `\n        config: ${JSON.stringify(p.config)}` : ""}`).join("\n")}`
+  }
+  return routeYaml
+}).join("\n")}
+`
+  
+  if (yamlPlugins.length > 0) {
+    content += `\nplugins:\n${yamlPlugins.map((p: any) => `  - name: ${p.name}${p.config ? `\n    config: ${JSON.stringify(p.config)}` : ""}`).join("\n")}\n`
+  }
+
+  writeFileSync(serviceFile, content)
+  console.log(`  ✓ Migrated service: ${stackName} -> /var/apps/${stackName}/.swarm/kong.yaml`)
+  
+  // Also create a basic .swarm/docker-compose.yaml
   const composeContent = `services:
   ${stackName}:
     image: \${IMAGE_NAME:-${stackName}:latest}
@@ -276,16 +310,16 @@ networks:
   kong-net:
     external: true
 `
-  writeFileSync(join(projectDir, "docker-compose.yaml"), composeContent)
-  console.log(`  ✓ Created docker-compose.yaml for ${stackName}`)
+  writeFileSync(join(swarmDir, "docker-compose.yaml"), composeContent)
+  console.log(`  ✓ Created .swarm/docker-compose.yaml for ${stackName}`)
   
   stats.count++
 }
 
 /**
- * Migrates services from config.ts to /var/apps/<project>/service.ts
+ * Migrates services from config.ts to /var/apps/<project>/.swarm/kong.yaml
  */
-function migrateServices(config: any, configPath: string, stats: MigrationStats): void {
+function migrateServices(config: any, stats: MigrationStats): void {
   if (!config.services || !Array.isArray(config.services) || config.services.length === 0) {
     return
   }
@@ -307,26 +341,55 @@ async function migrateConfig() {
     return
   }
 
-  console.log("📦 Migrating config.ts to config/ directories...")
+  console.log("📦 Migrating config.ts to new structure...")
 
   try {
-    // Load the config.ts module
-    const config = await import(`file://${configPath}`)
-    const stats: MigrationStats = { count: 0 }
+    // Read config.ts and replace .js imports with .ts for tsx to work
+    let configContent = readFileSync(configPath, "utf-8")
+    const hasJsImports = configContent.includes('.js"')
+    
+    if (hasJsImports) {
+      console.log("  🔧 Fixing .js imports to .ts for migration...")
+      configContent = configContent.replace(/from\s+["'](.+?)\.js["']/g, 'from "$1.ts"')
+      const tempConfigPath = join(process.cwd(), "config.temp.ts")
+      writeFileSync(tempConfigPath, configContent)
+      
+      // Import the temporary config
+      const config = await import(`file://${tempConfigPath}`)
+      const stats: MigrationStats = { count: 0 }
 
-    // Migrate all sections
-    migrateConsumers(config, stats)
-    migratePlugins(config, stats)
-    migrateServices(config, configPath, stats)
+      // Migrate all sections
+      migrateConsumers(config, stats)
+      migratePlugins(config, stats)
+      migrateServices(config, stats)
 
-    console.log(`  ✅ Migrated ${stats.count} items`)
-    console.log("  📝 Backup of config.ts saved as config.ts.bak")
+      console.log(`  ✅ Migrated ${stats.count} items`)
+      console.log("  📝 Backup of config.ts saved as config.ts.bak")
 
-    // Rename config.ts to config.ts.bak
-    renameSync(configPath, join(process.cwd(), "config.ts.bak"))
+      // Clean up temp file and rename original
+      renameSync(configPath, join(process.cwd(), "config.ts.bak"))
+      
+      // Remove temp file
+      const fs = await import('fs')
+      fs.unlinkSync(tempConfigPath)
+    } else {
+      // No .js imports, can import directly
+      const config = await import(`file://${configPath}`)
+      const stats: MigrationStats = { count: 0 }
+
+      migrateConsumers(config, stats)
+      migratePlugins(config, stats)
+      migrateServices(config, stats)
+
+      console.log(`  ✅ Migrated ${stats.count} items`)
+      console.log("  📝 Backup of config.ts saved as config.ts.bak")
+      
+      renameSync(configPath, join(process.cwd(), "config.ts.bak"))
+    }
   } catch (error) {
     console.error("  ❌ Migration failed:", error instanceof Error ? error.message : error)
     console.log("  📝 config.ts preserved - please migrate manually")
+    console.log("  💡 Tip: You can manually move services to /var/apps/<project>/.swarm/kong.yaml")
   }
 }
 

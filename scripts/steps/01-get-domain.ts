@@ -4,14 +4,20 @@ import { existsSync } from 'fs'
 
 console.log('🌐 Step 1: Getting domain configuration...')
 
-const configPath = '/var/apps/swarm-config/.swarm-config'
+const envPath = '/var/apps/swarm-config/.env'
 
-// Check if config already exists
-if (existsSync(configPath)) {
-  const config = loadConfig()
-  console.log(`  Using existing domain: ${config.DOMAIN}`)
-  process.env.DOMAIN = config.DOMAIN
-} else {
+// Check if DOMAIN already exists in .env
+if (existsSync(envPath)) {
+  try {
+    const config = loadConfig()
+    console.log(`  Using existing domain: ${config.DOMAIN}`)
+    process.env.DOMAIN = config.DOMAIN
+  } catch (error) {
+    // DOMAIN not in .env yet, will be added below
+  }
+}
+
+if (!process.env.DOMAIN) {
   // Get domain from environment (set by setup.sh)
   const domain = process.env.SWARM_DOMAIN
 
@@ -21,7 +27,7 @@ if (existsSync(configPath)) {
     process.exit(1)
   }
 
-  // Save to config file
+  // Save to .env file
   saveConfig({ DOMAIN: domain })
   process.env.DOMAIN = domain
   console.log(`  Domain set to: ${domain}`)

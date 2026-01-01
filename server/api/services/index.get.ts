@@ -92,8 +92,9 @@ export default defineEventHandler(async () => {
 
     const services = projectDirs
       .filter(name => {
-        const serviceFile = join(workspaceBase, name, "service.ts")
-        return existsSync(serviceFile)
+        // Check for kong.yaml
+        const kongFile = join(workspaceBase, name, "kong.yaml")
+        return existsSync(kongFile)
       })
       .map(name => {
         // Check if there's a docker-compose.yaml file
@@ -105,7 +106,7 @@ export default defineEventHandler(async () => {
         
         return {
           name,
-          file: "service.ts",
+          file: "kong.yaml",
           hasStack,
           dockerStack: dockerStatus,
         }

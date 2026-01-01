@@ -43,10 +43,6 @@ echo "%team ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers.d/team
 chmod 0440 /etc/sudoers.d/team
 echo "  ✅ Passwordless sudo configured"
 
-# Prepare directories
-CONSUMERS_DIR="/var/apps/swarm-config/config/consumers"
-mkdir -p "$CONSUMERS_DIR"
-
 # Create each user
 for USERNAME in $USERNAMES; do
   echo "  Setting up user: $USERNAME"
@@ -72,23 +68,8 @@ for USERNAME in $USERNAMES; do
   chmod 600 "/home/$USERNAME/.ssh/authorized_keys"
   chown -R "$USERNAME:team" "/home/$USERNAME/.ssh"
   
-  # Generate Kong consumer
+  # Generate password for Web UI
   PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
-  CONSUMER_FILE="$CONSUMERS_DIR/${USERNAME}.ts"
-  
-  cat > "$CONSUMER_FILE" <<EOF
-import type { Consumer } from "../../src/Consumer.js"
-
-// Auto-generated consumer for SSH user: ${USERNAME}
-// Generated on: $(date -Iseconds)
-const consumer: Consumer = {
-  username: "${USERNAME}",
-  consumerName: "${USERNAME}",
-  password: "${PASSWORD}"
-}
-
-export default consumer
-EOF
   
   # Save password to user's home
   USER_PASSWORD_FILE="/home/$USERNAME/.swarm-config-password"

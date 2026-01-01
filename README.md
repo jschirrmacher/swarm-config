@@ -146,28 +146,28 @@ Your app is live at `https://myapp.your-domain.com` with automatic SSL! 🎉
 
 ```
 swarm-config/
-├── config/                 # Configuration files
+├── config/                 # Infrastructure configuration
 │   ├── stacks/            # Docker Stack definitions
 │   │   ├── kong.yaml      # Kong API Gateway stack
 │   │   ├── monitoring.yaml # Prometheus & Grafana stack
 │   │   ├── portainer.yaml # Portainer management UI
 │   │   └── init.yaml      # Initial bootstrap stack
-│   ├── services/          # Auto-deployed application services
-│   ├── infrastructure/    # Infrastructure services (Portainer, Monitoring)
-│   ├── plugins/           # Global Kong plugins
-│   └── consumers/         # Authentication consumers
+│   ├── plugins/           # Global Kong plugins (TypeScript)
+│   └── consumers/         # Authentication consumers (TypeScript)
 │
 ├── src/                    # TypeScript Source Code
-│   ├── generate-kong-config.ts
-│   ├── install-hooks.ts
-│   ├── utils/              # Utility functions
-│   └── Service.ts, Plugin.ts, etc.
+│   ├── generate-kong-config.ts  # Generates Kong config from all sources
+│   ├── Service.ts, Plugin.ts    # TypeScript builders (for internal use)
+│   └── utils/              # Utility functions
 │
-├── web-ui/                 # Self-service Web Interface (Nuxt 4)
-│   ├── pages/              # Vue 3 pages
-│   ├── server/             # API endpoints
-│   ├── Dockerfile          # Container image
-│   └── README.md           # Web UI documentation
+├── server/                 # Nuxt Server API
+│   ├── api/               # API endpoints (repositories, services, kong)
+│   └── utils/             # Kong config generator, Git repos
+│
+├── pages/                  # Nuxt Pages (Web UI)
+│   ├── index.vue          # Dashboard
+│   ├── login.vue          # Authentication
+│   └── services/          # Service management
 │
 ├── scripts/                # Setup and deployment scripts
 │   └── setup.sh           # Automated server setup and updates
@@ -177,9 +177,7 @@ swarm-config/
 │   ├── pre-commit         # Local code formatting
 │   └── pre-push           # Local tests & build
 │
-├── utils/
-│   └── version.ts         # Version management
-│
+├── kong.yaml              # swarm-config's own Kong config
 └── generated/
     └── kong.yaml          # Generated Kong configuration (DO NOT EDIT)
 ```
@@ -214,36 +212,53 @@ When you push code:
 
 Visit `https://config.your-domain.com` to create repositories with automatic Kong configuration.
 
-### Configuration Files
+### Configuration Format
 
-Creating a repository via the Web UI or API automatically generates `config/services/myapp.ts`:
+App developers manage Kong configuration via YAML files in their repositories:
 
-```typescript
-import { createStack } from "../../src/Service.js"
+**In your app repository:**
 
-export default createStack("myapp").addService("myapp", 3000).addRoute("myapp.example.com")
+```
+myapp/
+├── .swarm/
+│   ├── kong.yaml              # Kong routes and plugins
+│   └── docker-compose.yaml    # Docker Compose config
+├── Dockerfile
+└── src/
 ```
 
-### Customization
+**Example `.swarm/kong.yaml`:**
 
-Add routes, plugins, and more:
+```yaml
+services:
+  - name: myapp_myapp
+    url: http://myapp_myapp:3000
 
-```typescript
-export default createStack("myapp")
-  .addService("myapp", 3000)
-  .addRoute("myapp.example.com")
-  .addRoute("myapp.example.com", {
-    paths: ["/api"],
-    strip_path: true,
-  })
-  .addPlugin("rate-limiting", { minute: 100 })
+routes:
+  - name: myapp_myapp
+    hosts:
+      - myapp.example.com
+    paths:
+      - /
+    protocols:
+      - https
+    preserve_host: true
+    strip_path: false
+    service: myapp_myapp
+
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 100
+      policy: local
 ```
 
-Then regenerate Kong config:
+### How it Works
 
-```bash
-npm run kong:generate
-```
+1. Developer creates `.swarm/kong.yaml` in their app repository
+2. On `git push`, the file is copied to `/var/apps/myapp/kong.yaml`
+3. Kong configuration is automatically regenerated
+4. Traffic is routed to your app at `https://myapp.example.com`
 
 **→ See [APP-DEVELOPER.md](./docs/APP-DEVELOPER.md#kong-gateway-konfiguration) for all options**
 

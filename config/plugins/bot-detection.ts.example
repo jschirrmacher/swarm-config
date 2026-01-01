@@ -1,4 +1,0 @@
-import { createPlugin } from "../../src/Plugin.js"
-
-// Bot detection plugin to identify and reject bot traffic
-export default createPlugin("bot-detection")

@@ -1,6 +1,0 @@
-import { createStack } from "../../src/Service.js"
-import { getDomain } from "../../src/config.js"
-
-export default createStack("portainer")
-  .addService("portainer", 9000)
-    .addRoute(`portainer.${getDomain()}`)

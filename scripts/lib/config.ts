@@ -1,25 +1,24 @@
-import { readFileSync, existsSync, mkdirSync, writeFileSync, chmodSync } from 'fs'
-import { dirname } from 'path'
+import { readFileSync, existsSync, mkdirSync, writeFileSync, appendFileSync } from 'fs'
 
-const CONFIG_PATH = '/var/apps/swarm-config/.swarm-config'
+const ENV_PATH = '/var/apps/swarm-config/.env'
 
 export interface Config {
   DOMAIN: string
 }
 
 /**
- * Load domain from .swarm-config file
+ * Load domain from .env file
  */
 export function loadConfig(): Config {
-  if (!existsSync(CONFIG_PATH)) {
-    throw new Error(`Configuration file not found: ${CONFIG_PATH}`)
+  if (!existsSync(ENV_PATH)) {
+    throw new Error(`Configuration file not found: ${ENV_PATH}`)
   }
 
-  const content = readFileSync(CONFIG_PATH, 'utf-8')
+  const content = readFileSync(ENV_PATH, 'utf-8')
   const match = content.match(/^DOMAIN=(.+)$/m)
   
-  if (!match) {
-    throw new Error('DOMAIN not found in configuration file')
+  if (!match || !match[1]) {
+    throw new Error('DOMAIN not found in .env file')
   }
 
   return {
@@ -28,21 +27,24 @@ export function loadConfig(): Config {
 }
 
 /**
- * Save configuration to .swarm-config file
+ * Save configuration to .env file
  */
 export function saveConfig(config: Config): void {
-  const dir = dirname(CONFIG_PATH)
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
+  // Append DOMAIN to .env if it doesn't exist
+  let content = ''
+  
+  if (existsSync(ENV_PATH)) {
+    content = readFileSync(ENV_PATH, 'utf-8')
+    
+    // Check if DOMAIN already exists
+    if (/^DOMAIN=/m.test(content)) {
+      // Replace existing DOMAIN
+      content = content.replace(/^DOMAIN=.+$/m, `DOMAIN=${config.DOMAIN}`)
+      writeFileSync(ENV_PATH, content, 'utf-8')
+      return
+    }
   }
-
-  const content = `# Swarm Config Configuration
-# Domain for this server
-DOMAIN=${config.DOMAIN}
-
-# Generated on: ${new Date().toISOString()}
-`
-
-  writeFileSync(CONFIG_PATH, content, 'utf-8')
-  chmodSync(CONFIG_PATH, 0o644)
+  
+  // Append DOMAIN
+  appendFileSync(ENV_PATH, `\nDOMAIN=${config.DOMAIN}\n`, 'utf-8')
 }

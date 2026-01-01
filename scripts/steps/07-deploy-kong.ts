@@ -36,7 +36,7 @@ if (stackExists('kong')) {
 // Deploy Kong stack
 console.log('  Deploying Kong stack...')
 try {
-  docker('stack deploy --detach=false -c config/stacks/kong.yaml kong')
+  docker('stack deploy --detach=false -c stacks/kong.yaml kong')
 } catch (error) {
   console.error('❌ Failed to deploy Kong stack')
   process.exit(1)
