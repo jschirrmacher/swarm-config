@@ -237,21 +237,22 @@ function migrateStackService(stack: any, stats: MigrationStats): void {
 
   // Create .swarm directory if it doesn't exist
   mkdirSync(swarmDir, { recursive: true })
-  
+
   // Extract port from first service
   const portMatch = firstService.url.match(/:(\d+)$/)
   const port = portMatch ? portMatch[1] : "3000"
-  
+
   // Get domain from first route
-  const domain = firstService.routes[0]?.hosts[0]?.replace(new RegExp(`^${stackName}\\.`), "") || "example.com"
-  
+  const domain =
+    firstService.routes[0]?.hosts[0]?.replace(new RegExp(`^${stackName}\\.`), "") || "example.com"
+
   // Generate YAML format
   const yamlServices = services.map((s: any) => ({
     name: s.name,
     url: s.url,
   }))
-  
-  const yamlRoutes = services.flatMap((s: any) => 
+
+  const yamlRoutes = services.flatMap((s: any) =>
     s.routes.map((r: any) => ({
       name: r.name,
       hosts: r.hosts,
@@ -259,14 +260,13 @@ function migrateStackService(stack: any, stats: MigrationStats): void {
       protocols: r.protocols,
       preserve_host: r.preserve_host,
       strip_path: r.strip_path,
-      https_redirect_status_code: r.https_redirect_status_code,
       service: s.name,
       ...(r.plugins && r.plugins.length > 0 ? { plugins: r.plugins } : {}),
-    }))
+    })),
   )
-  
+
   const yamlPlugins = services.flatMap((s: any) => s.plugins || [])
-  
+
   // Convert to YAML string manually (since we don't have js-yaml in migration script)
   let content = `# ${stackName} - Migrated from config.ts
 
@@ -274,22 +274,24 @@ services:
 ${yamlServices.map((s: any) => `  - name: ${s.name}\n    url: ${s.url}`).join("\n")}
 
 routes:
-${yamlRoutes.map((r: any) => {
-  let routeYaml = `  - name: ${r.name}\n    hosts:\n${r.hosts.map((h: string) => `      - ${h}`).join("\n")}\n    paths:\n${r.paths.map((p: string) => `      - ${p}`).join("\n")}\n    protocols:\n${r.protocols.map((p: string) => `      - ${p}`).join("\n")}\n    preserve_host: ${r.preserve_host}\n    strip_path: ${r.strip_path}\n    https_redirect_status_code: ${r.https_redirect_status_code}\n    service: ${r.service}`
-  if (r.plugins) {
-    routeYaml += `\n    plugins:\n${r.plugins.map((p: any) => `      - name: ${p.name}${p.config ? `\n        config: ${JSON.stringify(p.config)}` : ""}`).join("\n")}`
-  }
-  return routeYaml
-}).join("\n")}
+${yamlRoutes
+  .map((r: any) => {
+    let routeYaml = `  - name: ${r.name}\n    hosts:\n${r.hosts.map((h: string) => `      - ${h}`).join("\n")}\n    paths:\n${r.paths.map((p: string) => `      - ${p}`).join("\n")}\n    protocols:\n${r.protocols.map((p: string) => `      - ${p}`).join("\n")}\n    preserve_host: ${r.preserve_host}\n    strip_path: ${r.strip_path}\n    service: ${r.service}`
+    if (r.plugins) {
+      routeYaml += `\n    plugins:\n${r.plugins.map((p: any) => `      - name: ${p.name}${p.config ? `\n        config: ${JSON.stringify(p.config)}` : ""}`).join("\n")}`
+    }
+    return routeYaml
+  })
+  .join("\n")}
 `
-  
+
   if (yamlPlugins.length > 0) {
     content += `\nplugins:\n${yamlPlugins.map((p: any) => `  - name: ${p.name}${p.config ? `\n    config: ${JSON.stringify(p.config)}` : ""}`).join("\n")}\n`
   }
 
   writeFileSync(serviceFile, content)
   console.log(`  ✓ Migrated service: ${stackName} -> /var/apps/${stackName}/.swarm/kong.yaml`)
-  
+
   // Also create a basic .swarm/docker-compose.yaml
   const composeContent = `services:
   ${stackName}:
@@ -312,7 +314,7 @@ networks:
 `
   writeFileSync(join(swarmDir, "docker-compose.yaml"), composeContent)
   console.log(`  ✓ Created .swarm/docker-compose.yaml for ${stackName}`)
-  
+
   stats.count++
 }
 
@@ -347,31 +349,45 @@ async function migrateConfig() {
     // Read config.ts and replace .js imports with .ts for tsx to work
     let configContent = readFileSync(configPath, "utf-8")
     const hasJsImports = configContent.includes('.js"')
-    
+
     if (hasJsImports) {
       console.log("  🔧 Fixing .js imports to .ts for migration...")
       configContent = configContent.replace(/from\s+["'](.+?)\.js["']/g, 'from "$1.ts"')
       const tempConfigPath = join(process.cwd(), "config.temp.ts")
-      writeFileSync(tempConfigPath, configContent)
-      
-      // Import the temporary config
-      const config = await import(`file://${tempConfigPath}`)
-      const stats: MigrationStats = { count: 0 }
 
-      // Migrate all sections
-      migrateConsumers(config, stats)
-      migratePlugins(config, stats)
-      migrateServices(config, stats)
+      try {
+        writeFileSync(tempConfigPath, configContent)
 
-      console.log(`  ✅ Migrated ${stats.count} items`)
-      console.log("  📝 Backup of config.ts saved as config.ts.bak")
+        // Import the temporary config
+        const config = await import(`file://${tempConfigPath}`)
+        const stats: MigrationStats = { count: 0 }
 
-      // Clean up temp file and rename original
-      renameSync(configPath, join(process.cwd(), "config.ts.bak"))
-      
-      // Remove temp file
-      const fs = await import('fs')
-      fs.unlinkSync(tempConfigPath)
+        // Migrate all sections
+        migrateConsumers(config, stats)
+        migratePlugins(config, stats)
+        migrateServices(config, stats)
+
+        console.log(`  ✅ Migrated ${stats.count} items`)
+        console.log("  📝 Backup of config.ts saved as config.ts.bak")
+
+        // Clean up temp file and rename original
+        renameSync(configPath, join(process.cwd(), "config.ts.bak"))
+      } catch (importError) {
+        console.error(
+          "  ❌ Cannot load config.ts:",
+          importError instanceof Error ? importError.message : String(importError),
+        )
+        console.log("  📝 config.ts contains invalid imports or missing dependencies")
+        console.log("  💡 Skipping migration - you can migrate manually later")
+        // Rename config.ts to .bak anyway to prevent future migration attempts
+        renameSync(configPath, join(process.cwd(), "config.ts.invalid.bak"))
+      } finally {
+        // Always remove temp file
+        if (existsSync(tempConfigPath)) {
+          const { unlinkSync } = await import("fs")
+          unlinkSync(tempConfigPath)
+        }
+      }
     } else {
       // No .js imports, can import directly
       const config = await import(`file://${configPath}`)
@@ -383,7 +399,7 @@ async function migrateConfig() {
 
       console.log(`  ✅ Migrated ${stats.count} items`)
       console.log("  📝 Backup of config.ts saved as config.ts.bak")
-      
+
       renameSync(configPath, join(process.cwd(), "config.ts.bak"))
     }
   } catch (error) {

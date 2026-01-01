@@ -49,7 +49,6 @@ export interface RouteOptions {
   paths?: string[]
   preserve_host?: boolean
   strip_path?: boolean
-  https_redirect_status_code?: number
   protocols?: string[]
 }
 

@@ -41,12 +41,11 @@ services:
   redis:
     image: redis:alpine
     user: "1001:1001"
-    command: redis-server
+    command: redis-server --protected-mode no --port 6379 --save 60 1 --loglevel warning
     environment:
       - REDIS_REPLICATION_MODE=master
     volumes:
       - /var/apps/swarm-config/redis-data:/data
-      - /var/apps/swarm-config/redis.conf:/usr/local/etc/redis/redis.conf
     networks:
       - internal
     deploy:
@@ -62,7 +61,7 @@ services:
       - GIT_REPO_BASE=/home
       - WORKSPACE_BASE=/var/apps
     volumes:
-      - /home:/home:ro
+      - /home:/home
       - /var/apps:/var/apps
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/apps/swarm-config/.env:/app/.env:ro

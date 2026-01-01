@@ -14,7 +14,7 @@ interface Config {
  */
 export function getSwarmConfig(): Config {
   const domain = process.env.DOMAIN
-  
+
   if (!domain) {
     throw new Error("DOMAIN not set in environment variables. Check your .env file.")
   }
@@ -26,25 +26,6 @@ export function getSwarmConfig(): Config {
 
 /**
  * Returns the domain from environment variables
- */
-export function getDomain(): string {
-  return getSwarmConfig().DOMAIN
-}
-  
-  const content = `# Swarm Config Configuration
-# Generated on: ${new Date().toISOString()}
-
-DOMAIN=${config.DOMAIN}
-`
-
-  writeFileSync(configPath, content, "utf-8")
-  
-  // Clear cache to force reload
-  cachedConfig = null
-}
-
-/**
- * Returns the base domain from configuration
  */
 export function getDomain(): string {
   return getSwarmConfig().DOMAIN

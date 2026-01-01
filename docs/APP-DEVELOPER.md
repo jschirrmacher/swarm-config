@@ -346,7 +346,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: myapp_myapp
 ```
 
@@ -374,7 +373,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: myapp_myapp
 
 plugins:
@@ -453,7 +451,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: myapp_myapp
 ```
 
@@ -477,7 +474,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: api_api
 
   - name: api-v2
@@ -489,7 +485,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: api_api
 ```
 
@@ -513,7 +508,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: public-api_api
 
 plugins:
@@ -544,7 +538,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: backend_backend
 
 plugins:
@@ -586,7 +579,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: admin-app_admin
 
   # Protected Routes mit Basic Auth
@@ -599,7 +591,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: admin-app_admin
     plugins:
       - name: basic-auth
@@ -644,7 +635,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: shop_web
 
   # API Backend
@@ -657,7 +647,6 @@ routes:
       - https
     preserve_host: true
     strip_path: true
-    https_redirect_status_code: 302
     service: shop_api
 
   # Admin Panel
@@ -670,7 +659,6 @@ routes:
       - https
     preserve_host: true
     strip_path: true
-    https_redirect_status_code: 302
     service: shop_admin
 ```
 
@@ -697,7 +685,6 @@ routes:
       - wss
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: chat_chat
 ```
 
@@ -742,7 +729,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: myapp_myapp
 ````
 

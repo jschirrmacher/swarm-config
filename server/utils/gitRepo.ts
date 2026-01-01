@@ -93,7 +93,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     service: ${name}_${name}
 `
   await writeFile(join(workspaceDir, ".swarm/kong.yaml"), serviceContent, { mode: 0o644 })
@@ -154,19 +153,19 @@ export async function listRepositories(
 ): Promise<RepoConfig[]> {
   try {
     const entries = await readdir(workspaceBaseDir, { withFileTypes: true })
-    
+
     const configPromises = entries
-      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
-      .map(async (entry) => {
-        const configPath = join(workspaceBaseDir, entry.name, '.repo-config.json')
-        
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith("."))
+      .map(async entry => {
+        const configPath = join(workspaceBaseDir, entry.name, ".repo-config.json")
+
         try {
           await access(configPath, constants.R_OK)
           const content = await readFile(configPath, "utf-8")
           const config = JSON.parse(content) as RepoConfig
           // In dev mode or if no owner specified, return all repos
           // Otherwise filter by owner
-          return (!owner || config.owner === owner) ? config : null
+          return !owner || config.owner === owner ? config : null
         } catch (error) {
           return null
         }

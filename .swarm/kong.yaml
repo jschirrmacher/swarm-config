@@ -14,7 +14,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
 
   - name: swarm-config-auth
     hosts:
@@ -25,7 +24,6 @@ routes:
       - https
     preserve_host: true
     strip_path: false
-    https_redirect_status_code: 302
     plugins:
       - name: basic-auth
 

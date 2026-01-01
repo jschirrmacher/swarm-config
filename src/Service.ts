@@ -8,7 +8,6 @@ interface Route {
   paths: string[]
   preserve_host: boolean
   strip_path: boolean
-  https_redirect_status_code: number
   protocols: string[]
   plugins?: Plugin[]
 }
@@ -18,7 +17,6 @@ type RouteOptions = Partial<Route>
 const defaultRouteOptions: RouteOptions = {
   preserve_host: true,
   strip_path: false,
-  https_redirect_status_code: 302,
   protocols: ["https"],
 }
 
@@ -106,7 +104,6 @@ export function createStack(stack: string) {
           options = {
             ...options,
             hosts: (options?.hosts || []).concat(host),
-            https_redirect_status_code: code,
           }
           const routeName = `${stack}_${host.replaceAll(".", "-")}_redirect`
           const route = createRoute(routeName, options, [preFunction])
@@ -135,13 +132,13 @@ export function createStack(stack: string) {
 
     toYAML() {
       const servicesData = services.map(service => service.get())
-      
+
       return yaml.dump({
         services: servicesData.map(s => ({
           name: s.name,
           url: s.url,
         })),
-        routes: servicesData.flatMap(s => 
+        routes: servicesData.flatMap(s =>
           s.routes.map(r => ({
             name: r.name,
             hosts: r.hosts,
@@ -149,14 +146,15 @@ export function createStack(stack: string) {
             protocols: r.protocols,
             preserve_host: r.preserve_host,
             strip_path: r.strip_path,
-            https_redirect_status_code: r.https_redirect_status_code,
             service: s.name,
             ...(r.plugins && r.plugins.length > 0 ? { plugins: r.plugins } : {}),
-          }))
+          })),
         ),
-        ...(servicesData.some(s => s.plugins.length > 0) ? {
-          plugins: servicesData.flatMap(s => s.plugins)
-        } : {}),
+        ...(servicesData.some(s => s.plugins.length > 0)
+          ? {
+              plugins: servicesData.flatMap(s => s.plugins),
+            }
+          : {}),
       })
     },
   }

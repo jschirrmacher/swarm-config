@@ -98,7 +98,6 @@ export async function generateKongConfig(silent = false) {
         hosts: getDomains(),
         preserve_host: true,
         strip_path: false,
-        https_redirect_status_code: 302,
       },
     ],
     plugins: [],
@@ -121,7 +120,13 @@ export async function generateKongConfig(silent = false) {
     console.log("")
   }
 
-  writeFileSync(resolve(process.cwd(), "generated", "kong.yaml"), dump(config))
+  writeFileSync(
+    resolve(process.cwd(), "generated", "kong.yaml"),
+    dump(config, {
+      noCompatMode: true,
+      quotingType: '"',
+    }),
+  )
 
   if (!silent) {
     console.log("✓ Generated: generated/kong.yaml")
