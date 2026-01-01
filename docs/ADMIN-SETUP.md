@@ -215,26 +215,22 @@ echo 'server-1:/storage-vol1 /var/volumes glusterfs defaults,_netdev 0 0' | sudo
 
 1. **SSH**: Nur Key-basierte Authentifizierung
 2. **Firewall**: Nur notwendige Ports öffnen (wird durch setup.sh eingerichtet)
-3. **Updates**: Automatische Sicherheitsupdates aktivieren (siehe oben)
-4. **SSL/TLS**: Kong ACME Plugin für automatische Zertifikate
-5. **Secrets**: Nie in Git committen, nur in `/var/apps/<app>/.env`
-
-### Wichtige Verzeichnisse
-
-```
-/var/apps/                      # App-Daten und .env Dateien
-/homeSSL/TLS**: Kong ACME Plugin für automatische Zertifikate
+3. **SSL/TLS**: Kong ACME Plugin für automatische Zertifikate
 4. **Secrets**: Nie in Git committen, nur in `/var/apps/<app>/.env`
 
 ### Wichtige Verzeichnisse
 
 ```
-
-/var/apps/ # App-Daten und .env Dateien
-/home/<user>/<repo>.git/ # Bare Git Repositories in User Home
-/var/volumes/ # GlusterFS Mount (bei Multi-Node)
-/var/apps/swarm-config/ # Zentrale Konfiguration
-
-```sterFS
-
+/var/apps/                      # App-Daten und .env Dateien
+/home/<user>/<repo>.git/        # Bare Git Repositories in User Home
+/var/volumes/                   # GlusterFS Mount (bei Multi-Node)
+/var/apps/swarm-config/         # Zentrale Konfiguration
 ```
+
+## Weitere Ressourcen
+
+- [APP-DEVELOPER.md](./APP-DEVELOPER.md) - Für App-Entwickler
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - Für swarm-config Entwickler
+- [Kong Dokumentation](https://docs.konghq.com/)
+- [Docker Swarm Dokumentation](https://docs.docker.com/engine/swarm/)
+- [MULTI-NODE-SETUP.md](./MULTI-NODE-SETUP.md) - Multi-Node Cluster mit GlusterFS
