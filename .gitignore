@@ -1,2 +1,14 @@
 /node_modules
-/config.ts
+.swarm-config
+.env
+.env.*
+generated/kong.yaml
+redis-data
+/data
+.DS_Store
+
+# Nuxt
+.nuxt
+.output
+dist
+*.log
