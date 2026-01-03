@@ -14,7 +14,7 @@ import { existsSync } from "fs"
 import { writeFile, chmod } from "fs/promises"
 import { resolve } from "path"
 
-const HOOKS_BASE_URL = "https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/hooks"
+const HOOKS_BASE_URL = "https://raw.githubusercontent.com/jschirrmacher/swarm-config/main/hooks"
 const HOOK_DIR = ".git/hooks"
 
 // Check if we're in a CI environment

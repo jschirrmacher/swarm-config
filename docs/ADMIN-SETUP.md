@@ -24,7 +24,7 @@ Use the automated setup script to install all base components:
 
 ```bash
 # Direct download and execution
-curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash -s your-domain.com
+curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/main/scripts/setup.sh | sudo bash -s your-domain.com
 ```
 
 The script automatically performs the following steps:

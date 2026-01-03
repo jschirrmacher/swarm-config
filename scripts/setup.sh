@@ -149,7 +149,7 @@ install_node_and_workspace() {
     cp config.ts "$BACKUP_DIR/" 2>/dev/null || true
     
     git fetch origin
-    git checkout -B next origin/next
+    git checkout -B main origin/main
     
     if [ -f "$BACKUP_DIR/.env" ]; then
       cp "$BACKUP_DIR/.env" .env
@@ -179,7 +179,7 @@ install_node_and_workspace() {
     echo "    ✅ Updated to latest version"
   else
     echo "  Cloning swarm-config repository..."
-    git clone -b next https://github.com/jschirrmacher/swarm-config.git
+    git clone https://github.com/jschirrmacher/swarm-config.git
     cd swarm-config
     echo "  ✅ Repository cloned"
   fi
