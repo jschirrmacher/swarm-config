@@ -25,7 +25,7 @@ configure_security_updates() {
   
   # Install unattended-upgrades package
   apt update
-  apt install -y unattended-upgrades apt-listchanges
+  apt install -y unattended-upgrades
 
   # Configure automatic updates
   cat > /etc/apt/apt.conf.d/50unattended-upgrades << 'EOF'
