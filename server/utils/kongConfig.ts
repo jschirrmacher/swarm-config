@@ -130,7 +130,6 @@ export async function generateKongConfig(silent = false) {
     _transform: true,
 
     services: [...allServices.flatMap(s => s.services ?? []), acmeDummyService],
-    routes: [...allServices.flatMap(s => s.routes ?? []), ...acmeDummyService.routes],
     plugins: [...processPlugins(allServices.flatMap(s => s.plugins ?? []))],
   }
 

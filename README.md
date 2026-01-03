@@ -92,56 +92,6 @@ For **contributors** developing and extending swarm-config.
 - TypeScript patterns and best practices
 - Testing and deployment workflows
 
-## Quick Start for Administrators
-
-### Requirements
-
-- **Operating System**: Ubuntu 20.04+ or Debian 11+ (uses `apt`, `ufw`, `adduser`)
-- **Root Access**: Setup script must run as root
-- **Domain Name**: Configured to point to your server
-- **SSH Keys**: Upload to `/root/.ssh/authorized_keys` for team access
-
-### Installation
-
-```bash
-curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash -s your-domain.com
-```
-
-Replace `your-domain.com` with your actual domain name.
-
-This automated script sets up everything: Docker Swarm, firewall, Node.js, users, SSH security, Kong Gateway, and Web UI.
-
-**→ See [ADMIN-SETUP.md](./docs/ADMIN-SETUP.md) for complete instructions**
-
-## Quick Start for App Developers
-
-### Web UI (Primary Method)
-
-Visit `https://config.your-domain.com` and create your repository with a few clicks:
-
-1. Enter repository name
-2. Set port number
-3. Enable Kong Gateway
-4. Get your Git URL instantly
-
-### Alternative: API Access
-
-```bash
-# Create repository via API
-curl -X POST https://config.your-domain.com/api/repositories/create \
-  -H "Content-Type: application/json" \
-  -u username:password \
-  -d '{"name":"myapp","port":3000}'
-
-# In your local project
-git remote add production git@your-server:~/myapp.git
-git push production main
-```
-
-Your app is live at `https://myapp.your-domain.com` with automatic SSL! 🎉
-
-**→ See [APP-DEVELOPER.md](./docs/APP-DEVELOPER.md) for complete guide**
-
 ## Repository Structure
 
 ```
@@ -233,24 +183,21 @@ myapp/
 services:
   - name: myapp_myapp
     url: http://myapp_myapp:3000
-
-routes:
-  - name: myapp_myapp
-    hosts:
-      - myapp.example.com
-    paths:
-      - /
-    protocols:
-      - https
-    preserve_host: true
-    strip_path: false
-    service: myapp_myapp
-
-plugins:
-  - name: rate-limiting
-    config:
-      minute: 100
-      policy: local
+    routes:
+      - name: myapp_myapp
+        hosts:
+          - myapp.example.com
+        paths:
+          - /
+        protocols:
+          - https
+        preserve_host: true
+        strip_path: false
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 100
+              policy: local
 ```
 
 ### How it Works
