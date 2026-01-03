@@ -19,6 +19,67 @@ check_root() {
   echo ""
 }
 
+# Function: Configure automatic security updates
+configure_security_updates() {
+  echo "🔒 Configuring automatic security updates..."
+  
+  # Install unattended-upgrades package
+  apt update
+  apt install -y unattended-upgrades apt-listchanges
+
+  # Configure automatic updates
+  cat > /etc/apt/apt.conf.d/50unattended-upgrades << 'EOF'
+// Automatically upgrade packages from these origins
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+
+// List of packages to not update (blacklist)
+Unattended-Upgrade::Package-Blacklist {
+    // Exclude Docker packages from automatic updates (should be managed manually)
+    "docker-ce";
+    "docker-ce-cli";
+    "containerd.io";
+};
+
+// Automatically reboot WITHOUT CONFIRMATION if required
+// after a kernel update
+Unattended-Upgrade::Automatic-Reboot "true";
+
+// Reboot at specific time (2:00 AM)
+Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+
+// Do automatic removal of unused kernel packages
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+
+// Remove unused dependencies
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+// Send email notifications (if mail is configured)
+// Unattended-Upgrade::Mail "root";
+
+// Enable logging
+Unattended-Upgrade::SyslogEnable "true";
+Unattended-Upgrade::SyslogFacility "daemon";
+EOF
+
+  # Enable automatic updates
+  cat > /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Download-Upgradeable-Packages "1";
+APT::Periodic::AutocleanInterval "7";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+
+  echo "  ✅ Automatic security updates configured"
+  echo "    • Security updates will be installed daily"
+  echo "    • System will auto-reboot at 2:00 AM if required"
+  echo "    • Docker packages excluded (manual management recommended)"
+  echo ""
+}
+
 # Function: Install Node.js and clone/update repository
 install_node_and_workspace() {
   echo "📦 Installing Node.js and setting up workspace..."
@@ -157,6 +218,7 @@ echo ""
 
 # Execute initial steps
 check_root
+configure_security_updates
 install_node_and_workspace
 
 # Execute remaining steps from local repository

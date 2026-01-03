@@ -2,14 +2,7 @@
 
 ## High Priority
 
-### 🔒 Security & Maintenance
-
-- [ ] **Automatic Security Updates**: Configure `unattended-upgrades` directly in `setup.sh` script
-  - Currently documented but not automated
-  - Should be part of the initial server setup
-  - See: `scripts/setup.sh`
-
-### 📊 Monitoring & Observability
+### Monitoring & Observability
 
 - [ ] **Prometheus/Grafana Stack**: Integrate monitoring solution
   - Add Prometheus and Grafana services in .swarm/docker-compose.yaml
@@ -27,7 +20,6 @@
   - [ ] CONTRIBUTING.md
   - [ ] MULTI-NODE-SETUP.md
   - [ ] README.md
-  - Keep German versions as `*.de.md` for reference
 
 ### 🔧 Infrastructure
 
