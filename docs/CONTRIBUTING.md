@@ -1,22 +1,22 @@
 # Contributing to swarm-config
 
-Diese Anleitung ist für Entwickler, die am swarm-config Projekt selbst arbeiten möchten.
+This guide is for developers who want to work on the swarm-config project itself.
 
-## Architektur-Überblick
+## Architecture Overview
 
-### System-Komponenten
+### System Components
 
 ```
 swarm-config/
-├── .swarm/                     # Deployment Konfiguration
-│   ├── kong.yaml              # Kong Routes, Services & globale Plugins
+├── .swarm/                     # Deployment Configuration
+│   ├── kong.yaml              # Kong Routes, Services & global plugins
 │   └── docker-compose.yaml    # Kong, Redis, UI Stack
 │
 ├── stacks/                     # Infrastructure Stacks
-│   ├── kong.yaml              # (veraltet, nun in .swarm/)
+│   ├── kong.yaml              # (deprecated, now in .swarm/)
 │   ├── monitoring.yaml        # Prometheus/Grafana Stack
 │   ├── portainer.yaml         # Portainer Stack
-│   └── ...                    # Weitere Infrastructure Stacks
+│   └── ...                    # Other Infrastructure Stacks
 │
 ├── src/                        # TypeScript Source Code
 │   ├── generate-kong-config.ts # Kong YAML Generator
@@ -45,16 +45,16 @@ swarm-config/
 │   └── pre-push               # Local Tests
 │
 └── generated/
-    └── kong.yaml              # Generiertes Kong Config (DO NOT EDIT)
+    └── kong.yaml              # Generated Kong Config (DO NOT EDIT)
 ```
 
-### Datenfluss
+### Data Flow
 
-#### 1. Kong-Konfiguration Generierung
+#### 1. Kong Configuration Generation
 
 ```
-/var/apps/*/.swarm/kong.yaml # App-spezifische Kong-Konfigurationen (YAML)
-.swarm/kong.yaml             # swarm-config's eigene Konfiguration + globale Plugins
+/var/apps/*/.swarm/kong.yaml # App-specific Kong configurations (YAML)
+.swarm/kong.yaml             # swarm-config's own configuration + global plugins
                 ↓
         generate-kong-config.ts
                 ↓
@@ -70,14 +70,14 @@ git push production main
     ↓
 post-receive hook
     ↓
-Kopiere .swarm/kong.yaml → /var/apps/myapp/kong.yaml
-Kopiere .swarm/docker-compose.yaml → /var/apps/myapp/docker-compose.yaml
+Copy .swarm/kong.yaml → /var/apps/myapp/kong.yaml
+Copy .swarm/docker-compose.yaml → /var/apps/myapp/docker-compose.yaml
     ↓
 Docker build
     ↓
 Docker deploy
     ↓
-npm run kong:generate (Kong neu generieren)
+npm run kong:generate (Regenerate Kong)
 ```
 
 #### 3. Server Bootstrap
@@ -85,7 +85,7 @@ npm run kong:generate (Kong neu generieren)
 ```
 scripts/setup.sh
     ↓
-Automatische Installation:
+Automatic installation:
 - Docker & Swarm
 - UFW Firewall
 - Node.js 24 LTS
@@ -95,44 +95,44 @@ Automatische Installation:
 - Optional: GlusterFS
 ```
 
-## Entwicklungsumgebung
+## Development Environment
 
-### Voraussetzungen
+### Prerequisites
 
-- Node.js (aktuelle LTS-Version oder höher)
+- Node.js (current LTS version or higher)
 - Git
-- Docker (für lokale Tests)
-- TypeScript Kenntnisse
-- Bash Kenntnisse (für Git Hooks)
+- Docker (for local tests)
+- TypeScript knowledge
+- Bash knowledge (for Git hooks)
 
 ### Setup
 
 ```bash
-# Repository klonen
+# Clone repository
 git clone https://github.com/jschirrmacher/swarm-config.git
 cd swarm-config
 
-# Dependencies installieren
+# Install dependencies
 npm install
 
-# Git Hooks installieren
+# Install Git hooks
 npm run install-hooks
 ```
 
-### Verfügbare Scripts
+### Available Scripts
 
 ```bash
-npm run kong:generate    # Kong YAML generieren
-npm run install-hooks    # Git Hooks installieren
-npm run dev              # Web UI Entwicklungsserver starten
-npm run build            # Web UI für Produktion bauen
+npm run kong:generate    # Generate Kong YAML
+npm run install-hooks    # Install Git hooks
+npm run dev              # Start Web UI development server
+npm run build            # Build Web UI for production
 ```
 
-## Code-Struktur
+## Code Structure
 
-### TypeScript Konventionen
+### TypeScript Conventions
 
-#### 1. Keine expliziten Typen wenn ableitbar
+#### 1. No explicit types when inferable
 
 ```typescript
 // ❌ Redundant
@@ -140,16 +140,16 @@ function getData(): Promise<string> {
   return Promise.resolve("data")
 }
 
-// ✅ Type wird abgeleitet
+// ✅ Type is inferred
 function getData() {
   return Promise.resolve("data")
 }
 ```
 
-#### 2. Interfaces für Contracts
+#### 2. Interfaces for Contracts
 
 ```typescript
-// Interfaces für öffentliche Contracts
+// Interfaces for public contracts
 export interface CheckResult {
   name: string
   passed: boolean
@@ -157,48 +157,23 @@ export interface CheckResult {
   fix?: () => Promise<void>
 }
 
-// Type für Unions/Aliases
+// Type for unions/aliases
 export type BumpType = "major" | "minor" | "patch"
 ```
 
 #### 3. Type Imports
 
 ```typescript
-// Für nur Type-Imports
+// For type-only imports
 import type { SomeType } from "./module.ts"
 
-// Für Runtime + Type
+// For runtime + type
 import { someFunction, type SomeType } from "./module.ts"
 ```
 
-### Modulares Design
+### Modular Design
 
-#### 1. Checks System
-
-Jeder Check ist eine separate Datei in `src/checks/`. Die Checks werden alphabetisch nach Dateinamen sortiert und ausgeführt, daher verwenden wir Nummernpräfixe (01-, 02-, etc.).
-
-```typescript
-// src/checks/01-example.ts
-import { type CheckResult } from "../bootstrap-helpers.ts"
-
-export default async function checkExample(): Promise<CheckResult> {
-  // Check-Logik hier
-  return {
-    name: "Example Check",
-    passed: true,
-    message: "Everything is fine",
-    fix: async () => {
-      // Optional: Auto-Fix Funktion
-    },
-  }
-}
-```
-
-Neue Checks werden automatisch von `bootstrap-server.ts` geladen.
-
-**Hinweis:** Die meisten grundlegenden Checks (Docker, UFW, Node.js, Team-Users, SSH-Security) wurden ins `setup.sh` Skript ausgelagert und sind nicht mehr als separate Checks vorhanden.
-
-#### 2. Kong Configuration (YAML)
+#### 1. Kong Configuration (YAML)
 
 Developers manage Kong configuration via YAML in their repositories:
 
@@ -226,76 +201,6 @@ plugins:
 ```
 
 This file is copied to `/var/apps/example/kong.yaml` on deployment.
-
-#### 3. Plugin System
-
-Wiederverwendbare Plugin-Definitionen:
-
-```typescript
-// src/Plugin.ts
-export function createPlugin(name: string, config = {}) {
-  return {
-    name,
-    config,
-    get() {
-      return { name, config }
-    },
-  }
-}
-```
-
-## Kong Configuration
-
-### Service Definition Pattern
-
-```typescript
-class Stack {
-  private services = []
-  private routes = []
-  private plugins = []
-
-  addService(name: string, port: number) {
-    this.services.push({ name, port })
-    return this // Fluent API
-  }
-
-  addRoute(host: string, config = {}) {
-    this.routes.push({ host, ...config })
-    return this
-  }
-
-  get() {
-    return this.services.map(svc => ({
-      name: svc.name,
-      url: `http://${svc.name}:${svc.port}`,
-      routes: this.routes,
-      plugins: this.plugins,
-    }))
-  }
-}
-```
-
-### Dynamic Module Loading
-
-```typescript
-async function loadModules(dirName: string) {
-  const dir = resolve(process.cwd(), "config", dirName)
-  const modules = []
-
-  const files = await readdir(dir)
-  const tsFiles = files.filter(f => f.endsWith(".ts") && !f.endsWith(".example"))
-
-  for (const file of tsFiles) {
-    const modulePath = join(dir, file)
-    const module = await import(`file://${modulePath}`)
-    if (module.default) {
-      modules.push(module.default)
-    }
-  }
-
-  return modules
-}
-```
 
 ## Git Hooks
 
@@ -340,13 +245,13 @@ rm -rf "$WORK_DIR"
 
 ## Testing
 
-### Lokale Kong Tests
+### Local Kong Tests
 
 ```bash
-# Kong YAML generieren
+# Generate Kong YAML
 npm run kong:generate
 
-# Validieren
+# Validate
 docker run --rm -v $PWD/generated:/config kong:3.0 \
   kong config parse /config/kong.yaml
 ```
@@ -354,8 +259,8 @@ docker run --rm -v $PWD/generated:/config kong:3.0 \
 ### Docker Stack Tests
 
 ```bash
-# Stack lokal deployen
-docker swarm init  # Falls noch nicht initialisiert
+# Deploy stack locally
+docker swarm init  # If not already initialized
 docker stack deploy -c .swarm/docker-compose.yaml test-swarm-config
 
 # Cleanup
@@ -364,20 +269,20 @@ docker stack rm test-swarm-config
 
 ## Deployment Workflow
 
-### 1. Feature entwickeln
+### 1. Develop Feature
 
 ```bash
 git checkout -b feature/new-check
-# Code ändern
-npm run kong:generate  # Falls Kong-Config betroffen
+# Make changes
+npm run kong:generate  # If Kong config affected
 git add .
 git commit -m "feat: add new check"
 ```
 
-### 2. Testen
+### 2. Test
 
 ```bash
-# Kong config validieren
+# Validate Kong config
 npm run kong:generate
 ```
 
@@ -385,10 +290,10 @@ npm run kong:generate
 
 ```bash
 git push origin feature/new-check
-# PR auf GitHub erstellen
+# Create PR on GitHub
 ```
 
-### 4. Merge und Deploy
+### 4. Merge and Deploy
 
 ```bash
 git checkout main
@@ -396,7 +301,7 @@ git merge feature/new-check
 git push origin main
 ```
 
-### 5. Server aktualisieren
+### 5. Update Server
 
 ```bash
 ssh justso.de
@@ -406,11 +311,11 @@ npm install
 npm run kong:generate
 ```
 
-## Neue Features hinzufügen
+## Adding New Features
 
-### Standard-Plugins anpassen
+### Customize Standard Plugins
 
-Die Standard-Plugins (acme, bot-detection, request-size-limiting) sind direkt in `.swarm/kong.yaml` definiert:
+The standard plugins (acme, bot-detection, request-size-limiting) are defined directly in `.swarm/kong.yaml`:
 
 ```yaml
 # .swarm/kong.yaml
@@ -426,21 +331,21 @@ plugins:
       size_unit: megabytes
 ```
 
-**Hinweise:**
+**Notes:**
 
-- Diese Plugins gelten global für alle Services
-- Änderungen direkt in `.swarm/kong.yaml` vornehmen
-- Umgebungsvariablen mit `${VAR_NAME}` Syntax
-- ACME-Domains werden automatisch in `kongConfig.ts` gesetzt
+- These plugins apply globally to all services
+- Make changes directly in `.swarm/kong.yaml`
+- Environment variables with `${VAR_NAME}` syntax
+- ACME domains are automatically set in `kongConfig.ts`
 
-### Neues optionales globales Plugin
+### New Optional Global Plugin
 
-Optionale Plugins (wie Prometheus) werden als auskommentierte Einträge in `.swarm/kong.yaml` definiert:
+Optional plugins (like Prometheus) are defined as commented entries in `.swarm/kong.yaml`:
 
 ```yaml
 # .swarm/kong.yaml
 plugins:
-  # Standard-Plugins (acme, bot-detection, request-size-limiting)
+  # Standard plugins (acme, bot-detection, request-size-limiting)
 
   # Optional: Prometheus Plugin for monitoring
   - name: prometheus
@@ -451,16 +356,16 @@ plugins:
       upstream_health_metrics: true
 ```
 
-**Aktivierung:**
+**Activation:**
 
-1. Plugin-Eintrag in `.swarm/kong.yaml` hinzufügen (wie oben gezeigt)
-2. `npm run kong:generate` ausführen
+1. Add plugin entry in `.swarm/kong.yaml` (as shown above)
+2. Run `npm run kong:generate`
 
-**Hinweise:**
+**Notes:**
 
-- Alle Plugins in `.swarm/kong.yaml` gelten global
-- Umgebungsvariablen mit `${VAR_NAME}` Syntax möglich
-- ACME-Domains werden automatisch in `kongConfig.ts` gesetzt
+- All plugins in `.swarm/kong.yaml` apply globally
+- Environment variables with `${VAR_NAME}` syntax possible
+- ACME domains are automatically set in `kongConfig.ts`
 
 ## Debugging
 
@@ -528,10 +433,10 @@ try {
 ### 3. Async/Await
 
 ```typescript
-// ✅ Parallel execution wo möglich
+// ✅ Parallel execution where possible
 const [services, plugins] = await Promise.all([loadModules("services"), loadModules("plugins")])
 
-// ❌ Sequential ohne Not
+// ❌ Sequential without necessity
 const services = await loadModules("services")
 const plugins = await loadModules("plugins")
 ```
@@ -550,23 +455,23 @@ interface ServiceConfig {
 function createService(config: any) {}
 ```
 
-## Dokumentation
+## Documentation
 
 ### README Updates
 
-Bei neuen Features immer README.md aktualisieren:
+Always update README.md for new features:
 
-- Was macht das Feature?
-- Wie wird es verwendet?
-- Welche Konfiguration ist nötig?
-- Beispiele hinzufügen
+- What does the feature do?
+- How is it used?
+- What configuration is needed?
+- Add examples
 
 ## Support
 
-Bei Fragen oder Problemen:
+For questions or issues:
 
 - GitHub Issues: https://github.com/jschirrmacher/swarm-config/issues
 
 ## License
 
-Apache-2.0 - siehe LICENSE Datei
+Apache-2.0 - see LICENSE file

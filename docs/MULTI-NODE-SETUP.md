@@ -1,101 +1,104 @@
-# Multi-Node Cluster Setup mit GlusterFS
+# Multi-Node Cluster Setup with GlusterFS
 
-Diese Anleitung beschreibt, wie Sie einen Docker Swarm Cluster mit mehreren Nodes und verteiltem Storage via GlusterFS einrichten.
+This guide describes how to set up a Docker Swarm cluster with multiple nodes and distributed storage via GlusterFS.
 
-## Warum Multi-Node?
+## Why Multi-Node?
 
-Ein Cluster mit mehreren Nodes bietet:
-- **Lastverteilung** - Docker Container werden über Nodes verteilt
-- **Hochverfügbarkeit** - Bei Ausfall eines Nodes laufen Services auf anderen Nodes weiter
-- **Rolling Updates** - Kein Downtime bei Service-Updates
-- **Verteilter Storage** - Daten sind auf allen Nodes verfügbar
+A cluster with multiple nodes offers:
 
-## Voraussetzungen
+- **Load balancing** - Docker containers are distributed across nodes
+- **High availability** - If one node fails, services continue running on other nodes
+- **Rolling updates** - No downtime during service updates
+- **Distributed storage** - Data is available on all nodes
 
-- Mindestens 2 Server mit Docker Swarm
-- Alle Server im gleichen Netzwerk (z.B. 10.0.0.0/24)
-- SSH-Zugriff auf alle Server
-- Root-Rechte auf allen Servern
+## Prerequisites
 
-## Schritt 1: Hostnamen konfigurieren
+- At least 2 servers with Docker Swarm
+- All servers in the same network (e.g. 10.0.0.0/24)
+- SSH access to all servers
+- Root privileges on all servers
 
-Alle Server müssen sich gegenseitig mit Namen kennen. Tragen Sie auf **jedem Server** alle anderen Server in `/etc/hosts` ein:
+## Step 1: Configure Hostnames
+
+All servers must know each other by name. On **each server**, add all other servers to `/etc/hosts`:
 
 ```bash
-# Beispiel /etc/hosts
+# Example /etc/hosts
 10.0.0.1  server-1
 10.0.0.2  server-2
 10.0.0.3  server-3
 ```
 
-Testen Sie die Namensauflösung:
+Test name resolution:
+
 ```bash
 ping server-2
 ```
 
-## Schritt 2: Docker Swarm Cluster erstellen
+## Step 2: Create Docker Swarm Cluster
 
-### Auf dem ersten Node (Manager):
+### On the first node (manager):
 
 ```bash
 docker swarm init --advertise-addr 10.0.0.1
 ```
 
-Dies gibt einen Join-Token aus, z.B.:
+This outputs a join token, e.g.:
+
 ```
 docker swarm join --token SWMTKN-1-xxxx... 10.0.0.1:2377
 ```
 
-### Auf allen weiteren Nodes (Workers):
+### On all other nodes (workers):
 
 ```bash
 docker swarm join --token SWMTKN-1-xxxx... 10.0.0.1:2377
 ```
 
-### Cluster-Status prüfen (auf Manager):
+### Check cluster status (on manager):
 
 ```bash
 docker node ls
 ```
 
-## Schritt 3: GlusterFS installieren
+## Step 3: Install GlusterFS
 
-Auf **allen Nodes**:
+On **all nodes**:
 
 ```bash
 # Installation
 sudo apt update
 sudo apt install -y glusterfs-server
 
-# Service starten und aktivieren
+# Start and enable service
 sudo systemctl enable glusterd
 sudo systemctl start glusterd
 
-# Firewall öffnen für GlusterFS
+# Open firewall for GlusterFS
 sudo ufw allow from 10.0.0.0/24
 ```
 
-## Schritt 4: GlusterFS Volume erstellen
+## Step 4: Create GlusterFS Volume
 
-### Peers verbinden (auf server-1):
+### Connect peers (on server-1):
 
 ```bash
 sudo gluster peer probe server-2
 sudo gluster peer probe server-3
-# Wiederholen für alle weiteren Nodes
+# Repeat for all other nodes
 
-# Status prüfen
+# Check status
 sudo gluster peer status
 ```
 
-### Storage Verzeichnis erstellen (auf allen Nodes):
+### Create storage directory (on all nodes):
 
 ```bash
-# Passe den Pfad an deinen Storage an
+# Adjust path to your storage
 sudo mkdir -p /mnt/storage/brick
 ```
 
-### Volume erstellen (auf server-1):
+### Create volume (on server-1):
 
 ```bash
 sudo gluster volume create storage-vol1 transport tcp \
@@ -106,42 +109,42 @@ sudo gluster volume create storage-vol1 transport tcp \
 sudo gluster volume start storage-vol1
 ```
 
-### Volume-Status prüfen:
+### Check volume status:
 
 ```bash
 sudo gluster volume info storage-vol1
 sudo gluster volume status storage-vol1
 ```
 
-## Schritt 5: Volume mounten
+## Step 5: Mount Volume
 
-Auf **allen Nodes**:
+On **all nodes**:
 
 ```bash
-# Mount-Verzeichnis erstellen
+# Create mount directory
 sudo mkdir -p /var/volumes
 
-# Volume mounten
+# Mount volume
 sudo mount -t glusterfs server-1:/storage-vol1 /var/volumes
 
-# Automatisches Mounten beim Boot
+# Automatic mounting on boot
 echo 'server-1:/storage-vol1 /var/volumes glusterfs defaults,_netdev 0 0' | sudo tee -a /etc/fstab
 ```
 
-### Mount testen:
+### Test mount:
 
 ```bash
-# Auf server-1
+# On server-1
 echo "Test from server-1" | sudo tee /var/volumes/test.txt
 
-# Auf server-2
+# On server-2
 cat /var/volumes/test.txt
-# Sollte ausgeben: Test from server-1
+# Should output: Test from server-1
 ```
 
-## Schritt 6: Docker Volumes auf GlusterFS
+## Step 6: Docker Volumes on GlusterFS
 
-Docker Volumes können jetzt auf GlusterFS erstellt werden:
+Docker volumes can now be created on GlusterFS:
 
 ```yaml
 # In docker-compose.yml oder Stack-Definition
@@ -154,120 +157,120 @@ volumes:
       device: /var/volumes/myapp-data
 ```
 
-## Wartung
+## Maintenance
 
-### GlusterFS Status prüfen
+### Check GlusterFS Status
 
 ```bash
-# Peer-Status
+# Peer status
 sudo gluster peer status
 
-# Volume-Status
+# Volume status
 sudo gluster volume status storage-vol1
 
-# Volume-Info
+# Volume info
 sudo gluster volume info storage-vol1
 ```
 
-### Node zum Cluster hinzufügen
+### Add Node to Cluster
 
 ```bash
-# Auf Manager-Node
+# On manager node
 sudo gluster peer probe server-4
 
-# Volume erweitern
+# Expand volume
 sudo gluster volume add-brick storage-vol1 server-4:/mnt/storage/brick
 
-# Rebalance (verteilt Daten auf neuen Brick)
+# Rebalance (distributes data to new brick)
 sudo gluster volume rebalance storage-vol1 start
 ```
 
-### Brick reparieren (bei Ausfall)
+### Repair Brick (on failure)
 
 ```bash
-# Brick ersetzen
+# Replace brick
 sudo gluster volume replace-brick storage-vol1 \
   server-2:/mnt/storage/brick \
   server-2:/mnt/storage/brick-new \
   commit force
 
-# Heal starten
+# Start heal
 sudo gluster volume heal storage-vol1
 ```
 
 ## Troubleshooting
 
-### Volume lässt sich nicht mounten
+### Volume won't mount
 
 ```bash
-# GlusterFS Service prüfen
+# Check GlusterFS service
 sudo systemctl status glusterd
 
-# Logs prüfen
+# Check logs
 sudo tail -f /var/log/glusterfs/glusterd.log
 
-# Mount-Befehl mit Debug
+# Mount command with debug
 sudo mount -t glusterfs -o log-level=DEBUG server-1:/storage-vol1 /var/volumes
 ```
 
-### Peers nicht verbunden
+### Peers not connected
 
 ```bash
-# Firewall prüfen
+# Check firewall
 sudo ufw status
 
-# Gluster-Ports (24007-24010, 49152-49156)
+# Gluster ports (24007-24010, 49152-49156)
 sudo ufw allow from 10.0.0.0/24 to any port 24007:24010
 sudo ufw allow from 10.0.0.0/24 to any port 49152:49156
 
-# Peer-Verbindung neu aufbauen
+# Rebuild peer connection
 sudo gluster peer detach server-2
 sudo gluster peer probe server-2
 ```
 
-### Split-Brain (Datenkonflikte)
+### Split-Brain (data conflicts)
 
 ```bash
-# Split-Brain erkennen
+# Detect split-brain
 sudo gluster volume heal storage-vol1 info split-brain
 
-# Split-Brain beheben (manuell)
+# Resolve split-brain (manually)
 sudo gluster volume heal storage-vol1 split-brain latest-mtime /path/to/file
 
-# Oder: Source-Brick definieren
+# Or: Define source brick
 sudo gluster volume heal storage-vol1 split-brain source-brick server-1:/mnt/storage/brick /path/to/file
 ```
 
-## Performance-Optimierung
+## Performance Optimization
 
-### Tuning-Optionen
+### Tuning Options
 
 ```bash
-# Performance-Profile aktivieren
+# Enable performance profile
 sudo gluster volume set storage-vol1 performance.cache-size 256MB
 sudo gluster volume set storage-vol1 performance.io-thread-count 32
 sudo gluster volume set storage-vol1 performance.write-behind on
 sudo gluster volume set storage-vol1 performance.read-ahead on
 
-# Netzwerk-Optimierung
+# Network optimization
 sudo gluster volume set storage-vol1 network.ping-timeout 10
 ```
 
-## Sicherheit
+## Security
 
 ### Access Control
 
 ```bash
-# Zugriff nur von bestimmten IPs
+# Access only from specific IPs
 sudo gluster volume set storage-vol1 auth.allow 10.0.0.*
 
-# SSL/TLS aktivieren
+# Enable SSL/TLS
 sudo gluster volume set storage-vol1 client.ssl on
 sudo gluster volume set storage-vol1 server.ssl on
 ```
 
-## Weitere Ressourcen
+## Additional Resources
 
-- [ADMIN-SETUP.md](./ADMIN-SETUP.md) - Haupt-Setup-Anleitung
-- [GlusterFS Dokumentation](https://docs.gluster.org/)
-- [Docker Swarm Dokumentation](https://docs.docker.com/engine/swarm/)
+- [ADMIN-SETUP.md](./ADMIN-SETUP.md) - Main setup guide
+- [GlusterFS Documentation](https://docs.gluster.org/)
+- [Docker Swarm Documentation](https://docs.docker.com/engine/swarm/)

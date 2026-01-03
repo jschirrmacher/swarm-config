@@ -1,46 +1,46 @@
 # App Developer Guide
 
-Diese Anleitung ist für Entwickler, die ihre Anwendung auf dem Docker Swarm Server deployen möchten.
+This guide is for developers who want to deploy their application on the Docker Swarm server.
 
-## Überblick
+## Overview
 
-Das CI/CD-System bietet:
+The CI/CD system provides:
 
-- **Zero-Configuration Deployment** - Einfaches `git push` zum Deployen
-- **Automatisches SSL/TLS** - Let's Encrypt Zertifikate via Kong
-- **Docker Containerisierung** - Automatischer Build aus Dockerfile
-- **Automatische Kong-Konfiguration** - Route zu `<appname>.justso.de`
-- **Git Hooks** - Lokale Code-Quality Checks
+- **Zero-Configuration Deployment** - Simple `git push` to deploy
+- **Automatic SSL/TLS** - Let's Encrypt certificates via Kong
+- **Docker Containerization** - Automatic build from Dockerfile
+- **Automatic Kong Configuration** - Route to `<appname>.justso.de`
+- **Git Hooks** - Local code quality checks
 
-## Schnellstart
+## Quick Start
 
-### Web UI (Standard-Methode)
+### Web UI (Standard Method)
 
-Öffne die Swarm Config Web UI und erstelle dein Repository mit wenigen Klicks:
+Open the Swarm Config Web UI and create your repository with just a few clicks:
 
-**URL:** `https://config.justso.de` (oder deine konfigurierte Domain)
+**URL:** `https://config.justso.de` (or your configured domain)
 
-1. **Repository erstellen**
-   - Name eingeben (z.B. `myapp`)
-   - Port festlegen (z.B. `3000`)
-   - Kong Gateway aktivieren ✓
-   - "Create Repository" klicken
+1. **Create Repository**
+   - Enter name (e.g. `myapp`)
+   - Set port (e.g. `3000`)
+   - Enable Kong Gateway ✓
+   - Click "Create Repository"
 
-2. **Git URL kopieren**
-   - Die URL wird automatisch angezeigt
-   - Mit Button "Copy Git URL" in Zwischenablage kopieren
+2. **Copy Git URL**
+   - The URL is displayed automatically
+   - Copy to clipboard with "Copy Git URL" button
 
-3. **In deinem Projekt deployen**
+3. **Deploy in your project**
    ```bash
-   git remote add production <kopierte-git-url>
+   git remote add production <copied-git-url>
    git push production main
    ```
 
-**Fertig!** Deine App läuft unter `https://myapp.justso.de`
+**Done!** Your app is running at `https://myapp.justso.de`
 
 ### Alternative: Command Line
 
-Falls die Web UI nicht verfügbar ist, kontaktiere den Administrator oder führe auf dem Server aus:
+If the Web UI is not available, contact the administrator or run on the server:
 
 ```bash
 ssh justso.de
@@ -48,23 +48,23 @@ cd /var/apps/swarm-config
 npm run init-repo myapp
 ```
 
-Dies erstellt:
+This creates:
 
-- Git Repository: `/home/<user>/myapp.git`
-- Arbeitsverzeichnis: `/var/apps/myapp/`
-- Kong Route: `https://myapp.justso.de`
+- Git repository: `/home/<user>/myapp.git`
+- Working directory: `/var/apps/myapp/`
+- Kong route: `https://myapp.justso.de`
 
-### 2. Git Remote hinzufügen
+### 2. Add Git Remote
 
-In deinem lokalen Projekt:
+In your local project:
 
 ```bash
 git remote add production git@justso.de:~/myapp.git
 ```
 
-### 3. Dockerfile erstellen
+### 3. Create Dockerfile
 
-Deine App benötigt ein `Dockerfile` im Root:
+Your app needs a `Dockerfile` in the root:
 
 ```dockerfile
 FROM node:20-alpine
@@ -76,9 +76,9 @@ EXPOSE 3000
 CMD ["node", "server.js"]
 ```
 
-### 4. Git Hooks einrichten (Optional aber empfohlen)
+### 4. Set Up Git Hooks (Optional but recommended)
 
-In deiner `package.json`:
+In your `package.json`:
 
 ```json
 {
@@ -87,113 +87,113 @@ In deiner `package.json`:
 }
 ```
 
-Dies installiert automatisch:
+This automatically installs:
 
-- **pre-commit**: Code-Formatierung mit Prettier
-- **pre-push**: Tests und Build-Checks
+- **pre-commit**: Code formatting with Prettier
+- **pre-push**: Tests and build checks
 
-### 5. Environment Variables konfigurieren
+### 5. Configure Environment Variables
 
-Auf dem Server:
+On the server:
 
 ```bash
 ssh justso.de
 nano /var/apps/myapp/.env
 ```
 
-Beispiel `.env`:
+Example `.env`:
 
 ```env
 NODE_ENV=production
 PORT=3000
 DATABASE_URL=postgresql://user:pass@db.justso.de/myapp
-API_KEY=secret-key-hier
+API_KEY=secret-key-here
 ```
 
-**Wichtig**: `.env` ist in Git ignoriert und bleibt auf dem Server!
+**Important**: `.env` is ignored in Git and stays on the server!
 
-### 6. Deployen
+### 6. Deploy
 
 ```bash
 git push production main
 ```
 
-Das passiert automatisch:
+This happens automatically:
 
-1. Code wird auf den Server gepusht
-2. Dockerfile wird gebaut
-3. Docker Image wird erstellt
-4. Docker Stack wird deployed
-5. App ist live unter `https://myapp.justso.de`
+1. Code is pushed to the server
+2. Dockerfile is built
+3. Docker image is created
+4. Docker stack is deployed
+5. App is live at `https://myapp.justso.de`
 
-## Projektstruktur
+## Project Structure
 
-### Minimale Anforderungen
+### Minimum Requirements
 
 ```
 myapp/
-├── Dockerfile           # ERFORDERLICH
-├── package.json         # Für Node.js Apps
-├── .dockerignore       # Empfohlen
+├── Dockerfile           # REQUIRED
+├── package.json         # For Node.js apps
+├── .dockerignore       # Recommended
 └── src/
     └── server.js
 ```
 
-### Empfohlene Struktur
+### Recommended Structure
 
 ```
 myapp/
 ├── Dockerfile
 ├── .dockerignore
-├── .swarm/                    # Deployment-Konfiguration (im Repository!)
-│   ├── kong.yaml             # Kong-Konfiguration (optional)
-│   └── docker-compose.yaml   # Docker Compose (ERFORDERLICH)
-├── docker-compose.dev.yaml   # Für lokale Entwicklung
+├── .swarm/                    # Deployment configuration (in repository!)
+│   ├── kong.yaml             # Kong configuration (optional)
+│   └── docker-compose.yaml   # Docker Compose (REQUIRED)
+├── docker-compose.dev.yaml   # For local development
 ├── package.json
-├── .env.example              # Beispiel-Konfiguration
+├── .env.example              # Example configuration
 ├── README.md
 └── src/
     ├── server.js
     └── ...
 ```
 
-**Wichtig:**
+**Important:**
 
-- `.swarm/` Verzeichnis gehört ins Repository
-- Dateien werden beim Deployment nach `/var/apps/myapp/` kopiert
-- `.env` und `data/` bleiben auf dem Server (laufzeitspezifisch)
+- `.swarm/` directory belongs in the repository
+- Files are copied to `/var/apps/myapp/` during deployment
+- `.env` and `data/` stay on the server (runtime-specific)
 
 ````
 
-## Docker-Konfiguration
+## Docker Configuration
 
 ### Dockerfile Best Practices
 
 ```dockerfile
-# 1. Spezifische Base Image Version
+# 1. Specific base image version
 FROM node:20.10-alpine
 
-# 2. Arbeitsverzeichnis setzen
+# 2. Set working directory
 WORKDIR /app
 
-# 3. Dependencies erst kopieren (für Layer Caching)
+# 3. Copy dependencies first (for layer caching)
 COPY package*.json ./
 RUN npm ci --production
 
-# 4. Source Code kopieren
+# 4. Copy source code
 COPY . .
 
-# 5. Non-root User verwenden
+# 5. Use non-root user
 USER node
 
-# 6. Port exponieren (muss mit .env PORT übereinstimmen)
+# 6. Expose port (must match PORT in .env)
 EXPOSE 3000
 
-# 7. Health Check definieren
+# 7. Define health check
 HEALTHCHECK --interval=30s --timeout=3s \
   CMD node healthcheck.js || exit 1
 
-# 8. Start Command
+# 8. Start command
 CMD ["node", "src/server.js"]
 ````
 
@@ -212,7 +212,7 @@ coverage
 dist
 build
 
-# Laufzeitspezifische Dateien (werden nicht ins Image gepackt)
+# Runtime-specific files (not packaged into image)
 .env
 .env.*
 data/
@@ -220,7 +220,7 @@ data/
 
 ### Multi-Stage Builds
 
-Für kleinere Images:
+For smaller images:
 
 ```dockerfile
 # Build Stage
@@ -242,18 +242,18 @@ EXPOSE 3000
 CMD ["node", "dist/server.js"]
 ```
 
-Wichtiger Hinweis
+Important Note
 
-**⚠️ Die `.env` Datei ist laufzeitspezifisch und bleibt immer auf dem Server!**
+**⚠️ The `.env` file is runtime-specific and always stays on the server!**
 
-- ❌ Nicht ins Repository committen
-- ❌ Wird nicht beim Deployment kopiert
-- ✅ Bleibt auf dem Server unter `/var/apps/myapp/.env`
-- ✅ Verwende `.env.example` im Repository als Dokumentation
+- ❌ Do not commit to repository
+- ❌ Is not copied during deployment
+- ✅ Stays on the server under `/var/apps/myapp/.env`
+- ✅ Use `.env.example` in repository as documentation
 
-### Lokale Entwicklung
+### Local Development
 
-`.env.local` oder `.env` (lokal, in .gitignore):
+`.env.local` or `.env` (local, in .gitignore):
 
 ```env
 NODE_ENV=development
@@ -263,7 +263,7 @@ DATABASE_URL=postgresql://localhost/myapp_dev
 
 ### Production
 
-Server: `/var/apps/myapp/.env` (wird auf dem Server angelegt):
+Server: `/var/apps/myapp/.env` (created on the server):
 
 ```env
 NODE_ENV=production
@@ -271,7 +271,7 @@ PORT=3000
 DATABASE_URL=postgresql://prod-db.justso.de/myapp
 ```
 
-**Bearbeitung auf dem Server:**
+**Editing on the server:**
 
 ```bash
 ssh justso.de
@@ -281,7 +281,7 @@ PORT=3000
 DATABASE_URL=postgresql://prod-db.justso.de/myapp
 ```
 
-### In Code verwenden
+### Use in Code
 
 ```javascript
 // server.js
@@ -295,43 +295,43 @@ app.listen(port, () => {
 })
 ```
 
-## Kong Gateway Konfiguration
+## Kong Gateway Configuration
 
-### Verzeichnisstruktur
+### Directory Structure
 
-**Im Repository:**
+**In repository:**
 
 ```
 myapp/
-├── .swarm/                    # Deployment-Konfiguration
-│   ├── kong.yaml             # Kong-Konfiguration (optional)
-│   └── docker-compose.yaml   # Docker Compose (ERFORDERLICH)
+├── .swarm/                    # Deployment configuration
+│   ├── kong.yaml             # Kong configuration (optional)
+│   └── docker-compose.yaml   # Docker Compose (REQUIRED)
 ├── Dockerfile
 └── src/
 ```
 
-**Auf dem Server (nach Deployment):**
+**On the server (after deployment):**
 
 ```
 /var/apps/myapp/
-├── kong.yaml                  # kopiert aus Repo .swarm/kong.yaml
-├── docker-compose.yaml        # kopiert aus Repo .swarm/docker-compose.yaml
-├── .env                       # nur auf Server (laufzeitspezifisch)
-└── data/                      # nur auf Server (laufzeitspezifisch)
+├── kong.yaml                  # copied from repo .swarm/kong.yaml
+├── docker-compose.yaml        # copied from repo .swarm/docker-compose.yaml
+├── .env                       # only on server (runtime-specific)
+└── data/                      # only on server (runtime-specific)
 ```
 
-**Wichtig:**
+**Important:**
 
-- Im Repository liegen die Dateien unter `.swarm/`
-- Beim Deployment werden sie direkt nach `/var/apps/myapp/` kopiert (ohne `.swarm/`)
-- Pfade in `docker-compose.yaml` sind relativ zu `/var/apps/myapp/`
+- In repository, files are located under `.swarm/`
+- During deployment they are copied directly to `/var/apps/myapp/` (without `.swarm/`)
+- Paths in `docker-compose.yaml` are relative to `/var/apps/myapp/`
 
-### Standard-Konfiguration
+### Standard Configuration
 
-Nach dem Anlegen eines Repositories über die Web-UI wird automatisch erstellt:
+After creating a repository via the Web UI, this is automatically created:
 
 ```yaml
-# Repository: .swarm/kong.yaml (wird zu /var/apps/myapp/kong.yaml)
+# Repository: .swarm/kong.yaml (becomes /var/apps/myapp/kong.yaml)
 services:
   - name: myapp_myapp
     url: http://myapp_myapp:3000
@@ -349,16 +349,16 @@ routes:
     service: myapp_myapp
 ```
 
-### Custom Konfiguration
+### Custom Configuration
 
-Du kannst die `kong.yaml` in deinem Projektverzeichnis anpassen für verschiedene Anwendungsfälle:
+You can customize the `kong.yaml` in your project directory for various use cases:
 
-#### Kong Plugins in deiner App
+#### Kong Plugins in your App
 
-Du kannst Kong-Plugins direkt in deiner `kong.yaml` hinzufügen:
+You can add Kong plugins directly in your `kong.yaml`:
 
 ```yaml
-# .swarm/kong.yaml (in deinem Repository)
+# .swarm/kong.yaml (in your repository)
 services:
   - name: myapp_myapp
     url: http://myapp_myapp:3000
@@ -376,14 +376,14 @@ routes:
     service: myapp_myapp
 
 plugins:
-  # Rate Limiting für deine App
+  # Rate Limiting for your app
   - name: rate-limiting
     config:
       minute: 100
       hour: 10000
       policy: local
 
-  # CORS für Frontend-Zugriff
+  # CORS for frontend access
   - name: cors
     config:
       origins:
@@ -396,44 +396,44 @@ plugins:
   # Request Size Limiting (custom)
   - name: request-size-limiting
     config:
-      allowed_payload_size: 5 # 5 MB statt global 10 MB
+      allowed_payload_size: 5 # 5 MB instead of global 10 MB
       size_unit: megabytes
 ```
 
-**Verfügbare Plugins:**
+**Available Plugins:**
 
-- `rate-limiting` - Anfragen pro Zeiteinheit limitieren
+- `rate-limiting` - Limit requests per time unit
 - `cors` - Cross-Origin Resource Sharing
 - `basic-auth` - HTTP Basic Authentication
 - `jwt` - JSON Web Token Authentication
-- `request-size-limiting` - Request Payload Size limitieren
-- `ip-restriction` - IP-Whitelisting/-Blacklisting
-- `request-transformer` - HTTP Request modifizieren
-- `response-transformer` - HTTP Response modifizieren
-- `bot-detection` - Bot Traffic erkennen (global aktiv)
-- Alle Kong Enterprise Plugins: https://docs.konghq.com/hub/
+- `request-size-limiting` - Limit request payload size
+- `ip-restriction` - IP whitelisting/blacklisting
+- `request-transformer` - Modify HTTP requests
+- `response-transformer` - Modify HTTP responses
+- `bot-detection` - Detect bot traffic (globally active)
+- All Kong Enterprise Plugins: https://docs.konghq.com/hub/
 
-**Globale vs. App-spezifische Plugins:**
+**Global vs. App-specific Plugins:**
 
 - **Global (in swarm-config's .swarm/kong.yaml)**: `acme`, `bot-detection`, `request-size-limiting`
-  - Diese Plugins gelten automatisch für alle Services
-  - Definiert in der zentralen Kong-Konfiguration
-- **App-spezifisch (in deiner .swarm/kong.yaml)**: Alle anderen Plugins nach Bedarf
+  - These plugins apply automatically to all services
+  - Defined in the central Kong configuration
+- **App-specific (in your .swarm/kong.yaml)**: All other plugins as needed
   - Rate-limiting, CORS, Authentication, etc.
-  - Nur für deine spezifische App
+  - Only for your specific app
 
-Du kannst auch globale Plugins in deiner App überschreiben:
+You can also override global plugins in your app:
 
 ```yaml
 plugins:
-  # Überschreibe globales request-size-limiting mit anderem Limit
+  # Override global request-size-limiting with different limit
   - name: request-size-limiting
     config:
-      allowed_payload_size: 50 # 50 MB für Upload-Service
+      allowed_payload_size: 50 # 50 MB for upload service
       size_unit: megabytes
 ```
 
-#### Einfache Web-App (Standard)
+#### Simple Web App (Standard)
 
 ```yaml
 # /var/apps/myapp/kong.yaml
@@ -454,9 +454,9 @@ routes:
     service: myapp_myapp
 ```
 
-**Anwendungsfall**: Simple Node.js/Express App, React Frontend, Static Website
+**Use case**: Simple Node.js/Express app, React frontend, Static website
 
-#### API mit mehreren Endpunkten
+#### API with Multiple Endpoints
 
 ```yaml
 # /var/apps/api/kong.yaml
@@ -488,9 +488,9 @@ routes:
     service: api_api
 ```
 
-**Anwendungsfall**: REST API mit Versionierung, unterschiedliche Endpunkte
+**Use case**: REST API with versioning, different endpoints
 
-#### App mit Rate Limiting
+#### App with Rate Limiting
 
 ```yaml
 # /var/apps/public-api/kong.yaml
@@ -518,9 +518,9 @@ plugins:
       policy: local
 ```
 
-**Anwendungsfall**: Öffentliche API, Schutz vor Missbrauch, Fair-Use-Policy
+**Use case**: Public API, protection against abuse, fair-use policy
 
-#### App mit CORS für Frontend
+#### App with CORS for Frontend
 
 ```yaml
 # /var/apps/backend/kong.yaml
@@ -557,9 +557,9 @@ plugins:
       credentials: true
 ```
 
-**Anwendungsfall**: Backend für Single-Page-Apps, Cross-Origin Requests
+**Use case**: Backend for single-page apps, cross-origin requests
 
-#### Protected Admin-Bereich
+#### Protected Admin Area
 
 ```yaml
 # /var/apps/admin-app/kong.yaml
@@ -581,7 +581,7 @@ routes:
     strip_path: false
     service: admin-app_admin
 
-  # Protected Routes mit Basic Auth
+  # Protected Routes with Basic Auth
   - name: admin-protected
     hosts:
       - admin.justso.de
@@ -595,8 +595,8 @@ routes:
     plugins:
       - name: basic-auth
 
-# Optional: Consumers für Basic Auth
-# Consumers werden manuell definiert, z.B. für Team-Mitglieder
+# Optional: Consumers for Basic Auth
+# Consumers are manually defined, e.g. for team members
 consumers:
   - username: admin
     basicauth_credentials:
@@ -608,11 +608,11 @@ consumers:
         password: another-secure-password
 ```
 
-**Anwendungsfall**: Admin-Dashboard, geschützter Bereich, Login-System
+**Use case**: Admin dashboard, protected area, login system
 
-**Consumer Setup**: Consumers müssen manuell in der App-Konfiguration definiert werden. Die Passwörter sollten sicher generiert werden (z.B. mit `openssl rand -base64 32`).
+**Consumer Setup**: Consumers must be manually defined in the app configuration. Passwords should be securely generated (e.g. with `openssl rand -base64 32`).
 
-#### Microservice mit mehreren Services
+#### Microservice with Multiple Services
 
 ```yaml
 # /var/apps/shop/kong.yaml
@@ -662,9 +662,9 @@ routes:
     service: shop_admin
 ```
 
-**Anwendungsfall**: E-Commerce mit Frontend, API und Admin, mehrere Container
+**Use case**: E-commerce with frontend, API and admin, multiple containers
 
-#### WebSocket-Anwendung
+#### WebSocket Application
 
 ```yaml
 # /var/apps/chat/kong.yaml
@@ -688,9 +688,9 @@ routes:
     service: chat_chat
 ```
 
-**Anwendungsfall**: Real-time Chat, Live-Updates, WebSocket-Verbindungen
+**Use case**: Real-time chat, live updates, WebSocket connections
 
-#### API mit Request Size Limit
+#### API with Request Size Limit
 
 ````yaml
 # /var/apps/upload/kong.yaml
@@ -703,15 +703,15 @@ routes:
     hosts:
       - upload.justso.de
     paths:
-### Konfiguration bearbeiten
+### Edit Configuration
 
-Die Deployment-Konfiguration liegt im `.swarm/` Verzeichnis deines Repositories und wird beim Deployment nach `/var/apps/myapp/` kopiert.
+The deployment configuration is located in the `.swarm/` directory of your repository and is copied to `/var/apps/myapp/` during deployment.
 
 #### .swarm/kong.yaml (Optional)
 
-Kong-Gateway-Konfiguration für Routing und Plugins.
+Kong Gateway configuration for routing and plugins.
 
-**Erstellen im Repository:**
+**Create in repository:**
 
 ```yaml
 # .swarm/kong.yaml
@@ -732,11 +732,11 @@ routes:
     service: myapp_myapp
 ````
 
-#### .swarm/docker-compose.yaml (ERFORDERLICH)
+#### .swarm/docker-compose.yaml (REQUIRED)
 
-Docker-Compose-Konfiguration für das Deployment. **Muss die Dateiendung `.yaml` haben.**
+Docker Compose configuration for deployment. **Must have `.yaml` file extension.**
 
-**Erstellen im Repository:**
+**Create in repository:**
 
 ```yaml
 # .swarm/docker-compose.yaml
@@ -745,11 +745,11 @@ services:
     image: ${IMAGE_NAME:-myapp:latest}
     restart: unless-stopped
     env_file:
-      - .env # Referenziert /var/apps/myapp/.env
+      - .env # References /var/apps/myapp/.env
     ports:
       - "${PORT:-3000}:3000"
     volumes:
-      - ./data:/app/data # Referenziert /var/apps/myapp/data
+      - ./data:/app/data # References /var/apps/myapp/data
     networks:
       - kong-net
     labels:
@@ -760,23 +760,23 @@ networks:
     external: true
 ```
 
-**Wichtig:**
+**Important:**
 
-- Pfade sind relativ zum Deployment-Verzeichnis `/var/apps/myapp/`
-- `.env` und `data/` existieren nur auf dem Server
-- Dateiendung muss `.yaml` sein (nicht `.yml`)
+- Paths are relative to the deployment directory `/var/apps/myapp/`
+- `.env` and `data/` exist only on the server
+- File extension must be `.yaml` (not `.yml`)
 
-#### Deployment-Workflow
+#### Deployment Workflow
 
-1. **Erstelle `.swarm/` Verzeichnis in deinem Projekt:**
+1. **Create `.swarm/` directory in your project:**
 
 ```bash
 mkdir .swarm
-# Erstelle .swarm/docker-compose.yaml (erforderlich)
-# Erstelle .swarm/kong.yaml (optional)
+# Create .swarm/docker-compose.yaml (required)
+# Create .swarm/kong.yaml (optional)
 ```
 
-2. **Committe und pushe:**
+2. **Commit and push:**
 
 ```bash
 git add .swarm/
@@ -784,50 +784,50 @@ git commit -m "Add deployment configuration"
 git push production main
 ```
 
-Der post-receive Hook kopiert automatisch:
+The post-receive hook automatically copies:
 
 - `.swarm/kong.yaml` → `/var/apps/myapp/kong.yaml`
 - `.swarm/docker-compose.yaml` → `/var/apps/myapp/docker-compose.yaml`
 
-**Deployment-Verhalten:**
+**Deployment behavior:**
 
-- ✅ `.swarm/kong.yaml` im Repo → wird nach `/var/apps/myapp/kong.yaml` kopiert
-- ✅ `.swarm/docker-compose.yaml` im Repo → wird nach `/var/apps/myapp/docker-compose.yaml` kopiert (ERFORDERLICH)
-- ⚠️ Keine `.swarm/docker-compose.yaml` → Deployment schlägt fehl
-- ❌ `.env` wird NIE aus dem Repository kopiert (laufzeitspezifisch)
-- ❌ `data/` wird NIE aus dem Repository kopiert (laufzeitspezifisch)
+- ✅ `.swarm/kong.yaml` in repo → copied to `/var/apps/myapp/kong.yaml`
+- ✅ `.swarm/docker-compose.yaml` in repo → copied to `/var/apps/myapp/docker-compose.yaml` (REQUIRED)
+- ⚠️ No `.swarm/docker-compose.yaml` → deployment fails
+- ❌ `.env` is NEVER copied from repository (runtime-specific)
+- ❌ `data/` is NEVER copied from repository (runtime-specific)
 
-#### Schnelle Änderungen auf dem Server
+#### Quick changes on the server
 
-Für Tests oder Fixes ohne Deployment:
+For tests or fixes without deployment:
 
 ```bash
 ssh justso.de
 nano /var/apps/myapp/kong.yaml
-# oder
+# or
 nano /var/apps/myapp/docker-compose.yaml
 ```
 
-Nach Änderunge
+After changes
 
-- ✅ Versionskontrolle der Kong-Konfiguration
-- ✅ Keine Dependencies - funktioniert überall
-- ✅ IDE-Validierung mit YAML-Plugins
-- ✅ Code-Reviews für Konfigurationsänderungen
-- ✅ Einfach editierbar für alle Entwickler
+- ✅ Version control of Kong configuration
+- ✅ No dependencies - works everywhere
+- ✅ IDE validation with YAML plugins
+- ✅ Code reviews for configuration changes
+- ✅ Easily editable for all developers
 
-#### Option 2: Auf dem Server
+#### Option 2: On the server
 
-Für schnelle Änderungen ohne Deployment:
+For quick changes without deployment:
 
 ```bash
 ssh justso.de
 nano /var/apps/myapp/kong.yaml
-# oder
+# or
 vim /var/apps/myapp/kong.yaml
 ```
 
-Nach dem Speichern Kong neu laden:
+After saving, reload Kong:
 
 ```bash
 cd /var/apps/swarm-config
@@ -835,131 +835,129 @@ npm run kong:generate
 npm run kong:reload
 ```
 
-Oder nutze die Web-UI unter `https://config.justso.de`.
+Or use the Web UI at `https://config.justso.de`.
 
 **Smart Handling**:
 
-- Wenn `kong.yaml` im Repository existiert → wird beim Deployment kopiert
-- Wenn nicht → bleibt die Server-Version unverändert
-- Kong wird nach jedem Deployment automatisch neu geladen
+- If `kong.yaml` exists in repository → copied during deployment
+- If not → server version remains unchanged
+- Kong is automatically reloaded after every deployment
 
-Das Gleiche gilt für `docker-compose.yaml`.
+The same applies to `docker-compose.yaml`.
 
-**Empfehlung**: Nimm `kong.yaml` ins Repository auf - es ist nur eine einfache YAML-Datei ohne Dependencies und macht die Konfiguration transparent und versionierbar.
+**Recommendation**: Include `kong.yaml` in repository - it's just a simple YAML file without dependencies and makes configuration transparent and versionable.
 
-## Deployment-Workflow
+## Deployment Workflow
 
 ### Standard Deployment
 
 ```bash
 git add .
-git commit -m "feature: neue Funktion"
+git commit -m "feature: new feature"
 git push production main
 ```
 
-### Mit Tests
+### With Tests
 
-Die Git Hooks führen automatisch aus:
+The Git hooks automatically execute:
 
-- **pre-commit**: `prettier --write` (Auto-Formatierung)
-- **pre-push**: `npm test` und `npm run build`
+- **pre-commit**: `prettier --write` (auto-formatting)
+- **pre-push**: `npm test` and `npm run build`
 
-### Manuelles Deployment überspringen
+### Skip Manual Deployment
 
 ```bash
 git push production main --no-verify
 ```
 
-**Achtung**: Nicht empfohlen! Nur in Notfällen verwenden.
+**Warning**: Not recommended! Use only in emergencies.
 
-## Logs und Debugging
+## Logs and Debugging
 
-### Logs anschauen
+### View Logs
 
 ```bash
-# Live-Logs
+# Live logs
 ssh justso.de 'docker service logs -f myapp_myapp'
 
-# Letzte 100 Zeilen
+# Last 100 lines
 ssh justso.de 'docker service logs --tail 100 myapp_myapp'
 ```
 
 ### Service Status
 
 ```bash
-# Service-Status
+# Service status
 ssh justso.de 'docker service ps myapp_myapp'
 
-# Alle Services im Stack
+# All services in stack
 ssh justso.de 'docker stack ps myapp'
 ```
 
-### In Container einloggen
+### Log Into Container
 
 ```bash
-# Container ID finden
+# Find container ID
 ssh justso.de 'docker ps | grep myapp'
 
-# In Container verbinden
+# Connect to container
 ssh justso.de 'docker exec -it <container-id> sh'
 ```
 
 ## Troubleshooting
 
-### App startet nicht
+### App won't start
 
-1. **Logs prüfen**:
+1. **Check logs**:
 
    ```bash
    ssh justso.de 'docker service logs myapp_myapp'
    ```
 
-2. **Environment Variables prüfen**:
+2. **Check environment variables**:
 
    ```bash
    ssh justso.de 'cat /var/apps/myapp/.env'
    ```
 
-3. **Dockerfile lokal testen**:
+3. **Test Dockerfile locally**:
    ```bash
    docker build -t myapp-test .
    docker run -p 3000:3000 myapp-test
    ```
 
-### Port-Konflikt
+### Port Conflict
 
-Stelle sicher, dass Port in:
+Ensure the port matches in:
 
 - Dockerfile `EXPOSE 3000`
 - `.env` `PORT=3000`
 - Kong Config `.addService("myapp", 3000)`
 
-übereinstimmen.
+### SSL Certificate Missing
 
-### SSL-Zertifikat fehlt
-
-Kong ACME Plugin braucht ca. 2 Minuten für Let's Encrypt.
-Prüfen:
+Kong ACME Plugin needs about 2 minutes for Let's Encrypt.
+Check:
 
 ```bash
 ssh justso.de 'docker exec kong_kong kong config dump'
 ```
 
-### Service nicht erreichbar
+### Service not reachable
 
-1. **Kong Status prüfen**:
+1. **Check Kong status**:
 
    ```bash
    ssh justso.de 'docker service ps kong_kong'
    ```
 
-2. **DNS prüfen**:
+2. **Check DNS**:
 
    ```bash
    nslookup myapp.justso.de
    ```
 
-3. **Firewall prüfen**:
+3. **Check firewall**:
    ```bash
    ssh justso.de 'sudo ufw status'
    ```
@@ -968,7 +966,7 @@ ssh justso.de 'docker exec kong_kong kong config dump'
 
 ### 1. Health Checks
 
-Implementiere einen Health-Check Endpoint:
+Implement a health check endpoint:
 
 ```javascript
 app.get("/health", (req, res) => {
@@ -989,7 +987,7 @@ process.on("SIGTERM", () => {
 
 ### 3. Logging
 
-Strukturiertes Logging nutzen:
+Use structured logging:
 
 ```javascript
 const winston = require("winston")
@@ -1016,14 +1014,14 @@ process.on("unhandledRejection", reason => {
 
 ### 5. Security
 
-- Nie Secrets in Git committen
-- Immer HTTPS verwenden (Kong macht das automatisch)
-- Regelmäßig Dependencies aktualisieren
-- Security Headers setzen (Helmet.js für Express)
+- Never commit secrets to Git
+- Always use HTTPS (Kong does this automatically)
+- Regularly update dependencies
+- Set security headers (Helmet.js for Express)
 
-## Weitere Ressourcen
+## Additional Resources
 
-- [ADMIN-SETUP.md](./ADMIN-SETUP.md) - Für Administratoren
-- [CONTRIBUTING.md](./CONTRIBUTING.md) - Für swarm-config Entwickler
+- [ADMIN-SETUP.md](./ADMIN-SETUP.md) - For administrators
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - For swarm-config developers
 - [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
 - [Node.js Production Best Practices](https://nodejs.org/en/docs/guides/nodejs-docker-webapp/)

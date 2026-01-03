@@ -32,6 +32,24 @@ This automated script sets up everything: Docker Swarm, firewall, Node.js, users
 
 **→ See [ADMIN-SETUP.md](./docs/ADMIN-SETUP.md) for complete instructions**
 
+### Updates
+
+To update an existing installation to the latest version, simply run the setup script again:
+
+```bash
+curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/next/scripts/setup.sh | sudo bash -s your-domain.com
+```
+
+The script will:
+
+- Detect the existing installation
+- Backup your local configuration (`.env`, custom configs)
+- Update to the latest version from GitHub
+- Restore your configuration
+- Rebuild and redeploy services if needed
+
+**Note:** Your applications and data remain untouched during updates.
+
 ## Quick Start for App Developers
 
 ### Web UI (Primary Method)
