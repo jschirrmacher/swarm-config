@@ -8,7 +8,7 @@ function isSwarmActive(): boolean {
     const output = execSync('docker info --format "{{.Swarm.LocalNodeState}}"', {
       encoding: "utf-8",
       timeout: 3000,
-      stdio: ['pipe', 'pipe', 'ignore']
+      stdio: ["pipe", "pipe", "ignore"],
     }).trim()
     return output === "active"
   } catch {
@@ -26,7 +26,7 @@ function getDockerStatus(stackName: string): { exists: boolean; running: number;
       const stacks = execSync('docker stack ls --format "{{.Name}}"', {
         encoding: "utf-8",
         timeout: 5000,
-        stdio: ['pipe', 'pipe', 'ignore']
+        stdio: ["pipe", "pipe", "ignore"],
       })
         .trim()
         .split("\n")
@@ -40,7 +40,7 @@ function getDockerStatus(stackName: string): { exists: boolean; running: number;
       const services = execSync(`docker stack services ${stackName} --format "{{.Replicas}}"`, {
         encoding: "utf-8",
         timeout: 5000,
-        stdio: ['pipe', 'pipe', 'ignore']
+        stdio: ["pipe", "pipe", "ignore"],
       })
         .trim()
         .split("\n")
@@ -63,7 +63,7 @@ function getDockerStatus(stackName: string): { exists: boolean; running: number;
       const containers = execSync(`docker ps --filter "name=${stackName}" --format "{{.Names}}"`, {
         encoding: "utf-8",
         timeout: 5000,
-        stdio: ['pipe', 'pipe', 'ignore']
+        stdio: ["pipe", "pipe", "ignore"],
       })
         .trim()
         .split("\n")
@@ -83,8 +83,9 @@ function getDockerStatus(stackName: string): { exists: boolean; running: number;
 
 export default defineEventHandler(async () => {
   try {
-    const workspaceBase = process.env.WORKSPACE_BASE || "/var/apps"
-    
+    const config = useRuntimeConfig()
+    const workspaceBase = config.workspaceBase
+
     // Read all project directories (excluding swarm-config itself)
     const projectDirs = readdirSync(workspaceBase, { withFileTypes: true })
       .filter(dirent => dirent.isDirectory() && dirent.name !== "swarm-config")
@@ -100,10 +101,12 @@ export default defineEventHandler(async () => {
         // Check if there's a docker-compose.yaml file
         const composeFile = join(workspaceBase, name, "docker-compose.yaml")
         const hasStack = existsSync(composeFile)
-        
+
         // Get Docker status only if docker-compose.yaml exists
-        const dockerStatus = hasStack ? getDockerStatus(name) : { exists: false, running: 0, total: 0 }
-        
+        const dockerStatus = hasStack
+          ? getDockerStatus(name)
+          : { exists: false, running: 0, total: 0 }
+
         return {
           name,
           file: "kong.yaml",

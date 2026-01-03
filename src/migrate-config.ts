@@ -200,8 +200,14 @@ function migrateStackService(stack: any, stats: MigrationStats): void {
   }
 
   const firstService = services[0]
-  if (!firstService || !firstService.name) {
+  if (!firstService || !firstService.name || !firstService.url) {
     console.log("  ⚠️  Skipping stack with invalid first service")
+    return
+  }
+
+  // Validate service structure
+  if (!firstService.routes || !Array.isArray(firstService.routes)) {
+    console.log(`  ⚠️  Skipping service ${firstService.name} - missing or invalid routes`)
     return
   }
 
@@ -253,13 +259,13 @@ function migrateStackService(stack: any, stats: MigrationStats): void {
   }))
 
   const yamlRoutes = services.flatMap((s: any) =>
-    s.routes.map((r: any) => ({
+    (s.routes || []).map((r: any) => ({
       name: r.name,
-      hosts: r.hosts,
-      paths: r.paths,
-      protocols: r.protocols,
-      preserve_host: r.preserve_host,
-      strip_path: r.strip_path,
+      hosts: r.hosts || [],
+      paths: r.paths || ["/"],
+      protocols: r.protocols || ["https"],
+      preserve_host: r.preserve_host ?? true,
+      strip_path: r.strip_path ?? false,
       service: s.name,
       ...(r.plugins && r.plugins.length > 0 ? { plugins: r.plugins } : {}),
     })),
@@ -353,11 +359,17 @@ async function migrateConfig() {
     if (hasJsImports) {
       console.log("  🔧 Fixing .js imports to .ts for migration...")
 
-      // Remove imports for PortainerStack and MonitoringStack (no longer exist)
+      // Remove imports AND calls for PortainerStack and MonitoringStack (no longer exist)
       configContent = configContent
         .replace(/from\s+["'](.+?)\.js["']/g, 'from "$1.ts"')
         .replace(/import\s+\{[^}]*createPortainerStack[^}]*\}\s+from\s+["'][^"']+["'];?\s*/g, "")
         .replace(/import\s+\{[^}]*createMonitoringStack[^}]*\}\s+from\s+["'][^"']+["'];?\s*/g, "")
+        // Remove function calls (including multiline)
+        .replace(/createPortainerStack\s*\([^)]*\)\s*,?\s*/gs, "")
+        .replace(/createMonitoringStack\s*\([^)]*\)\s*,?\s*/gs, "")
+        // Clean up double commas and trailing commas
+        .replace(/,\s*,/g, ",")
+        .replace(/,(\s*])/g, "$1")
 
       const tempConfigPath = join(process.cwd(), "config.temp.ts")
 
@@ -368,10 +380,38 @@ async function migrateConfig() {
         const config = await import(`file://${tempConfigPath}`)
         const stats: MigrationStats = { count: 0 }
 
-        // Migrate all sections
-        migrateConsumers(config, stats)
-        migratePlugins(config, stats)
-        migrateServices(config, stats)
+        // Validate config structure before migration
+        if (!config || typeof config !== "object") {
+          throw new Error("config.ts exports invalid structure")
+        }
+
+        // Migrate all sections (with safety checks)
+        try {
+          migrateConsumers(config, stats)
+        } catch (err) {
+          console.log(
+            "  ⚠️  Could not migrate consumers:",
+            err instanceof Error ? err.message : String(err),
+          )
+        }
+
+        try {
+          migratePlugins(config, stats)
+        } catch (err) {
+          console.log(
+            "  ⚠️  Could not migrate plugins:",
+            err instanceof Error ? err.message : String(err),
+          )
+        }
+
+        try {
+          migrateServices(config, stats)
+        } catch (err) {
+          console.log(
+            "  ⚠️  Could not migrate services:",
+            err instanceof Error ? err.message : String(err),
+          )
+        }
 
         console.log(`  ✅ Migrated ${stats.count} items`)
         console.log("  📝 Backup of config.ts saved as config.ts.bak")
@@ -383,7 +423,7 @@ async function migrateConfig() {
           "  ❌ Cannot load config.ts:",
           importError instanceof Error ? importError.message : String(importError),
         )
-        console.log("  📝 config.ts contains invalid imports or missing dependencies")
+        console.log("  📝 config.ts contains invalid syntax or incompatible structure")
         console.log("  💡 Skipping migration - you can migrate manually later")
         // Rename config.ts to .bak anyway to prevent future migration attempts
         renameSync(configPath, join(process.cwd(), "config.ts.invalid.bak"))

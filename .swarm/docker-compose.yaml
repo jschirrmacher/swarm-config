@@ -60,11 +60,13 @@ services:
       - NODE_ENV=production
       - GIT_REPO_BASE=/home
       - WORKSPACE_BASE=/var/apps
+      - NUXT_DOMAIN=${DOMAIN}
+      - NUXT_GIT_REPO_BASE=/home
+      - NUXT_WORKSPACE_BASE=/var/apps
     volumes:
       - /home:/home
       - /var/apps:/var/apps
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/apps/swarm-config/.env:/app/.env:ro
     networks:
       - kong-net
     deploy:

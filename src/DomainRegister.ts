@@ -7,3 +7,7 @@ export function registerDomain(name: string) {
 export function getDomains() {
   return [...domains]
 }
+
+export function clearDomains() {
+  domains.clear()
+}

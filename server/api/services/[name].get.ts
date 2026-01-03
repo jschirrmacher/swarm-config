@@ -1,7 +1,6 @@
 import { readFileSync, existsSync } from "fs"
 import { join } from "path"
 import { parseServiceConfig } from "../../utils/parseService"
-import { getSwarmConfig } from "../../../src/config"
 
 export default defineEventHandler(async event => {
   const name = getRouterParam(event, "name")
@@ -11,7 +10,8 @@ export default defineEventHandler(async event => {
   }
 
   try {
-    const workspaceBase = process.env.WORKSPACE_BASE || "/var/apps"
+    const config = useRuntimeConfig()
+    const workspaceBase = config.workspaceBase
     const projectDir = join(workspaceBase, name)
     const filePath = join(projectDir, "kong.yaml")
 
@@ -20,9 +20,8 @@ export default defineEventHandler(async event => {
     }
 
     const content = readFileSync(filePath, "utf-8")
-    const config = getSwarmConfig()
 
-    return { name, content, path: filePath, domain: config.DOMAIN }
+    return { name, content, path: filePath, domain: config.domain }
   } catch (error: any) {
     if (error.statusCode) {
       throw error

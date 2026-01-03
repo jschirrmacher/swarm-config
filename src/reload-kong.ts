@@ -14,15 +14,30 @@ const execAsync = promisify(exec)
 console.log("Reloading Kong...")
 
 try {
-  // Find Kong container
-  const { stdout: containerName } = await execAsync(
-    'docker ps --format "{{.Names}}" | grep _kong.1',
-  )
-  const kong = containerName.trim()
+  // Find Kong container - wait up to 30 seconds for it to be ready
+  let kong = ""
+  let attempts = 0
+  const maxAttempts = 30
+
+  while (!kong && attempts < maxAttempts) {
+    try {
+      const { stdout: containerName } = await execAsync(
+        'docker ps --format "{{.Names}}" | grep "swarm-config_kong"',
+      )
+      kong = containerName.trim()
+    } catch (error) {
+      // Container not found yet, wait
+      if (attempts === 0) {
+        console.log("  Waiting for Kong container to start...")
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      attempts++
+    }
+  }
 
   if (!kong) {
-    console.error("✗ Kong container not found")
-    console.error("  Make sure Kong is running: docker service ls | grep kong")
+    console.error("✗ Kong container not found after 30 seconds")
+    console.error("  Make sure Kong is running: docker service ls | grep swarm-config")
     process.exit(1)
   }
 

@@ -83,8 +83,30 @@ export async function generateKongConfig(silent = false) {
   // Load all project services (including swarm-config itself)
   const allServices = loadProjectServices(silent)
 
-  // Import getDomains for ACME dummy service
-  const { getDomains } = await import("../../src/DomainRegister.js")
+  // Import registerDomain and getDomains
+  const { registerDomain, getDomains, clearDomains } = await import("../../src/DomainRegister.js")
+
+  // Clear any previously registered domains
+  clearDomains()
+
+  // Extract and register all domains from routes
+  for (const service of allServices) {
+    // Check top-level routes
+    for (const route of (service.routes ?? []) as any[]) {
+      for (const host of route.hosts ?? []) {
+        registerDomain(host)
+      }
+    }
+
+    // Check nested service routes
+    for (const svc of (service.services ?? []) as any[]) {
+      for (const route of (svc.routes ?? []) as any[]) {
+        for (const host of route.hosts ?? []) {
+          registerDomain(host)
+        }
+      }
+    }
+  }
 
   // Add ACME dummy service for Let's Encrypt challenges
   const acmeDummyService = {
