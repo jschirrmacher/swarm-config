@@ -3,7 +3,6 @@ defineProps<{
   subtitle?: string
   currentUser?: string | null
   showLogout?: boolean
-  showSystemUpdate?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,7 +26,6 @@ function handleLogout() {
           </div>
         </div>
         <div class="header-actions">
-          <SystemUpdate v-if="showSystemUpdate" />
           <ColorModeToggle />
           <UserMenu :current-user="currentUser" :show-logout="showLogout" @logout="handleLogout" />
         </div>

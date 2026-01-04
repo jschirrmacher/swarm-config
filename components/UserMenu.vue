@@ -63,6 +63,14 @@ onUnmounted(() => {
           <span class="user-name">{{ currentUser }}</span>
         </div>
 
+        <NuxtLink to="/system/update" class="menu-item" @click="closeMenu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          System Update
+        </NuxtLink>
+
         <button v-if="showLogout" @click="handleLogout" class="menu-item">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path
@@ -172,10 +180,15 @@ onUnmounted(() => {
   font-size: 0.9rem;
   transition: all 0.2s;
   text-align: left;
+  text-decoration: none;
 }
 
 .menu-item:hover {
   background: var(--bg-primary);
+}
+
+.menu-item:first-of-type {
+  border-top: none;
 }
 
 .dropdown-enter-active,

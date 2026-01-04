@@ -49,7 +49,7 @@ provide('getAuthHeaders', getAuthHeaders)
 
 <template>
   <div class="layout">
-    <AppHeader :current-user="currentUser" :show-logout="true" :show-system-update="true" @logout="logout" />
+    <AppHeader :current-user="currentUser" :show-logout="true" @logout="logout" />
 
     <main class="main">
       <slot />
