@@ -256,7 +256,7 @@ if (availableUsers.length === 0) {
 }
 
 const allDirs = readdirSync(workspaceBase, { withFileTypes: true }).filter(
-  entry => entry.isDirectory() && !entry.name.startsWith("."),
+  entry => (entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith("."),
 )
 
 if (allDirs.length === 0) {

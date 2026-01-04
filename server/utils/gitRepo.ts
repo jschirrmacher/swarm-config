@@ -151,7 +151,7 @@ export async function listRepositories(
     const entries = await readdir(workspaceBaseDir, { withFileTypes: true })
 
     const configPromises = entries
-      .filter(entry => entry.isDirectory() && !entry.name.startsWith("."))
+      .filter(entry => (entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith("."))
       .map(async entry => {
         const projectDir = join(workspaceBaseDir, entry.name)
         const kongFile = findKongConfig(projectDir)
