@@ -1,6 +1,10 @@
-import { writeFileSync, existsSync } from "fs"
+import { writeFileSync } from "fs"
 import { join } from "path"
-import { generateServiceCode } from "../../utils/generateService"
+import {
+  findKongConfigByName,
+  findComposeConfigByName,
+  getProjectDir,
+} from "../../utils/findConfigFiles"
 
 export default defineEventHandler(async event => {
   const name = getRouterParam(event, "name")
@@ -11,32 +15,38 @@ export default defineEventHandler(async event => {
 
   try {
     const body = await readBody(event)
-    const servicesDir = join(process.cwd(), "config", "services")
-    const filePath = join(servicesDir, `${name}.ts`)
 
-    if (!existsSync(filePath)) {
-      throw createError({ statusCode: 404, message: `Service '${name}' not found` })
+    // Save kong.yaml if provided
+    if (body.kong !== undefined) {
+      const kongPath = findKongConfigByName(name)
+
+      if (!kongPath) {
+        throw createError({
+          statusCode: 404,
+          message: `Kong config for service '${name}' not found`,
+        })
+      }
+
+      writeFileSync(kongPath, body.kong, "utf-8")
     }
 
-    let contentToSave: string
+    // Save docker-compose.yaml if provided
+    if (body.compose !== undefined) {
+      const composePath = findComposeConfigByName(name)
 
-    // Check if we're saving structured data or raw content
-    if (body.parsed) {
-      // Generate TypeScript code from structured data
-      contentToSave = generateServiceCode(name, body.parsed)
-    } else if (body.content) {
-      // Save raw content as-is
-      contentToSave = body.content
-    } else {
-      throw createError({ statusCode: 400, message: "No content or parsed data provided" })
+      if (!composePath) {
+        // If no compose file exists, create one in .swarm/
+        const projectDir = getProjectDir(name)
+        const newPath = join(projectDir, ".swarm", "docker-compose.yaml")
+        writeFileSync(newPath, body.compose, "utf-8")
+      } else {
+        writeFileSync(composePath, body.compose, "utf-8")
+      }
     }
-
-    // Write the file
-    writeFileSync(filePath, contentToSave, "utf-8")
 
     return { success: true, message: "Service configuration saved successfully" }
-  } catch (error: any) {
-    if (error.statusCode) {
+  } catch (error) {
+    if (error instanceof Error && "statusCode" in error) {
       throw error
     }
     console.error("Error saving service:", error)

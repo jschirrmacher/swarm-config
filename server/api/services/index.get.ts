@@ -1,6 +1,7 @@
 import { readdirSync, existsSync } from "fs"
 import { join } from "path"
 import { execSync } from "child_process"
+import { findKongConfig, findComposeConfig } from "../../utils/findConfigFiles"
 
 // Check if Docker Swarm is active
 function isSwarmActive(): boolean {
@@ -93,15 +94,12 @@ export default defineEventHandler(async () => {
 
     const services = projectDirs
       .filter(name => {
-        // Check for kong.yaml in .swarm/ or project root
-        const kongFileSwarm = join(workspaceBase, name, ".swarm", "kong.yaml")
-        const kongFileRoot = join(workspaceBase, name, "kong.yaml")
-        return existsSync(kongFileSwarm) || existsSync(kongFileRoot)
+        const projectDir = join(workspaceBase, name)
+        return findKongConfig(projectDir) !== undefined
       })
       .map(name => {
-        // Check if there's a docker-compose.yaml file
-        const composeFile = join(workspaceBase, name, "docker-compose.yaml")
-        const hasStack = existsSync(composeFile)
+        const projectDir = join(workspaceBase, name)
+        const hasStack = findComposeConfig(projectDir) !== undefined
 
         // Get Docker status only if docker-compose.yaml exists
         const dockerStatus = hasStack

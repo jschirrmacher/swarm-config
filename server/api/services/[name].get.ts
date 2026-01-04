@@ -1,6 +1,5 @@
-import { readFileSync, existsSync } from "fs"
-import { join } from "path"
-import { parseServiceConfig } from "../../utils/parseService"
+import { readFileSync } from "fs"
+import { findKongConfigByName, findComposeConfigByName } from "../../utils/findConfigFiles"
 
 export default defineEventHandler(async event => {
   const name = getRouterParam(event, "name")
@@ -11,23 +10,30 @@ export default defineEventHandler(async event => {
 
   try {
     const config = useRuntimeConfig()
-    const workspaceBase = config.workspaceBase
-    const projectDir = join(workspaceBase, name)
+    const kongPath = findKongConfigByName(name)
 
-    // Check for kong.yaml in .swarm/ first, then in project root
-    const possiblePaths = [join(projectDir, ".swarm", "kong.yaml"), join(projectDir, "kong.yaml")]
-
-    const filePath = possiblePaths.find(path => existsSync(path))
-
-    if (!filePath) {
+    if (!kongPath) {
       throw createError({ statusCode: 404, message: `Service '${name}' not found` })
     }
 
-    const content = readFileSync(filePath, "utf-8")
+    const kongContent = readFileSync(kongPath, "utf-8")
+    const composePath = findComposeConfigByName(name)
+    const composeContent = composePath ? readFileSync(composePath, "utf-8") : ""
 
-    return { name, content, path: filePath, domain: config.domain }
-  } catch (error: any) {
-    if (error.statusCode) {
+    return {
+      name,
+      domain: config.domain,
+      kong: {
+        content: kongContent,
+        path: kongPath,
+      },
+      compose: {
+        content: composeContent,
+        path: composePath || "",
+      },
+    }
+  } catch (error) {
+    if (error instanceof Error && "statusCode" in error) {
       throw error
     }
     console.error("Error reading service:", error)

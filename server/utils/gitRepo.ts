@@ -4,6 +4,7 @@ import { access, mkdir, writeFile, readFile, readdir } from "node:fs/promises"
 import { join } from "node:path"
 import { constants } from "node:fs"
 import { getCookie, getHeader } from "h3"
+import { findKongConfig } from "./findConfigFiles"
 
 const execAsync = promisify(exec)
 
@@ -152,22 +153,22 @@ export async function listRepositories(
     const configPromises = entries
       .filter(entry => entry.isDirectory() && !entry.name.startsWith("."))
       .map(async entry => {
-        // Check for kong.yaml in .swarm/ or project root
-        const kongFileSwarm = join(workspaceBaseDir, entry.name, ".swarm", "kong.yaml")
-        const kongFileRoot = join(workspaceBaseDir, entry.name, "kong.yaml")
+        const projectDir = join(workspaceBaseDir, entry.name)
+        const kongFile = findKongConfig(projectDir)
 
-        try {
-          await access(kongFileSwarm, constants.R_OK)
-        } catch {
-          try {
-            await access(kongFileRoot, constants.R_OK)
-          } catch {
-            return null
-          }
+        if (!kongFile) {
+          return null
         }
 
         // Try to read package.json for additional metadata
-        let packageInfo: any = {}
+        interface PackageInfo {
+          repository?:
+            | {
+                url?: string
+              }
+            | string
+        }
+        let packageInfo: PackageInfo = {}
         const packagePath = join(workspaceBaseDir, entry.name, "package.json")
         try {
           await access(packagePath, constants.R_OK)
