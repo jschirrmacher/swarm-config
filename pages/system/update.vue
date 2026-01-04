@@ -53,15 +53,19 @@ async function runUpdate() {
       const data = JSON.parse(event.data)
       addLogToStep(data.message)
 
-      // Auto-scroll to bottom of current step
+      // Auto-scroll to active step
       nextTick(() => {
-        const activeSteps = document.querySelectorAll('.step-logs')
-        if (activeSteps.length > 0) {
-          const lastStep = activeSteps[activeSteps.length - 1]
-          if (lastStep) {
-            lastStep.scrollTop = lastStep.scrollHeight
-          }
+        // Scroll the running step into view
+        const runningStep = document.querySelector('.step-item.running')
+        if (runningStep) {
+          runningStep.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
+
+        // Scroll all expanded log outputs to the bottom
+        const expandedLogs = document.querySelectorAll('.step-logs')
+        expandedLogs.forEach(logElement => {
+          logElement.scrollTop = logElement.scrollHeight
+        })
       })
     })
 
