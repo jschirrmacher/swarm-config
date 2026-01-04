@@ -3,8 +3,8 @@
 ## General Guidelines
 
 - **Never automatically commit or push changes** - Always show changes and wait for explicit user confirmation before running git commands
-- Use **German** for all communication with the user
 - When editing files, show the changes clearly and explain what was modified
+- **Always check VSCode Problems** after making changes to ensure code compiles without errors
 
 ## Project-Specific Context
 
@@ -19,3 +19,9 @@
 - Prefer functional programming patterns where appropriate
 - Add comments for complex logic
 - Keep functions small and focused
+
+## Vue Component Structure
+
+- **Always use this order in Vue components**: `<script setup>`, `<template>`, `<style>`
+- Never use `<style>` before `<template>`
+- This ensures consistency across the codebase
