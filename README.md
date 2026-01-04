@@ -190,13 +190,12 @@ App developers manage Kong configuration via YAML files in their repositories:
 myapp/
 ├── compose.yaml               # Universal compose file (required)
 ├── compose.override.yaml      # Local dev overrides (optional)
-├── .swarm/
-│   └── kong.yaml              # Kong routes and plugins (optional)
+├── kong.yaml                  # Kong routes and plugins (optional)
 ├── Dockerfile
 └── src/
 ```
 
-**Example `.swarm/kong.yaml`:**
+**Example `kong.yaml`:**
 
 ```yaml
 services:

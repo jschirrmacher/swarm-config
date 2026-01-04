@@ -148,20 +148,14 @@ function detectPort(appDir: string): number {
 // Create service configuration file and docker-compose for an app
 function createServiceConfig(appName: string, port: number): void {
   const appDir = join(workspaceBase, appName)
-  const swarmDir = join(appDir, ".swarm")
-  const servicePath = join(swarmDir, "kong.yaml")
+  const kongPath = join(appDir, "kong.yaml")
   const composePathRoot = join(appDir, "compose.yaml")
-
-  // Create .swarm directory if it doesn't exist
-  if (!existsSync(swarmDir)) {
-    mkdirSync(swarmDir, { recursive: true })
-  }
 
   // Get domain from environment
   const domain = process.env.DOMAIN || "example.com"
 
-  // Create .swarm/kong.yaml if it doesn't exist
-  if (!existsSync(servicePath)) {
+  // Create kong.yaml if it doesn't exist
+  if (!existsSync(kongPath)) {
     const serviceContent = `services:
   - name: ${appName}_${appName}
     url: http://${appName}_${appName}:${port}
@@ -179,8 +173,8 @@ routes:
 
     service: ${appName}_${appName}
 `
-    writeFileSync(servicePath, serviceContent, "utf-8")
-    console.log(`  ✓ Created .swarm/kong.yaml`)
+    writeFileSync(kongPath, serviceContent, "utf-8")
+    console.log(`  ✓ Created kong.yaml`)
   }
 
   // Create compose.yaml in root if it doesn't exist

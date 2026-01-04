@@ -1,46 +1,20 @@
 import { existsSync } from "fs"
 import { join } from "path"
 
-interface ConfigFilePaths {
-  kong: string[]
-  compose: string[]
-}
-
 /**
- * Returns possible file paths for kong.yaml and docker-compose.yaml
- * Checks .swarm/ directory first, then project root
- */
-export function getConfigFilePaths(projectDir: string): ConfigFilePaths {
-  return {
-    kong: [join(projectDir, ".swarm", "kong.yaml"), join(projectDir, "kong.yaml")],
-    compose: [
-      // Only compose.yaml - no fallbacks
-      join(projectDir, "compose.yaml"),
-    ],
-  }
-}
-
-/**
- * Finds the first existing file from the given paths
- */
-export function findExistingFile(paths: string[]): string | undefined {
-  return paths.find(path => existsSync(path))
-}
-
-/**
- * Finds kong.yaml in .swarm/ or project root
+ * Finds kong.yaml in project root
  */
 export function findKongConfig(projectDir: string): string | undefined {
-  const paths = getConfigFilePaths(projectDir).kong
-  return findExistingFile(paths)
+  const path = join(projectDir, "kong.yaml")
+  return existsSync(path) ? path : undefined
 }
 
 /**
- * Finds docker-compose.yaml in .swarm/ or project root
+ * Finds compose.yaml in project root
  */
 export function findComposeConfig(projectDir: string): string | undefined {
-  const paths = getConfigFilePaths(projectDir).compose
-  return findExistingFile(paths)
+  const path = join(projectDir, "compose.yaml")
+  return existsSync(path) ? path : undefined
 }
 
 /**

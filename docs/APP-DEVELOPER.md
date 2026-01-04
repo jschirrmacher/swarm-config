@@ -147,8 +147,7 @@ myapp/
 ├── .dockerignore
 ├── compose.yaml               # Universal compose file (REQUIRED)
 ├── compose.override.yaml      # Local dev overrides (optional)
-├── .swarm/                    # Deployment configuration (optional)
-│   └── kong.yaml             # Kong configuration (optional)
+├── kong.yaml                  # Kong configuration (optional)
 ├── package.json
 ├── .env.example              # Example configuration
 ├── README.md
@@ -332,7 +331,7 @@ myapp/
 After creating a repository via the Web UI, this is automatically created:
 
 ```yaml
-# Repository: .swarm/kong.yaml (becomes /var/apps/myapp/kong.yaml)
+# Repository: kong.yaml (becomes /var/apps/myapp/kong.yaml)
 services:
   - name: myapp_myapp
     url: http://myapp_myapp:3000
@@ -359,7 +358,7 @@ You can customize the `kong.yaml` in your project directory for various use case
 You can add Kong plugins directly in your `kong.yaml`:
 
 ```yaml
-# .swarm/kong.yaml (in your repository)
+# kong.yaml (in your repository)
 services:
   - name: myapp_myapp
     url: http://myapp_myapp:3000
@@ -706,16 +705,16 @@ routes:
     paths:
 ### Edit Configuration
 
-The deployment configuration is located in the `.swarm/` directory of your repository and is copied to `/var/apps/myapp/` during deployment.
+The deployment configuration files are located in the root of your repository and are copied to `/var/apps/myapp/` during deployment.
 
-#### .swarm/kong.yaml (Optional)
+#### kong.yaml (Optional)
 
 Kong Gateway configuration for routing and plugins.
 
 **Create in repository:**
 
 ```yaml
-# .swarm/kong.yaml
+# kong.yaml
 services:
   - name: myapp_myapp
     url: http://myapp_myapp:3000
@@ -870,7 +869,7 @@ Files are copied to `/var/apps/myapp/docker-compose.yaml`
 **Deployment behavior:**
 
 - ✅ Root `compose.yaml` → copied to `/var/apps/myapp/docker-compose.yaml` (REQUIRED)
-- ✅ `.swarm/kong.yaml` in repo → copied to `/var/apps/myapp/kong.yaml` (optional)
+- ✅ Root `kong.yaml` → copied to `/var/apps/myapp/kong.yaml` (optional)
 - ⚠️ No compose.yaml found → deployment fails
 - ❌ `.env` is NEVER copied from repository (runtime-specific)
 - ❌ `data/` is NEVER copied from repository (runtime-specific)

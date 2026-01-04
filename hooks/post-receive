@@ -45,12 +45,12 @@ while read oldrev newrev refname; do
     # Copy/update deployment config files to permanent app directory
     echo "🔧 Managing deployment configuration files..."
     
-    # Handle .swarm/kong.yaml (Kong configuration) - optional
-    if [ -f ".swarm/kong.yaml" ]; then
-      echo "  ✓ Copying .swarm/kong.yaml from repository"
-      cp .swarm/kong.yaml "$APP_DIR/kong.yaml"
+    # Handle kong.yaml (Kong configuration) - optional
+    if [ -f "kong.yaml" ]; then
+      echo "  ✓ Copying kong.yaml from repository"
+      cp kong.yaml "$APP_DIR/kong.yaml"
     elif [ ! -f "$APP_DIR/kong.yaml" ]; then
-      echo "  ℹ️  No .swarm/kong.yaml in repo or on server - Kong config will use defaults"
+      echo "  ℹ️  No kong.yaml in repo or on server - Kong config will use defaults"
     else
       echo "  ✓ Keeping existing kong.yaml on server"
     fi
