@@ -39,6 +39,10 @@ function processPlugins(plugins: any[]) {
 function loadProjectServices(silent = false) {
   const workspaceBase = process.env.WORKSPACE_BASE ?? "/var/apps"
 
+  if (!silent) {
+    console.log(`  Searching in: ${workspaceBase}`)
+  }
+
   try {
     const configs = readdirSync(workspaceBase, { withFileTypes: true })
       .filter(entry => entry.isDirectory())
@@ -51,12 +55,24 @@ function loadProjectServices(silent = false) {
         try {
           const content = readFileSync(join(workspaceBase, entry.name, relativePath), "utf-8")
           const config = load(content) as KongConfig
-          if (config.services) {
+
+          // Check if config is valid and has at least services, routes, or plugins
+          if (config && (config.services || config.routes || config.plugins)) {
             if (!silent) console.log(`  ✓ ${entry.name}/${relativePath}`)
             return config
+          } else {
+            if (!silent) {
+              console.log(
+                `  ⚠ ${entry.name}/${relativePath} - no services, routes, or plugins found`,
+              )
+            }
           }
-        } catch {
-          // kong.yaml can't be loaded - skip
+        } catch (error) {
+          if (!silent) {
+            console.log(
+              `  ✗ ${entry.name}/${relativePath} - ${error instanceof Error ? error.message : "parse error"}`,
+            )
+          }
         }
         return null
       })
