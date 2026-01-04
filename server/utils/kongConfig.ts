@@ -45,12 +45,17 @@ function loadProjectServices(silent = false) {
 
   try {
     const configs = readdirSync(workspaceBase, { withFileTypes: true })
-      .filter(entry => entry.isDirectory())
+      .filter(entry => entry.isDirectory() || entry.isSymbolicLink())
       .map(entry => {
         const relativePath = [".swarm/kong.yaml", "kong.yaml"].find(path =>
           existsSync(join(workspaceBase, entry.name, path)),
         )
-        if (!relativePath) return null
+        if (!relativePath) {
+          if (!silent) {
+            console.log(`  ⊘ ${entry.name} - no kong.yaml found`)
+          }
+          return null
+        }
 
         try {
           const content = readFileSync(join(workspaceBase, entry.name, relativePath), "utf-8")
