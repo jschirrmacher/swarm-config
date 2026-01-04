@@ -177,37 +177,11 @@ docker network inspect kong-net
 
 ## Multi-Node Cluster (Optional)
 
-For multi-node clusters with distributed storage via GlusterFS, see the detailed guide:
+For production deployments with high availability and distributed storage, you can set up a multi-node Docker Swarm cluster with GlusterFS.
 
-**→ [Multi-Node Cluster Setup](./MULTI-NODE-SETUP.md)**
+The `setup.sh` script prompts during installation whether GlusterFS should be installed and saves your decision in `.env`. You can change this later if needed.
 
-The setup.sh script prompts during installation whether GlusterFS should be installed.
-
-Cluster configuration must be done manually (see MULTI-NODE-SETUP.md).
-
-### Multi-Node Cluster: GlusterFS
-
-Prerequisite: All servers know each other by name (add to `/etc/hosts`).
-
-```bash
-# Enable GlusterFS
-sudo service glusterd start
-sudo systemctl enable glusterd
-
-# Open firewall for cluster network (e.g. 10.0.0.0/24)
-sudo ufw allow from 10.0.0.0/24
-
-# Create volume (on one node)
-sudo gluster volume create storage-vol1 transport tcp \
-  server-1:/mnt/HC_Volume_3749475/brick \
-  server-2:/mnt/HC_Volume_3749480/brick
-sudo gluster volume start storage-vol1
-
-# Mount volume on all nodes
-sudo mkdir /var/volumes
-sudo mount -t glusterfs server-1:/storage-vol1 /var/volumes
-echo 'server-1:/storage-vol1 /var/volumes glusterfs defaults,_netdev 0 0' | sudo tee -a /etc/fstab
-```
+**→ See [Multi-Node Cluster Setup Guide](./MULTI-NODE-SETUP.md) for complete instructions**
 
 ## Security
 

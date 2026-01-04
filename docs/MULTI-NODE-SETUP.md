@@ -63,7 +63,19 @@ docker node ls
 
 ## Step 3: Install GlusterFS
 
-On **all nodes**:
+### If Not Already Installed
+
+If you initially skipped GlusterFS during `setup.sh` and need to install it now:
+
+1. **Update the .env file** on each node:
+
+   ```bash
+   cd /var/apps/swarm-config
+   # Change INSTALL_GLUSTERFS=false to true in .env
+   sed -i 's/INSTALL_GLUSTERFS=false/INSTALL_GLUSTERFS=true/' .env
+   ```
+
+2. **Or manually install** on **all nodes**:
 
 ```bash
 # Installation
