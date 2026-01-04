@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-import { saveConfig, loadConfig } from '../lib/config.js'
-import { existsSync } from 'fs'
+import { saveConfig, loadConfig } from "../lib/config.js"
+import { existsSync } from "fs"
 
-console.log('🌐 Step 1: Getting domain configuration...')
+console.log("[STEP:START:01-get-domain]")
+console.log("🌐 Step 1: Getting domain configuration...")
 
-const envPath = '/var/apps/swarm-config/.env'
+const envPath = "/var/apps/swarm-config/.env"
 
 // Check if DOMAIN already exists in .env
 if (existsSync(envPath)) {
@@ -22,8 +23,8 @@ if (!process.env.DOMAIN) {
   const domain = process.env.SWARM_DOMAIN
 
   if (!domain) {
-    console.error('❌ Domain is required but not provided')
-    console.error('   Run with: curl ... | sudo bash -s your-domain.com')
+    console.error("❌ Domain is required but not provided")
+    console.error("   Run with: curl ... | sudo bash -s your-domain.com")
     process.exit(1)
   }
 
@@ -34,4 +35,5 @@ if (!process.env.DOMAIN) {
 }
 
 console.log(`✅ Domain configured: ${process.env.DOMAIN}`)
-console.log('')
+console.log("")
+console.log("[STEP:COMPLETE:01-get-domain]")

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+echo "[STEP:START:09-install-glusterfs]"
 echo "💾 Step 9: GlusterFS installation (optional)..."
 
 # Check if decision is already saved in .env
@@ -37,3 +38,4 @@ else
 fi
 
 echo ""
+echo "[STEP:COMPLETE:09-install-glusterfs]"

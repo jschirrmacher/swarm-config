@@ -243,21 +243,12 @@ echo ""
 
 for step_file in "$STEPS_DIR"/*; do
   if [ -f "$step_file" ]; then
-    # Extract step name from filename (e.g., "01-get-domain.ts" -> "01-get-domain")
-    step_name=$(basename "$step_file" | sed 's/\.[^.]*$//')
-    
-    # Send machine-readable step start marker
-    echo "[STEP:START:$step_name]"
-    
     # Execute TypeScript files with tsx, bash files with source
     if [[ "$step_file" == *.ts ]]; then
       npx tsx "$step_file"
     elif [[ "$step_file" == *.sh ]]; then
       source "$step_file"
     fi
-    
-    # Send machine-readable step complete marker
-    echo "[STEP:COMPLETE:$step_name]"
   fi
 done
 

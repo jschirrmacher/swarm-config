@@ -12,8 +12,7 @@ defineEmits<{
 const statusBadges = {
   completed: '✓ Completed',
   failed: '✗ Failed',
-  running: 'Running',
-  pending: 'Pending'
+  running: 'Running'
 } as const
 </script>
 
@@ -26,9 +25,9 @@ const statusBadges = {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
         <span class="step-title">{{ step.title }}</span>
-        <span class="status-badge" :class="step.status">{{ statusBadges[step.status] }}</span>
+        <span v-if="step.status !== 'pending'" class="status-badge" :class="step.status">{{ statusBadges[step.status]
+          }}</span>
       </div>
-      <span class="log-count">{{ step.logs.length }} lines</span>
     </div>
     <div v-show="step.expanded" class="log-output step-logs">
       <pre v-for="(log, logIndex) in step.logs" :key="logIndex">{{ log }}</pre>
@@ -100,10 +99,6 @@ const statusBadges = {
   background: #dbeafe;
 }
 
-.log-header.pending {
-  background: var(--bg-tertiary, #f3f4f6);
-}
-
 .header-left {
   display: flex;
   align-items: center;
@@ -147,17 +142,6 @@ const statusBadges = {
 .status-badge.running {
   background: #3b82f6;
   color: white;
-}
-
-.status-badge.pending {
-  background: #9ca3af;
-  color: white;
-}
-
-.log-count {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  opacity: 0.7;
 }
 
 .log-output {
@@ -224,10 +208,6 @@ const statusBadges = {
 
   .log-header.running {
     background: #1e3a8a;
-  }
-
-  .log-header.pending {
-    background: #1f2937;
   }
 
   .log-output {

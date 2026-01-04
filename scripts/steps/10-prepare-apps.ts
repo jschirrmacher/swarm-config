@@ -13,6 +13,7 @@ import {
 import { join, dirname, resolve } from "path"
 import { createInterface } from "readline"
 
+console.log("[STEP:START:10-prepare-apps]")
 console.log("🔄 Step 10: Preparing apps and services...")
 console.log("")
 
@@ -252,6 +253,7 @@ const availableUsers = getAvailableUsers()
 if (availableUsers.length === 0) {
   console.log("  ⚠️  No regular users found, skipping migration")
   console.log("")
+  console.log("[STEP:COMPLETE:10-prepare-apps]")
   process.exit(0)
 }
 
@@ -262,6 +264,7 @@ const allDirs = readdirSync(workspaceBase, { withFileTypes: true }).filter(
 if (allDirs.length === 0) {
   console.log(`  ℹ️  No apps found in ${workspaceBase}`)
   console.log("")
+  console.log("[STEP:COMPLETE:10-prepare-apps]")
   process.exit(0)
 }
 
@@ -351,4 +354,7 @@ if (updated > 0) {
 if (reposEnsured > 0) {
   console.log(`  ✓ Ensured repositories for ${reposEnsured} app(s)`)
 }
+
+console.log("")
+console.log("[STEP:COMPLETE:10-prepare-apps]")
 console.log("")
