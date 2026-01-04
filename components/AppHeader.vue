@@ -25,18 +25,21 @@ function handleLogout() {
             <p class="subtitle">{{ subtitle }}</p>
           </div>
         </div>
-        <div v-if="currentUser" class="user-info">
-          <span class="user-label">Logged in as:</span>
-          <span class="user-name">{{ currentUser }}</span>
-          <button v-if="showLogout" @click="handleLogout" class="btn-logout" title="Logout">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path
-                d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z" />
-              <path
-                d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z" />
-            </svg>
-            Logout
-          </button>
+        <div class="header-actions">
+          <ColorModeToggle />
+          <div v-if="currentUser" class="user-info">
+            <span class="user-label">Logged in as:</span>
+            <span class="user-name">{{ currentUser }}</span>
+            <button v-if="showLogout" @click="handleLogout" class="btn-logout" title="Logout">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path
+                  d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z" />
+                <path
+                  d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z" />
+              </svg>
+              Logout
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -45,10 +48,11 @@ function handleLogout() {
 
 <style scoped>
 .header {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--bg-secondary);
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 20px var(--shadow);
   padding: 1.5rem 0;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .container {
@@ -77,20 +81,26 @@ function handleLogout() {
 h1 {
   margin: 0;
   font-size: 2rem;
-  color: #667eea;
+  color: var(--accent);
 }
 
 .subtitle {
   margin: 0.25rem 0 0;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .user-info {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .user-label {
@@ -99,13 +109,13 @@ h1 {
 
 .user-name {
   font-weight: 600;
-  color: #667eea;
+  color: var(--accent);
 }
 
 .btn-logout {
   background: none;
-  border: 1px solid #667eea;
-  color: #667eea;
+  border: 1px solid var(--accent);
+  color: var(--accent);
   padding: 0.5rem 1rem;
   border-radius: 6px;
   cursor: pointer;
@@ -117,7 +127,7 @@ h1 {
 }
 
 .btn-logout:hover {
-  background: #667eea;
+  background: var(--accent);
   color: white;
 }
 
@@ -133,6 +143,12 @@ h1 {
   .header-content {
     flex-direction: column;
     gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
     align-items: flex-start;
   }
 }

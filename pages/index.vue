@@ -260,11 +260,11 @@ onMounted(() => {
 .hero h2 {
   font-size: 2rem;
   margin-bottom: 0.5rem;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .hero p {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 1.1rem;
 }
 
@@ -276,7 +276,7 @@ onMounted(() => {
 .services-section h3 {
   font-size: 1.5rem;
   margin-bottom: 1rem;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .services-grid {
@@ -286,15 +286,15 @@ onMounted(() => {
 }
 
 .service-card {
-  background: white;
+  background: var(--bg-secondary);
   border-radius: 4px;
   padding: 0.75rem 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px var(--shadow);
   transition: all 0.2s;
 }
 
 .service-card:hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px var(--shadow);
 }
 
 .service-header {
@@ -305,7 +305,7 @@ onMounted(() => {
 }
 
 .service-name {
-  color: #667eea;
+  color: var(--accent);
   font-size: 1rem;
   text-decoration: none;
   font-weight: 600;
@@ -313,7 +313,7 @@ onMounted(() => {
 }
 
 .service-name:hover {
-  color: #5568d3;
+  color: var(--accent-hover);
 }
 
 .service-status {
@@ -333,18 +333,33 @@ onMounted(() => {
 }
 
 .status-running {
-  background: #d4edda;
-  color: #155724;
+  background: rgba(0, 255, 0, 0.15);
+  color: #22aa22;
+}
+
+.dark .status-running {
+  background: rgba(0, 255, 0, 0.2);
+  color: #44cc44;
 }
 
 .status-partial {
-  background: #fff3cd;
+  background: rgba(255, 193, 7, 0.15);
   color: #856404;
 }
 
+.dark .status-partial {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
 .status-stopped {
-  background: #f8d7da;
-  color: #721c24;
+  background: rgba(255, 0, 0, 0.15);
+  color: #c33;
+}
+
+.dark .status-stopped {
+  background: rgba(255, 0, 0, 0.2);
+  color: #ff6666;
 }
 
 .service-header {
@@ -355,15 +370,15 @@ onMounted(() => {
 }
 
 .service-header h4 {
-  color: #667eea;
+  color: var(--accent);
   font-size: 1rem;
   margin: 0;
   font-weight: 600;
 }
 
 .service-badge {
-  background: #f0f0f0;
-  color: #666;
+  background: var(--border-color);
+  color: var(--text-secondary);
   padding: 0.25rem 0.5rem;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -378,7 +393,7 @@ onMounted(() => {
 }
 
 .service-file {
-  color: #999;
+  color: var(--text-secondary);
   font-size: 0.875rem;
   font-family: monospace;
 }
@@ -388,16 +403,17 @@ onMounted(() => {
 }
 
 .create-section {
-  background: white;
+  background: var(--bg-secondary);
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px var(--shadow);
   margin-top: 3rem;
+  transition: background-color 0.3s ease;
 }
 
 .create-section h3 {
   margin-bottom: 1.5rem;
-  color: #333;
+  color: var(--text-primary);
   text-align: center;
 }
 
@@ -416,14 +432,17 @@ onMounted(() => {
 .form-input {
   width: 100%;
   padding: 0.5rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 0.875rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.2s;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -435,33 +454,36 @@ onMounted(() => {
   display: block;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .form-group input[type="text"],
 .form-group input[type="number"] {
   width: 100%;
   padding: 0.75rem;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border-color);
   border-radius: 4px;
   font-size: 1rem;
-  transition: border-color 0.2s;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.2s;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--accent);
 }
 
 .form-group input:disabled {
-  background: #f5f5f5;
+  background: var(--border-color);
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .form-group small {
   display: block;
   margin-top: 0.25rem;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.875rem;
 }
 
@@ -505,12 +527,12 @@ onMounted(() => {
 .btn-small {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
-  background: #f5f5f5;
-  color: #333;
+  background: var(--border-color);
+  color: var(--text-primary);
 }
 
 .btn-small:hover {
-  background: #e0e0e0;
+  background: var(--shadow);
 }
 
 .repos-section {
@@ -520,9 +542,10 @@ onMounted(() => {
 .empty-state {
   text-align: center;
   padding: 3rem;
-  color: #666;
-  background: white;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
   border-radius: 8px;
+  transition: background-color 0.3s ease;
 }
 
 .repos-grid {
@@ -532,15 +555,15 @@ onMounted(() => {
 }
 
 .repo-card {
-  background: white;
+  background: var(--bg-secondary);
   border-radius: 4px;
   padding: 0.75rem 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  transition: box-shadow 0.2s;
+  box-shadow: 0 1px 3px var(--shadow);
+  transition: all 0.3s;
 }
 
 .repo-card:hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px var(--shadow);
 }
 
 
@@ -569,7 +592,7 @@ onMounted(() => {
 }
 
 .repo-title {
-  color: #667eea;
+  color: var(--accent);
   font-size: 1rem;
   margin: 0;
   flex: 1;
@@ -585,7 +608,7 @@ onMounted(() => {
 }
 
 .config-link:hover {
-  color: #5568d3;
+  color: var(--accent-hover);
 }
 
 .config-icon {
@@ -598,7 +621,7 @@ onMounted(() => {
 }
 
 .external-link {
-  color: #667eea;
+  color: var(--accent);
   display: flex;
   align-items: center;
   padding: 0.25rem;
@@ -608,13 +631,13 @@ onMounted(() => {
 }
 
 .external-link:hover {
-  background: #f0f0f0;
-  color: #5568d3;
+  background: var(--border-color);
+  color: var(--accent-hover);
 }
 
 .repo-date {
   font-size: 0.75rem;
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .repo-details {
@@ -628,21 +651,23 @@ onMounted(() => {
 .detail strong {
   display: block;
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text-secondary);
   margin-bottom: 0.25rem;
 }
 
 .detail code {
-  background: #f5f5f5;
+  background: var(--bg-primary);
   padding: 0.25rem 0.5rem;
   border-radius: 3px;
   font-size: 0.875rem;
   word-break: break-all;
   display: block;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .detail a {
-  color: #667eea;
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -662,11 +687,11 @@ onMounted(() => {
 
 .btn-icon {
   background: transparent;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 0.5rem;
   cursor: pointer;
-  color: #667eea;
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -675,9 +700,9 @@ onMounted(() => {
 }
 
 .btn-icon:hover {
-  background: #667eea;
+  background: var(--accent);
   color: white;
-  border-color: #667eea;
+  border-color: var(--accent);
 }
 
 .btn-icon:active {
@@ -685,11 +710,13 @@ onMounted(() => {
 }
 
 .footer {
-  background: #333;
-  color: white;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   padding: 2rem 0;
   text-align: center;
   margin-top: 4rem;
+  border-top: 1px solid var(--border-color);
+  transition: all 0.3s ease;
 }
 
 .footer p {

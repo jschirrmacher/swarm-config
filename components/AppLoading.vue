@@ -14,9 +14,10 @@ defineProps<{
 .loading {
   text-align: center;
   padding: 3rem;
-  color: #666;
-  background: white;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
   border-radius: 8px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 30px var(--shadow);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 </style>

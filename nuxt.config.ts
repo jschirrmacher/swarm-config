@@ -3,6 +3,14 @@ export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
   devtools: { enabled: true },
 
+  modules: ["@nuxtjs/color-mode"],
+
+  colorMode: {
+    preference: "system", // default value of $colorMode.preference
+    fallback: "light", // fallback value if not system preference found
+    classSuffix: "", // no suffix for the color-mode class
+  },
+
   future: {
     compatibilityVersion: 4,
   },
