@@ -2,6 +2,7 @@
 import { exec } from "../lib/docker.js"
 import { existsSync, mkdirSync } from "fs"
 
+console.log("[STEP:START:07-deploy-kong]")
 console.log("🦍 Step 7: Preparing Kong API Gateway...")
 
 const workDir = "/var/apps/swarm-config"
@@ -32,9 +33,11 @@ try {
   exec("npx tsx src/generate-kong-config.ts")
 } catch (error) {
   console.error("❌ Failed to generate Kong configuration")
+  console.log("[STEP:COMPLETE:07-deploy-kong]")
   process.exit(1)
 }
 
 console.log("✅ Kong preparation complete")
 console.log("  (Kong will be deployed together with Web UI in next step)")
 console.log("")
+console.log("[STEP:COMPLETE:07-deploy-kong]")

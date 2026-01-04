@@ -2,6 +2,7 @@
 import { exec, docker, imageExists } from "../lib/docker.js"
 import { loadConfig } from "../lib/config.js"
 
+console.log("[STEP:START:08-deploy-webui]")
 console.log("🎨 Step 8: Building and deploying Swarm Config Web UI...")
 
 const workDir = "/var/apps/swarm-config"
@@ -146,3 +147,4 @@ try {
 console.log("✅ Web UI deployed")
 console.log(`  Access at: https://config.${domain}`)
 console.log("")
+console.log("[STEP:COMPLETE:08-deploy-webui]")

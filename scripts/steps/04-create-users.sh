@@ -1,10 +1,12 @@
 #!/bin/bash
 
+echo "[STEP:START:04-create-users]"
 echo "👥 Step 4: Creating team users from SSH authorized_keys..."
 
 if [ ! -f "/root/.ssh/authorized_keys" ]; then
   echo "⚠️  /root/.ssh/authorized_keys not found, skipping team user creation"
   echo ""
+  echo "[STEP:COMPLETE:04-create-users]"
   return 0
 fi
 
@@ -29,6 +31,7 @@ USERNAMES=$(echo "$USERNAMES" | xargs)
 if [ -z "$USERNAMES" ]; then
   echo "⚠️  No valid usernames found"
   echo ""
+  echo "[STEP:COMPLETE:04-create-users]"
   return 0
 fi
 
@@ -100,3 +103,4 @@ echo "📋 Passwords saved to each user's home directory in .swarm-config-passwo
 # Export for SSH security step
 export USERNAMES
 echo ""
+echo "[STEP:COMPLETE:04-create-users]"

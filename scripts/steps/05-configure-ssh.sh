@@ -1,10 +1,12 @@
 #!/bin/bash
 
+echo "[STEP:START:05-configure-ssh]"
 echo "🔒 Step 5: Configuring SSH security..."
 
 if [ -z "$USERNAMES" ]; then
   echo "⚠️  Skipping SSH security (no team users created)"
   echo ""
+  echo "[STEP:COMPLETE:05-configure-ssh]"
   return 0
 fi
 
@@ -28,4 +30,6 @@ service ssh restart
 
 echo "✅ SSH security configured"
 echo "⚠️  IMPORTANT: Test team user SSH access before closing this session!"
+echo ""
+echo "[STEP:COMPLETE:05-configure-ssh]"
 echo ""
