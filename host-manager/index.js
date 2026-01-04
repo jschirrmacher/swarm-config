@@ -173,6 +173,28 @@ app.post("/update", authenticate, async (req, res) => {
   }
 
   try {
+    // First, update the repository to get the latest changes
+    console.log(`[${new Date().toISOString()}] Pulling latest changes from repository...`)
+    sendEvent("log", { message: "Updating repository...\n", level: "info" })
+
+    try {
+      await executeOnHost(`cd /var/apps/swarm-config && git pull origin main`, output => {
+        console.log(output.trim())
+        sendEvent("log", { message: output, level: "info" })
+      })
+      console.log(`[${new Date().toISOString()}] Repository updated successfully`)
+      sendEvent("log", { message: "✓ Repository updated\n\n", level: "info" })
+    } catch (gitError) {
+      console.warn(
+        `[${new Date().toISOString()}] Git pull failed, continuing with existing files:`,
+        gitError.message,
+      )
+      sendEvent("log", {
+        message: `⚠️  Could not update repository: ${gitError.message}\n\n`,
+        level: "warning",
+      })
+    }
+
     // Get all TypeScript step files from host
     const stepFiles = await getStepFilesFromHost()
 
