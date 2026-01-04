@@ -1,8 +1,7 @@
 import express from "express"
 import { spawn } from "node:child_process"
 import { createHash } from "node:crypto"
-import { readFileSync, existsSync, readdirSync } from "node:fs"
-import { join } from "node:path"
+import { readFileSync, existsSync } from "node:fs"
 
 const app = express()
 const PORT = 3001
@@ -40,6 +39,94 @@ function generateToken() {
 // Environment configuration
 const AUTH_TOKEN = getAuthToken()
 const STEPS_DIR = process.env.STEPS_DIR || "/var/apps/swarm-config/scripts/steps"
+
+/**
+ * Execute a command on the host system using nsenter
+ * @param {string} command - The command to run on the host
+ * @param {Function} [onOutput] - Optional callback for live output (output, stream)
+ * @returns {Promise<string>} - Command output
+ */
+function executeOnHost(command, onOutput) {
+  return new Promise((resolve, reject) => {
+    const docker = spawn("docker", [
+      "run",
+      "--rm",
+      "--privileged",
+      "--pid=host",
+      "--net=host",
+      "--ipc=host",
+      "--uts=host",
+      "-v",
+      "/:/host",
+      "alpine:latest",
+      "nsenter",
+      "--target",
+      "1",
+      "--mount",
+      "--uts",
+      "--ipc",
+      "--net",
+      "--pid",
+      "--",
+      "bash",
+      "-c",
+      command,
+    ])
+
+    let stdout = ""
+    let stderr = ""
+
+    docker.stdout.on("data", data => {
+      const output = data.toString()
+      stdout += output
+      if (onOutput) {
+        onOutput(output, "stdout")
+      }
+    })
+
+    docker.stderr.on("data", data => {
+      const output = data.toString()
+      stderr += output
+      if (onOutput) {
+        onOutput(output, "stderr")
+      }
+    })
+
+    docker.on("close", code => {
+      if (code === 0) {
+        resolve(stdout)
+      } else {
+        reject(new Error(`Command failed with exit code ${code}: ${stderr || stdout}`))
+      }
+    })
+
+    docker.on("error", error => {
+      reject(error)
+    })
+  })
+}
+
+/**
+ * Get list of step files from host system
+ * @returns {Promise<string[]>} - Array of step file paths
+ */
+async function getStepFilesFromHost() {
+  const output = await executeOnHost(`ls -1 ${STEPS_DIR}/*.ts 2>/dev/null | sort`)
+  return output
+    .trim()
+    .split("\n")
+    .filter(path => path.length > 0)
+}
+
+/**
+ * Execute a single step on the host system with live output streaming
+ * @param {string} stepPath - Full path to the step file
+ * @param {Function} onOutput - Callback for output (stdout/stderr)
+ * @returns {Promise<void>}
+ */
+async function executeStepOnHost(stepPath, onOutput) {
+  await executeOnHost(`cd /var/apps/swarm-config && npx tsx ${stepPath}`, onOutput)
+}
 
 // Token-based authentication middleware
 function authenticate(req, res, next) {
@@ -86,10 +173,8 @@ app.post("/update", authenticate, async (req, res) => {
   }
 
   try {
-    // Get all TypeScript step files and sort them
-    const stepFiles = readdirSync(STEPS_DIR)
-      .filter(file => file.endsWith(".ts"))
-      .sort()
+    // Get all TypeScript step files from host
+    const stepFiles = await getStepFilesFromHost()
 
     if (stepFiles.length === 0) {
       throw new Error(`No step files found in ${STEPS_DIR}`)
@@ -98,79 +183,25 @@ app.post("/update", authenticate, async (req, res) => {
     console.log(`[${new Date().toISOString()}] Found ${stepFiles.length} steps to execute`)
 
     // Execute each step sequentially
-    for (const stepFile of stepFiles) {
-      const stepPath = join(STEPS_DIR, stepFile)
-      console.log(`[${new Date().toISOString()}] Executing step: ${stepFile}`)
+    for (const stepPath of stepFiles) {
+      const stepName = stepPath.split("/").pop()
+      console.log(`[${new Date().toISOString()}] Executing step: ${stepName}`)
 
-      // Execute step directly on host using nsenter
-      // This enters all host namespaces, so npx/tsx are from the host system
-      const docker = spawn("docker", [
-        "run",
-        "--rm",
-        "--privileged",
-        "--pid=host",
-        "--net=host",
-        "--ipc=host",
-        "--uts=host",
-        "-v",
-        "/:/host",
-        "alpine:latest",
-        "nsenter",
-        "--target",
-        "1",
-        "--mount",
-        "--uts",
-        "--ipc",
-        "--net",
-        "--pid",
-        "--",
-        "bash",
-        "-c",
-        `cd /var/apps/swarm-config && npx tsx ${stepPath}`,
-      ])
-
-      let stepStdout = ""
-      let stepStderr = ""
-
-      // Wait for step to complete
-      await new Promise((resolve, reject) => {
-        docker.stdout.on("data", data => {
-          const output = data.toString()
-          stepStdout += output
-          console.log(output.trim())
-
-          // Send log to client
-          sendEvent("log", { message: output })
-        })
-
-        docker.stderr.on("data", data => {
-          const output = data.toString()
-          stepStderr += output
-          console.error(output.trim())
-
-          // Send error log to client
-          sendEvent("log", { message: output, level: "error" })
-        })
-
-        docker.on("close", code => {
-          if (code === 0) {
-            console.log(`[${new Date().toISOString()}] Step ${stepFile} completed successfully`)
-            resolve()
+      try {
+        await executeStepOnHost(stepPath, (output, stream) => {
+          if (stream === "stdout") {
+            console.log(output.trim())
           } else {
-            console.error(`[${new Date().toISOString()}] Step ${stepFile} failed with code ${code}`)
-            reject(
-              new Error(
-                `Step ${stepFile} failed with exit code ${code}: ${stepStderr || stepStdout}`,
-              ),
-            )
+            console.error(output.trim())
           }
+          sendEvent("log", { message: output, level: stream === "stderr" ? "error" : "info" })
         })
 
-        docker.on("error", error => {
-          console.error(`[${new Date().toISOString()}] Docker execution error:`, error)
-          reject(error)
-        })
-      })
+        console.log(`[${new Date().toISOString()}] Step ${stepName} completed successfully`)
+      } catch (error) {
+        console.error(`[${new Date().toISOString()}] Step ${stepName} failed:`, error.message)
+        throw new Error(`Step ${stepName} failed: ${error.message}`)
+      }
     }
 
     // All steps completed successfully

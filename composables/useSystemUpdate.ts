@@ -3,36 +3,35 @@ export interface Step {
   logs: string[]
   status: "pending" | "running" | "completed" | "failed"
   expanded: boolean
+  id?: string
 }
 
-interface SetupStep {
-  pattern: RegExp
+interface StepDefinition {
+  id: string
   title: string
+  filename: string
 }
-
-const setupSteps: SetupStep[] = [
-  { pattern: /00-configure-security/, title: "Configure Security Updates" },
-  { pattern: /01-get-domain/, title: "Get Domain Configuration" },
-  { pattern: /02-install-docker/, title: "Install Docker" },
-  { pattern: /03-install-firewall/, title: "Configure Firewall" },
-  { pattern: /04-create-users/, title: "Create Users" },
-  { pattern: /05-configure-ssh/, title: "Configure SSH" },
-  { pattern: /06-create-network/, title: "Create Docker Network" },
-  { pattern: /06\.5-setup-host-manager/, title: "Setup Host Manager Token" },
-  { pattern: /07-deploy-kong/, title: "Deploy Kong Gateway" },
-  { pattern: /08-deploy-webui/, title: "Deploy Web UI" },
-  { pattern: /09-install-glusterfs/, title: "Install GlusterFS" },
-  { pattern: /10-prepare-apps/, title: "Prepare Apps Directory" },
-]
 
 export function useSystemUpdate() {
   const steps = ref<Step[]>([])
   const currentStepIndex = ref(-1)
   const hasMatchedStepPattern = ref(false)
+  const stepDefinitions = ref<StepDefinition[]>([])
+
+  async function loadStepDefinitions() {
+    try {
+      stepDefinitions.value = await $fetch("/api/system/steps")
+    } catch (error) {
+      console.error("Failed to load step definitions:", error)
+      // Fallback to empty array
+      stepDefinitions.value = []
+    }
+  }
 
   function initializeSteps() {
-    steps.value = setupSteps.map(step => ({
-      title: step.title,
+    steps.value = stepDefinitions.value.map(def => ({
+      id: def.id,
+      title: def.title,
       logs: [],
       status: "pending",
       expanded: false,
@@ -58,29 +57,28 @@ export function useSystemUpdate() {
 
       if (!stepName) return
 
-      // Find matching step by name
-      for (let i = 0; i < setupSteps.length; i++) {
-        if (setupSteps[i]?.pattern.test(stepName)) {
-          // Mark that we've matched a real step pattern
-          hasMatchedStepPattern.value = true
+      // Find matching step by ID
+      const stepIndex = steps.value.findIndex(s => s.id === stepName)
 
-          // Mark previous step as completed and collapse it
-          if (currentStepIndex.value >= 0 && currentStepIndex.value !== i) {
-            const prevStep = steps.value[currentStepIndex.value]
-            if (prevStep && prevStep.status === "running") {
-              prevStep.status = "completed"
-              prevStep.expanded = false
-            }
-          }
+      if (stepIndex >= 0) {
+        // Mark that we've matched a real step pattern
+        hasMatchedStepPattern.value = true
 
-          // Start new step and expand it
-          currentStepIndex.value = i
-          const currentStep = steps.value[i]
-          if (currentStep) {
-            currentStep.status = "running"
-            currentStep.expanded = true
+        // Mark previous step as completed and collapse it
+        if (currentStepIndex.value >= 0 && currentStepIndex.value !== stepIndex) {
+          const prevStep = steps.value[currentStepIndex.value]
+          if (prevStep && prevStep.status === "running") {
+            prevStep.status = "completed"
+            prevStep.expanded = false
           }
-          break
+        }
+
+        // Start new step and expand it
+        currentStepIndex.value = stepIndex
+        const currentStep = steps.value[stepIndex]
+        if (currentStep) {
+          currentStep.status = "running"
+          currentStep.expanded = true
         }
       }
       // Don't add the marker itself to logs
@@ -140,6 +138,7 @@ export function useSystemUpdate() {
     steps,
     currentStepIndex,
     hasMatchedStepPattern,
+    loadStepDefinitions,
     initializeSteps,
     toggleStep,
     addLogToStep,

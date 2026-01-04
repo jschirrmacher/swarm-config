@@ -15,6 +15,7 @@ const getAuthHeaders = inject<() => HeadersInit>('getAuthHeaders', () => ({}))
 const {
   steps,
   hasMatchedStepPattern,
+  loadStepDefinitions,
   initializeSteps,
   toggleStep,
   addLogToStep,
@@ -24,8 +25,9 @@ const {
 
 const { reconnecting, attemptReconnect, resetReconnectAttempts } = useUpdateReconnect()
 
-// Initialize steps on mount
-onMounted(() => {
+// Load and initialize steps on mount
+onMounted(async () => {
+  await loadStepDefinitions()
   initializeSteps()
 })
 
@@ -40,6 +42,7 @@ async function runUpdate() {
   error.value = ''
   success.value = ''
   resetReconnectAttempts()
+  await loadStepDefinitions()
   initializeSteps()
 
   try {
