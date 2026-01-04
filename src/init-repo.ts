@@ -26,7 +26,7 @@ import { resolve } from "path"
 import { exec } from "child_process"
 import { promisify } from "util"
 import * as readline from "readline"
-import { config } from "./config.ts"
+import { config } from "./config.js"
 
 const execAsync = promisify(exec)
 
@@ -109,10 +109,18 @@ async function createEnvTemplate(appDir: string) {
   console.log("📝 Creating .env template...")
 
   const envContent = `# Environment variables for deployment
-# Edit these values according to your application needs
 
+# Application settings
 NODE_ENV=production
 PORT=3000
+
+# Docker Compose settings
+VERSION=latest
+DATA_PATH=./data
+ENV_FILE=./.env
+
+# Network (will be overridden to "kong-net" on server deployment)
+NETWORK_NAME=default
 
 # Add your application-specific variables below:
 # DATABASE_URL=
@@ -122,6 +130,120 @@ PORT=3000
 
   await writeFile(envFile, envContent)
   console.log(`⚠️  Don't forget to edit ${envFile} with your configuration!`)
+}
+
+async function createCopilotInstructions(appDir: string) {
+  const githubDir = resolve(appDir, ".github")
+  const instructionsFile = resolve(githubDir, "copilot-instructions.md")
+
+  if (existsSync(instructionsFile)) {
+    return
+  }
+
+  console.log("📝 Creating GitHub Copilot instructions...")
+
+  await mkdir(githubDir, { recursive: true })
+
+  const instructionsContent = `# GitHub Copilot Instructions
+
+## General Guidelines
+
+- **Never automatically commit or push changes** - Always show changes and wait for explicit user confirmation before running git commands
+
+## Code Style
+
+- Use concise, descriptive variable names
+- Prefer functional programming patterns where appropriate
+- Add comments for complex logic
+- Keep functions small and focused
+`
+
+  await writeFile(instructionsFile, instructionsContent)
+  console.log(`✅ Created ${instructionsFile}`)
+}
+
+async function createKongYaml(appDir: string, appName: string) {
+  const kongFile = resolve(appDir, "kong.yaml")
+
+  if (existsSync(kongFile)) {
+    console.log("⚠️  kong.yaml already exists, skipping")
+    return
+  }
+
+  console.log("📝 Creating kong.yaml template...")
+
+  const domain = `${appName}.${config.DOMAIN}`
+  const kongContent = `# Kong Gateway Configuration for ${appName}
+
+services:
+  - name: ${appName}_${appName}
+    url: http://${appName}_${appName}:3000
+    routes:
+      - name: ${appName}-main
+        hosts:
+          - ${domain}
+        paths:
+          - /
+        protocols:
+          - http
+          - https
+        preserve_host: true
+        strip_path: false
+`
+
+  await writeFile(kongFile, kongContent)
+  console.log(`✅ Created ${kongFile}`)
+}
+
+async function createComposeYaml(appDir: string, appName: string) {
+  const composeFile = resolve(appDir, "compose.yaml")
+
+  if (existsSync(composeFile)) {
+    console.log("⚠️  compose.yaml already exists, skipping")
+    return
+  }
+
+  console.log("📝 Creating compose.yaml template...")
+
+  const composeContent = `services:
+  ${appName}:
+    image: ${appName}:\${VERSION:-latest}
+    volumes:
+      - \${DATA_PATH:-./data}:/app/data
+    env_file:
+      - \${ENV_FILE:-./.env}
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      placement:
+        constraints:
+          - node.role == manager
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    networks:
+      - \${NETWORK_NAME:-default}
+
+networks:
+  default:
+  kong-net:
+    external: true
+`
+
+  await writeFile(composeFile, composeContent)
+  console.log(`✅ Created ${composeFile}`)
 }
 
 async function configureKong(appName: string) {
@@ -174,6 +296,27 @@ export default createStack("${appName}")
   console.log(`Service ist erreichbar unter: https://${domain}`)
 }
 
+async function createInitialCommit(appDir: string, appName: string) {
+  console.log("📝 Creating initial commit with templates...")
+
+  try {
+    await execAsync(`cd ${appDir} && git init`)
+    await execAsync(`cd ${appDir} && git checkout -b ${BRANCH}`)
+    await execAsync(`cd ${appDir} && git add .env .github/ kong.yaml compose.yaml`)
+    await execAsync(`cd ${appDir} && git commit -m "chore: initial project setup with templates"`)
+
+    const gitDir = resolve(GIT_BASE_DIR, `${appName}.git`)
+    await execAsync(`cd ${appDir} && git remote add origin ${gitDir}`)
+    await execAsync(`cd ${appDir} && git push -u origin ${BRANCH}`)
+
+    console.log("✅ Initial commit created and pushed")
+  } catch (error) {
+    console.log("⚠️  Could not create initial commit")
+    console.log(`   Error: ${error instanceof Error ? error.message : String(error)}`)
+    console.log(`   You can manually commit and push the template files later`)
+  }
+}
+
 async function main() {
   const appName = process.argv[2]
 
@@ -190,19 +333,15 @@ async function main() {
   console.log("")
 
   try {
-    // Create bare repository
     const gitDir = await createBareRepository(appName)
-
-    // Install post-receive hook
     await installPostReceiveHook(gitDir)
 
-    // Create application directory
     const appDir = await createAppDirectory(appName)
-
-    // Create .env template
     await createEnvTemplate(appDir)
-
-    // Configure Kong Gateway
+    await createCopilotInstructions(appDir)
+    await createKongYaml(appDir, appName)
+    await createComposeYaml(appDir, appName)
+    await createInitialCommit(appDir, appName)
     await configureKong(appName)
 
     console.log("")
