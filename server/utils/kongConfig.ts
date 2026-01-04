@@ -125,14 +125,40 @@ export async function generateKongConfig(silent = false) {
     plugins: [],
   }
 
-  // Extract all services from all configs
+  // Extract all services from all configs and merge with top-level routes
   const extractedServices = allServices.flatMap(config => {
-    // If config has a 'services' array, use that
-    if (config.services && Array.isArray(config.services)) {
-      return config.services as any[]
+    if (!config.services || !Array.isArray(config.services)) {
+      return []
     }
-    // Otherwise, return empty array (plugins-only configs)
-    return []
+
+    const services = config.services as any[]
+    const topLevelRoutes = (config.routes ?? []) as any[]
+
+    // If there are top-level routes, merge them with their corresponding services
+    if (topLevelRoutes.length > 0) {
+      return services.map(service => {
+        // Find routes that reference this service
+        const serviceRoutes = topLevelRoutes.filter(route => route.service === service.name)
+
+        // If service already has routes (nested format), keep those
+        // Otherwise, add the top-level routes
+        if (service.routes && Array.isArray(service.routes) && service.routes.length > 0) {
+          return service
+        }
+
+        // Add top-level routes to the service
+        if (serviceRoutes.length > 0) {
+          return {
+            ...service,
+            routes: serviceRoutes.map(({ service: _, ...route }) => route), // Remove 'service' field
+          }
+        }
+
+        return service
+      })
+    }
+
+    return services
   })
 
   const config = {
