@@ -148,8 +148,23 @@ install_node_and_workspace() {
     cp .env "$BACKUP_DIR/" 2>/dev/null || true
     cp config.ts "$BACKUP_DIR/" 2>/dev/null || true
     
+    # Check for uncommitted changes and stash them
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+      echo "    💾 Stashing local changes..."
+      git stash push -m "Auto-stash during setup.sh update"
+      STASHED=true
+    else
+      STASHED=false
+    fi
+    
     git fetch origin
     git checkout -B main origin/main
+    
+    # Restore stashed changes if any
+    if [ "$STASHED" = true ]; then
+      echo "    🔄 Restoring stashed changes..."
+      git stash pop || echo "    ⚠️  Could not auto-apply stashed changes - check 'git stash list'"
+    fi
     
     if [ -f "$BACKUP_DIR/.env" ]; then
       cp "$BACKUP_DIR/.env" .env
@@ -186,7 +201,7 @@ install_node_and_workspace() {
 
   echo "  Installing npm dependencies..."
   export NUXT_TELEMETRY_DISABLED=1
-  npm install
+  npm ci
 
   echo "✅ Workspace ready"
   echo ""
