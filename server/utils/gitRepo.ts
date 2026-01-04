@@ -17,6 +17,7 @@ export interface RepoConfig {
   port: number
   owner: string
   createdAt: string
+  gitUrl?: string // Optional: Git repository URL from package.json
 }
 
 export async function createGitRepository(
@@ -72,10 +73,6 @@ NODE_ENV=production
 PORT=${config.port}
 `
   await writeFile(join(workspaceDir, ".env"), envContent, { mode: 0o600 })
-
-  // Save repo config
-  const configPath = join(workspaceDir, ".repo-config.json")
-  await writeFile(configPath, JSON.stringify(config, null, 2), { mode: 0o644 })
 
   // Create .swarm/kong.yaml template
   const domain = process.env.DOMAIN || "example.com"
@@ -155,18 +152,48 @@ export async function listRepositories(
     const configPromises = entries
       .filter(entry => entry.isDirectory() && !entry.name.startsWith("."))
       .map(async entry => {
-        const configPath = join(workspaceBaseDir, entry.name, ".repo-config.json")
+        // Check for kong.yaml in .swarm/ or project root
+        const kongFileSwarm = join(workspaceBaseDir, entry.name, ".swarm", "kong.yaml")
+        const kongFileRoot = join(workspaceBaseDir, entry.name, "kong.yaml")
 
         try {
-          await access(configPath, constants.R_OK)
-          const content = await readFile(configPath, "utf-8")
-          const config = JSON.parse(content) as RepoConfig
-          // In dev mode or if no owner specified, return all repos
-          // Otherwise filter by owner
-          return !owner || config.owner === owner ? config : null
-        } catch (error) {
-          return null
+          await access(kongFileSwarm, constants.R_OK)
+        } catch {
+          try {
+            await access(kongFileRoot, constants.R_OK)
+          } catch {
+            return null
+          }
         }
+
+        // Try to read package.json for additional metadata
+        let packageInfo: any = {}
+        const packagePath = join(workspaceBaseDir, entry.name, "package.json")
+        try {
+          await access(packagePath, constants.R_OK)
+          const content = await readFile(packagePath, "utf-8")
+          packageInfo = JSON.parse(content)
+        } catch {
+          // No package.json or invalid JSON - use defaults
+        }
+
+        // Extract repository URL from package.json
+        let gitUrl = ""
+        if (packageInfo.repository) {
+          if (typeof packageInfo.repository === "string") {
+            gitUrl = packageInfo.repository
+          } else if (packageInfo.repository.url) {
+            gitUrl = packageInfo.repository.url
+          }
+        }
+
+        return {
+          name: entry.name,
+          port: 3000,
+          owner: owner,
+          createdAt: new Date().toISOString(),
+          gitUrl, // Optional git repository URL from package.json
+        } as RepoConfig
       })
 
     const configs = await Promise.all(configPromises)

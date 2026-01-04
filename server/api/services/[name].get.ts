@@ -13,9 +13,13 @@ export default defineEventHandler(async event => {
     const config = useRuntimeConfig()
     const workspaceBase = config.workspaceBase
     const projectDir = join(workspaceBase, name)
-    const filePath = join(projectDir, "kong.yaml")
 
-    if (!existsSync(filePath)) {
+    // Check for kong.yaml in .swarm/ first, then in project root
+    const possiblePaths = [join(projectDir, ".swarm", "kong.yaml"), join(projectDir, "kong.yaml")]
+
+    const filePath = possiblePaths.find(path => existsSync(path))
+
+    if (!filePath) {
       throw createError({ statusCode: 404, message: `Service '${name}' not found` })
     }
 

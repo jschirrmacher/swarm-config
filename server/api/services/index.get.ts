@@ -93,9 +93,10 @@ export default defineEventHandler(async () => {
 
     const services = projectDirs
       .filter(name => {
-        // Check for kong.yaml
-        const kongFile = join(workspaceBase, name, "kong.yaml")
-        return existsSync(kongFile)
+        // Check for kong.yaml in .swarm/ or project root
+        const kongFileSwarm = join(workspaceBase, name, ".swarm", "kong.yaml")
+        const kongFileRoot = join(workspaceBase, name, "kong.yaml")
+        return existsSync(kongFileSwarm) || existsSync(kongFileRoot)
       })
       .map(name => {
         // Check if there's a docker-compose.yaml file

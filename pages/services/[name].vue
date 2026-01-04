@@ -1,31 +1,28 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 
+definePageMeta({
+  layout: 'default'
+})
+
 const route = useRoute()
-const router = useRouter()
 const serviceName = computed(() => route.params.name as string)
 
 const service = ref<any>(null)
 const loading = ref(false)
 const error = ref('')
-const currentUser = ref<string | null>(null)
 const saving = ref(false)
 const saveSuccess = ref(false)
 const domain = ref('')
 
+// Inject auth utilities from layout
+const getAuthHeaders = inject<() => HeadersInit>('getAuthHeaders', () => ({}))
+
 // Computed: is this a structured service or raw text?
 const isStructured = computed(() => service.value?.isStructured === true)
 
-function logout() {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('swarm-config-token')
-  }
-  router.push('/login')
-}
-
 onMounted(async () => {
   await loadService()
-  await loadUser()
 })
 
 async function loadService() {
@@ -33,16 +30,9 @@ async function loadService() {
     loading.value = true
     error.value = ''
 
-    // Get auth headers (skip in dev mode)
-    const headers: HeadersInit = {}
-    if (!import.meta.dev && typeof window !== 'undefined') {
-      const token = localStorage.getItem('swarm-config-token')
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-    }
-
-    const response = await fetch(`/api/services/${serviceName.value}`, { headers })
+    const response = await fetch(`/api/services/${serviceName.value}`, {
+      headers: getAuthHeaders()
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to load service: ${response.statusText}`)
@@ -59,28 +49,6 @@ async function loadService() {
   }
 }
 
-async function loadUser() {
-  try {
-    // Get auth headers (skip in dev mode)
-    const headers: HeadersInit = {}
-    if (!import.meta.dev && typeof window !== 'undefined') {
-      const token = localStorage.getItem('swarm-config-token')
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-    }
-
-    const response = await fetch('/api/user', { headers })
-
-    if (response.ok) {
-      const data = await response.json()
-      currentUser.value = data.username
-    }
-  } catch (err) {
-    console.error('Error loading user:', err)
-  }
-}
-
 async function saveService() {
   if (!service.value) return
 
@@ -89,15 +57,9 @@ async function saveService() {
     error.value = ''
     saveSuccess.value = false
 
-    // Get auth headers (skip in dev mode)
     const headers: HeadersInit = {
-      'Content-Type': 'application/json'
-    }
-    if (!import.meta.dev && typeof window !== 'undefined') {
-      const token = localStorage.getItem('swarm-config-token')
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
     }
 
     // Prepare payload based on whether it's structured or raw
@@ -162,129 +124,114 @@ function removeRoute(serviceIndex: string | number, routeIndex: string | number)
 </script>
 
 <template>
-  <div class="layout">
-    <AppHeader subtitle="Service Configuration" :current-user="currentUser" :show-logout="true" @logout="logout" />
+  <div class="container">
+    <nav class="breadcrumb">
+      <NuxtLink to="/">← Back to Repositories</NuxtLink>
+    </nav>
 
-    <main class="main">
-      <div class="container">
-        <nav class="breadcrumb">
-          <NuxtLink to="/">← Back to Repositories</NuxtLink>
-        </nav>
+    <AppLoading v-if="loading" text="Loading service configuration..." />
 
-        <AppLoading v-if="loading" text="Loading service configuration..." />
+    <AppAlert v-else-if="error" type="error" :message="error" />
 
-        <AppAlert v-else-if="error" type="error" :message="error" />
+    <section v-else-if="service" class="service-detail">
+      <div class="service-header">
+        <h2>{{ service.name }}</h2>
+        <div class="service-meta">
 
-        <section v-else-if="service" class="service-detail">
-          <div class="service-header">
-            <h2>{{ service.name }}</h2>
-            <div class="service-meta">
+        </div>
+      </div>
 
-            </div>
-          </div>
+      <div class="code-section">
+        <!-- Raw text editor for special cases -->
+        <textarea v-if="!isStructured" v-model="service.content" class="code-editor" spellcheck="false"></textarea>
 
-          <div class="code-section">
-            <!-- Raw text editor for special cases -->
-            <textarea v-if="!isStructured" v-model="service.content" class="code-editor" spellcheck="false"></textarea>
+        <!-- Structured form for standard services -->
+        <div v-else class="structured-form">
+          <div v-for="(svc, svcIndex) in service.parsed.services" :key="svcIndex" class="service-block">
+            <h4>Service</h4>
 
-            <!-- Structured form for standard services -->
-            <div v-else class="structured-form">
-              <div v-for="(svc, svcIndex) in service.parsed.services" :key="svcIndex" class="service-block">
-                <h4>Service</h4>
+            <div class="service-basics">
+              <div class="form-group">
+                <label>Service Name</label>
+                <input v-model="svc.name" type="text" class="form-input" />
+              </div>
 
-                <div class="service-basics">
-                  <div class="form-group">
-                    <label>Service Name</label>
-                    <input v-model="svc.name" type="text" class="form-input" />
-                  </div>
-
-                  <div class="form-group">
-                    <label>Port</label>
-                    <input v-model.number="svc.port" type="number" class="form-input" />
-                  </div>
-                </div>
-
-                <div class="routes-section">
-                  <h5>Routes</h5>
-                  <table class="routes-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Host</th>
-                        <th>Path</th>
-                        <th>Options</th>
-                        <th>Plugins</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="(route, routeIndex) in svc.routes" :key="routeIndex">
-                        <td>
-                          <input v-model="route.options.name" type="text" class="table-input" required />
-                        </td>
-                        <td>
-                          <input v-model="route.host" type="text" class="table-input" />
-                        </td>
-                        <td>
-                          <input v-model="route.options.paths" type="text" class="table-input" placeholder="/" />
-                        </td>
-                        <td class="options-cell">
-                          <label class="checkbox-label">
-                            <input v-model="route.options.strip_path" type="checkbox" />
-                            Strip path
-                          </label>
-                          <label class="checkbox-label">
-                            <input v-model="route.options.preserve_host" type="checkbox" />
-                            Preserve host
-                          </label>
-                        </td>
-                        <td>
-                          <div class="plugins-display" v-if="route.plugins && route.plugins.length > 0">
-                            <span v-for="(plugin, pIdx) in route.plugins" :key="pIdx" class="plugin-badge">
-                              {{ plugin.name }}
-                            </span>
-                          </div>
-                        </td>
-                        <td>
-                          <button @click="removeRoute(svcIndex, routeIndex)" class="btn-icon" title="Remove route">
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <button @click="addRoute(svcIndex)" class="btn-add">+ Add Route</button>
-                </div>
+              <div class="form-group">
+                <label>Port</label>
+                <input v-model.number="svc.port" type="number" class="form-input" />
               </div>
             </div>
 
-            <div class="actions-footer">
-              <button @click="saveService" :disabled="saving" class="btn-save">
-                {{ saving ? 'Saving...' : 'Save' }}
-              </button>
-              <span v-if="saveSuccess" class="save-success">✓ Saved successfully</span>
+            <div class="routes-section">
+              <h5>Routes</h5>
+              <table class="routes-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Host</th>
+                    <th>Path</th>
+                    <th>Options</th>
+                    <th>Plugins</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(route, routeIndex) in svc.routes" :key="routeIndex">
+                    <td>
+                      <input v-model="route.options.name" type="text" class="table-input" required />
+                    </td>
+                    <td>
+                      <input v-model="route.host" type="text" class="table-input" />
+                    </td>
+                    <td>
+                      <input v-model="route.options.paths" type="text" class="table-input" placeholder="/" />
+                    </td>
+                    <td class="options-cell">
+                      <label class="checkbox-label">
+                        <input v-model="route.options.strip_path" type="checkbox" />
+                        Strip path
+                      </label>
+                      <label class="checkbox-label">
+                        <input v-model="route.options.preserve_host" type="checkbox" />
+                        Preserve host
+                      </label>
+                    </td>
+                    <td>
+                      <div class="plugins-display" v-if="route.plugins && route.plugins.length > 0">
+                        <span v-for="(plugin, pIdx) in route.plugins" :key="pIdx" class="plugin-badge">
+                          {{ plugin.name }}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <button @click="removeRoute(svcIndex, routeIndex)" class="btn-icon" title="Remove route">
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <button @click="addRoute(svcIndex)" class="btn-add">+ Add Route</button>
             </div>
           </div>
-        </section>
+        </div>
+
+        <div class="actions-footer">
+          <button @click="saveService" :disabled="saving" class="btn-save">
+            {{ saving ? 'Saving...' : 'Save' }}
+          </button>
+          <span v-if="saveSuccess" class="save-success">✓ Saved successfully</span>
+        </div>
       </div>
-    </main>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.layout {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
-}
-
-.main {
-  padding: 3rem 0;
 }
 
 .breadcrumb {

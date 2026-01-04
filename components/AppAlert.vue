@@ -20,14 +20,14 @@ defineProps<{
 
 .alert-error {
   background: rgba(255, 0, 0, 0.1);
-  color: #ff4444;
+  color: #dc2626;
   border: 1px solid rgba(255, 0, 0, 0.3);
 }
 
 .dark .alert-error {
-  background: rgba(255, 0, 0, 0.15);
-  color: #ff6666;
-  border-color: rgba(255, 0, 0, 0.4);
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
 }
 
 .alert-success {
