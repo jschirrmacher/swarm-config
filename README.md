@@ -50,6 +50,23 @@ The script will:
 
 **Note:** Your applications and data remain untouched during updates.
 
+### System Update Feature (Optional)
+
+After installation, authenticated users can trigger system updates directly from the Web UI:
+
+1. Visit `https://config.your-domain.com`
+2. Click "System Update" button in header
+3. Confirm and wait for completion
+
+**→ See [SYSTEM-UPDATE.md](./docs/SYSTEM-UPDATE.md) for setup instructions**
+
+This feature requires initialization:
+
+```bash
+cd /var/apps/swarm-config
+bash scripts/init-host-manager.sh
+```
+
 ## Quick Start for App Developers
 
 ### Web UI (Primary Method)

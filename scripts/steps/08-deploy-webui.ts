@@ -7,7 +7,20 @@ console.log("🎨 Step 8: Building and deploying Swarm Config Web UI...")
 const workDir = "/var/apps/swarm-config"
 process.chdir(workDir)
 
-// Build Docker image
+// Build host-manager Docker image
+console.log("  Building host-manager Docker image...")
+try {
+  process.chdir(`${workDir}/host-manager`)
+  docker("build -t host-manager:latest .")
+  process.chdir(workDir)
+} catch (error) {
+  console.log("⚠️  host-manager build failed, but continuing...")
+  console.log(
+    "  Build it manually: cd /var/apps/swarm-config/host-manager && docker build -t host-manager:latest .",
+  )
+}
+
+// Build Web UI Docker image
 console.log("  Building Web UI Docker image...")
 try {
   docker("build -t swarm-config-ui:latest .")
@@ -27,9 +40,16 @@ if (!imageExists("swarm-config-ui")) {
   process.exit(0)
 }
 
-// Distribute image to swarm nodes
-console.log("  Distributing image to all swarm nodes...")
+// Distribute images to swarm nodes
+console.log("  Distributing images to all swarm nodes...")
 try {
+  // Distribute host-manager image
+  if (imageExists("host-manager")) {
+    const hostManagerData = docker("save host-manager:latest", { encoding: null }) as Buffer
+    exec("docker load", { input: hostManagerData })
+  }
+
+  // Distribute UI image
   const imageData = docker("save swarm-config-ui:latest", { encoding: null }) as Buffer
   exec("docker load", { input: imageData })
 } catch (error) {
@@ -43,7 +63,7 @@ try {
   }) as string
 
   if (workerNodes.trim()) {
-    console.log("  Copying image to worker nodes...")
+    console.log("  Copying images to worker nodes...")
     for (const node of workerNodes.trim().split("\n").filter(Boolean)) {
       try {
         const nodeIp = (
@@ -54,6 +74,14 @@ try {
 
         if (nodeIp) {
           console.log(`    → ${nodeIp}`)
+
+          // Copy host-manager image
+          if (imageExists("host-manager")) {
+            const hostManagerData = docker("save host-manager:latest", { encoding: null }) as Buffer
+            exec(`ssh "${nodeIp}" docker load 2>/dev/null || true`, { input: hostManagerData })
+          }
+
+          // Copy UI image
           const imageData = docker("save swarm-config-ui:latest", { encoding: null }) as Buffer
           exec(`ssh "${nodeIp}" docker load 2>/dev/null || true`, { input: imageData })
         }
@@ -71,12 +99,12 @@ const config = loadConfig()
 const domain = config.DOMAIN
 
 // Deploy stack
-console.log("  Deploying Web UI stack (includes Kong)...")
+console.log("  Deploying Web UI stack (includes Kong, host-manager)...")
 try {
   docker("stack deploy --detach=true -c compose.yaml swarm-config", {
     env: { ...process.env, DOMAIN: domain },
   })
-  console.log("  ✓ Stack deployed (Kong, Redis, Web UI)")
+  console.log("  ✓ Stack deployed (Kong, Redis, Web UI, host-manager)")
 } catch (error) {
   console.error("❌ Failed to deploy Web UI stack")
   process.exit(1)
@@ -90,14 +118,17 @@ try {
   // Continue anyway
 }
 
-// Force update service
-console.log("  Updating service with new image...")
+// Force update services
+console.log("  Updating services with new images...")
 try {
   docker(
     "service update --image swarm-config-ui:latest --force swarm-config_ui 2>/dev/null || true",
   )
+  docker(
+    "service update --image host-manager:latest --force swarm-config_host-manager 2>/dev/null || true",
+  )
 } catch (error) {
-  // Service might not exist yet
+  // Services might not exist yet
 }
 
 // Regenerate Kong config
