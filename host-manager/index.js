@@ -1,7 +1,8 @@
 import express from "express"
 import { spawn } from "node:child_process"
 import { createHash } from "node:crypto"
-import { readFileSync, existsSync } from "node:fs"
+import { readFileSync, existsSync, readdirSync } from "node:fs"
+import { join } from "node:path"
 
 const app = express()
 const PORT = 3001
@@ -38,7 +39,7 @@ function generateToken() {
 
 // Environment configuration
 const AUTH_TOKEN = getAuthToken()
-const SETUP_SCRIPT = process.env.SETUP_SCRIPT || "/app/scripts/setup.sh"
+const STEPS_DIR = process.env.STEPS_DIR || "/var/apps/swarm-config/scripts/steps"
 
 // Token-based authentication middleware
 function authenticate(req, res, next) {
@@ -69,7 +70,7 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "host-manager" })
 })
 
-// Update endpoint - executes setup script via privileged container
+// Update endpoint - executes setup steps via privileged container
 app.post("/update", authenticate, async (req, res) => {
   console.log(`[${new Date().toISOString()}] Update request received`)
 
@@ -85,86 +86,106 @@ app.post("/update", authenticate, async (req, res) => {
   }
 
   try {
-    // Execute setup script directly on host using nsenter
-    // This enters all host namespaces and runs the script as if on the host
-    const docker = spawn("docker", [
-      "run",
-      "--rm",
-      "--privileged",
-      "--pid=host",
-      "--net=host",
-      "--ipc=host",
-      "--uts=host",
-      "-v",
-      "/:/host",
-      "alpine:latest",
-      "nsenter",
-      "--target",
-      "1",
-      "--mount",
-      "--uts",
-      "--ipc",
-      "--net",
-      "--pid",
-      "--",
-      "bash",
-      SETUP_SCRIPT,
-    ])
+    // Get all TypeScript step files and sort them
+    const stepFiles = readdirSync(STEPS_DIR)
+      .filter(file => file.endsWith(".ts"))
+      .sort()
 
-    let stdout = ""
-    let stderr = ""
+    if (stepFiles.length === 0) {
+      throw new Error(`No step files found in ${STEPS_DIR}`)
+    }
 
-    docker.stdout.on("data", data => {
-      const output = data.toString()
-      stdout += output
-      console.log(output.trim())
+    console.log(`[${new Date().toISOString()}] Found ${stepFiles.length} steps to execute`)
 
-      // Send log to client
-      sendEvent("log", { message: output })
-    })
+    // Execute each step sequentially
+    for (const stepFile of stepFiles) {
+      const stepPath = join(STEPS_DIR, stepFile)
+      console.log(`[${new Date().toISOString()}] Executing step: ${stepFile}`)
 
-    docker.stderr.on("data", data => {
-      const output = data.toString()
-      stderr += output
-      console.error(output.trim())
+      // Execute step directly on host using nsenter
+      // This enters all host namespaces, so npx/tsx are from the host system
+      const docker = spawn("docker", [
+        "run",
+        "--rm",
+        "--privileged",
+        "--pid=host",
+        "--net=host",
+        "--ipc=host",
+        "--uts=host",
+        "-v",
+        "/:/host",
+        "alpine:latest",
+        "nsenter",
+        "--target",
+        "1",
+        "--mount",
+        "--uts",
+        "--ipc",
+        "--net",
+        "--pid",
+        "--",
+        "bash",
+        "-c",
+        `cd /var/apps/swarm-config && npx tsx ${stepPath}`,
+      ])
 
-      // Send error log to client
-      sendEvent("log", { message: output, level: "error" })
-    })
+      let stepStdout = ""
+      let stepStderr = ""
 
-    docker.on("close", code => {
-      if (code === 0) {
-        console.log(`[${new Date().toISOString()}] Update completed successfully`)
-        sendEvent("complete", {
-          success: true,
-          message: "System update completed successfully",
+      // Wait for step to complete
+      await new Promise((resolve, reject) => {
+        docker.stdout.on("data", data => {
+          const output = data.toString()
+          stepStdout += output
+          console.log(output.trim())
+
+          // Send log to client
+          sendEvent("log", { message: output })
         })
-      } else {
-        console.error(`[${new Date().toISOString()}] Update failed with code ${code}`)
-        sendEvent("complete", {
-          success: false,
-          error: `Setup script failed with exit code ${code}`,
-          output: stderr || stdout,
-        })
-      }
-      res.end()
-    })
 
-    docker.on("error", error => {
-      console.error(`[${new Date().toISOString()}] Docker execution error:`, error)
-      sendEvent("complete", {
-        success: false,
-        error: "Failed to execute update",
-        details: error.message,
+        docker.stderr.on("data", data => {
+          const output = data.toString()
+          stepStderr += output
+          console.error(output.trim())
+
+          // Send error log to client
+          sendEvent("log", { message: output, level: "error" })
+        })
+
+        docker.on("close", code => {
+          if (code === 0) {
+            console.log(`[${new Date().toISOString()}] Step ${stepFile} completed successfully`)
+            resolve()
+          } else {
+            console.error(`[${new Date().toISOString()}] Step ${stepFile} failed with code ${code}`)
+            reject(
+              new Error(
+                `Step ${stepFile} failed with exit code ${code}: ${stepStderr || stepStdout}`,
+              ),
+            )
+          }
+        })
+
+        docker.on("error", error => {
+          console.error(`[${new Date().toISOString()}] Docker execution error:`, error)
+          reject(error)
+        })
       })
-      res.end()
+    }
+
+    // All steps completed successfully
+    console.log(`[${new Date().toISOString()}] All steps completed successfully`)
+    sendEvent("complete", {
+      success: true,
+      message: "System update completed successfully",
     })
+    res.end()
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Update error:`, error)
     sendEvent("complete", {
       success: false,
-      error: "Internal server error",
-      details: error.message,
+      error: error.message || "Update failed",
+      details: error.stack,
     })
     res.end()
   }

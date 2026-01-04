@@ -11,6 +11,7 @@ interface SetupStep {
 }
 
 const setupSteps: SetupStep[] = [
+  { pattern: /00-configure-security/, title: "Configure Security Updates" },
   { pattern: /01-get-domain/, title: "Get Domain Configuration" },
   { pattern: /02-install-docker/, title: "Install Docker" },
   { pattern: /03-install-firewall/, title: "Configure Firewall" },

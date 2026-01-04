@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, mkdirSync, writeFileSync, appendFileSync } from 'fs'
+import { readFileSync, existsSync, writeFileSync, appendFileSync } from 'fs'
 
 const ENV_PATH = '/var/apps/swarm-config/.env'
 
