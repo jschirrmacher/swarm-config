@@ -27,19 +27,7 @@ function handleLogout() {
         </div>
         <div class="header-actions">
           <ColorModeToggle />
-          <div v-if="currentUser" class="user-info">
-            <span class="user-label">Logged in as:</span>
-            <span class="user-name">{{ currentUser }}</span>
-            <button v-if="showLogout" @click="handleLogout" class="btn-logout" title="Logout">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path
-                  d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z" />
-                <path
-                  d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z" />
-              </svg>
-              Logout
-            </button>
-          </div>
+          <UserMenu :current-user="currentUser" :show-logout="showLogout" @logout="handleLogout" />
         </div>
       </div>
     </div>
@@ -93,42 +81,7 @@ h1 {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-secondary);
-}
-
-.user-label {
-  font-size: 0.9rem;
-}
-
-.user-name {
-  font-weight: 600;
-  color: var(--accent);
-}
-
-.btn-logout {
-  background: none;
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.btn-logout:hover {
-  background: var(--accent);
-  color: white;
+  gap: 0.75rem;
 }
 
 @media (max-width: 768px) {
@@ -143,12 +96,6 @@ h1 {
   .header-content {
     flex-direction: column;
     gap: 1rem;
-    align-items: flex-start;
-  }
-
-  .header-actions {
-    width: 100%;
-    flex-direction: column;
     align-items: flex-start;
   }
 }

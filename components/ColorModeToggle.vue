@@ -22,9 +22,8 @@ const getLabel = () => {
 </script>
 
 <template>
-  <button @click="toggleColorMode" class="color-mode-toggle" :title="`Current: ${getLabel()}`">
+  <button @click="toggleColorMode" class="color-mode-toggle" :title="`Theme: ${getLabel()}`">
     <span class="icon">{{ getIcon() }}</span>
-    <span class="label">{{ getLabel() }}</span>
   </button>
 </template>
 
@@ -32,29 +31,25 @@ const getLabel = () => {
 .color-mode-toggle {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  justify-content: center;
+  padding: 0.5rem;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-secondary);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 0.9rem;
   transition: all 0.2s ease;
+  width: 40px;
+  height: 40px;
 }
 
 .color-mode-toggle:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px var(--shadow);
   border-color: var(--accent);
+  box-shadow: 0 2px 8px var(--shadow);
 }
 
 .icon {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   line-height: 1;
-}
-
-.label {
-  font-weight: 500;
 }
 </style>
