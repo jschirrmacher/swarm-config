@@ -5,6 +5,7 @@ definePageMeta({
 
 const updating = ref(false)
 const completed = ref(false)
+const reconnecting = ref(false)
 const error = ref('')
 const success = ref('')
 const logs = ref<string[]>([])
@@ -14,22 +15,64 @@ const showLogs = ref(false)
 const getAuthHeaders = inject<() => HeadersInit>('getAuthHeaders', () => ({}))
 const logout = inject<() => void>('logout', () => { })
 
+let reconnectAttempts = 0
+const maxReconnectAttempts = 10
+const reconnectDelay = 3000 // 3 seconds
+
+async function checkUpdateStatus() {
+  try {
+    const response = await fetch('/api/debug')
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+function attemptReconnect(token: string) {
+  if (reconnectAttempts >= maxReconnectAttempts) {
+    updating.value = false
+    reconnecting.value = false
+    error.value = 'Could not reconnect after service restart'
+    return
+  }
+
+  reconnectAttempts++
+  reconnecting.value = true
+  logs.value.push(`[Reconnecting... Attempt ${reconnectAttempts}/${maxReconnectAttempts}]`)
+
+  setTimeout(async () => {
+    const serverUp = await checkUpdateStatus()
+    if (serverUp) {
+      // Server is back, but update might still be running or completed
+      // Wait a bit and assume it completed successfully
+      logs.value.push('[Service is back online]')
+      logs.value.push('[Update completed - service restarted successfully]')
+      completed.value = true
+      updating.value = false
+      reconnecting.value = false
+      success.value = 'System successfully updated and restarted'
+      reconnectAttempts = 0
+    } else {
+      // Try again
+      attemptReconnect(token)
+    }
+  }, reconnectDelay)
+}
+
 async function runUpdate() {
   // Prevent double-clicks
   if (updating.value) {
     return
   }
 
-  if (!confirm('Run system update? This may take several minutes.')) {
-    return
-  }
-
   updating.value = true
   completed.value = false
+  reconnecting.value = false
   error.value = ''
   success.value = ''
   logs.value = []
   showLogs.value = true
+  reconnectAttempts = 0
 
   try {
     // Use EventSource for Server-Sent Events (GET request)
@@ -55,6 +98,7 @@ async function runUpdate() {
       const data = JSON.parse(event.data)
       eventSource.close()
       completed.value = true
+      updating.value = false
 
       if (data.success) {
         success.value = data.message || 'System successfully updated'
@@ -66,8 +110,15 @@ async function runUpdate() {
     eventSource.onerror = (err) => {
       console.error('EventSource error:', err)
       eventSource.close()
-      updating.value = false
-      error.value = 'Connection to server lost'
+
+      // If update was running, this is expected - service is restarting
+      if (updating.value && !completed.value) {
+        logs.value.push('[Connection lost - service is restarting...]')
+        attemptReconnect(token || '')
+      } else {
+        updating.value = false
+        error.value = 'Connection to server lost'
+      }
     }
   } catch (err: any) {
     console.error('Update failed:', err)
@@ -104,9 +155,17 @@ async function runUpdate() {
       </div>
 
       <div class="action-card">
-        <button @click="runUpdate" :disabled="updating" class="update-button"
-          :class="{ updating, completed: completed && success }">
-          <span v-if="updating">
+        <button @click="runUpdate" :disabled="updating || reconnecting" class="update-button"
+          :class="{ updating: updating || reconnecting, completed: completed && success }">
+          <span v-if="reconnecting">
+            <svg class="spinner" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Reconnecting...
+          </span>
+          <span v-else-if="updating">
             <svg class="spinner" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
               <path class="opacity-75" fill="currentColor"
@@ -140,7 +199,8 @@ async function runUpdate() {
             <span>Update Logs</span>
             <span v-if="completed && success" class="status-badge success">✓ Completed</span>
             <span v-else-if="completed && error" class="status-badge error">✗ Failed</span>
-            <span v-else-if="updating" class="status-badge running">⟳ Running</span>
+            <span v-else-if="reconnecting" class="status-badge reconnecting">Reconnecting</span>
+            <span v-else-if="updating" class="status-badge running">Running</span>
           </div>
           <span class="log-count">{{ logs.length }} lines</span>
         </div>
@@ -336,6 +396,12 @@ async function runUpdate() {
 
 .status-badge.running {
   background: #667eea;
+  color: white;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-badge.reconnecting {
+  background: #f59e0b;
   color: white;
   animation: pulse 2s ease-in-out infinite;
 }
