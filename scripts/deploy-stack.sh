@@ -11,6 +11,6 @@ if [ -f .env ]; then
 fi
 
 # Deploy stack with DOMAIN variable
-docker stack deploy --detach=true -c .swarm/docker-compose.yaml swarm-config
+docker stack deploy --detach=true -c compose.yaml swarm-config
 
 echo "✓ Stack deployed with DOMAIN=${DOMAIN}"

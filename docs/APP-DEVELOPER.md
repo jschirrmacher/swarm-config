@@ -145,8 +145,8 @@ myapp/
 myapp/
 ├── Dockerfile
 ├── .dockerignore
-├── docker-compose.yml         # Universal compose file (RECOMMENDED)
-├── docker-compose.override.yml # Local dev overrides
+├── compose.yaml               # Universal compose file (REQUIRED)
+├── compose.override.yaml      # Local dev overrides (optional)
 ├── .swarm/                    # Deployment configuration (optional)
 │   └── kong.yaml             # Kong configuration (optional)
 ├── package.json
@@ -159,8 +159,8 @@ myapp/
 
 **Important:**
 
-- `docker-compose.yml` in root is the recommended approach
-- `docker-compose.override.yml` is used automatically for local development
+- `compose.yaml` in root is required
+- `compose.override.yaml` is used automatically for local development
 - `.swarm/docker-compose.yaml` is optional (legacy approach)
 - `.env` and `data/` stay on the server (runtime-specific)
 
@@ -739,10 +739,10 @@ Docker Compose configuration for deployment. **Must have `.yaml` or `.yml` file 
 
 **Best Practice: Universal Compose File**
 
-Starting with this system, we recommend using a **single `docker-compose.yml` in the project root** that works for both local development and production deployment, using environment variables:
+Starting with this system, we recommend using a **single `compose.yaml` in the project root** that works for both local development and production deployment, using environment variables:
 
 ```yaml
-# docker-compose.yml (in project root)
+# compose.yaml (in project root)
 services:
   myapp:
     image: myapp:${VERSION:-latest}
@@ -763,10 +763,10 @@ networks:
     external: true
 ```
 
-**For local development**, create a `docker-compose.override.yml`:
+**For local development**, create a `compose.override.yaml`:
 
 ```yaml
-# docker-compose.override.yml (automatically loaded locally)
+# compose.override.yaml (automatically loaded locally)
 services:
   myapp:
     ports:
@@ -814,16 +814,16 @@ networks:
 
 #### Deployment Workflow
 
-**Option A: Universal Compose File (Recommended)**
+**Option A: Universal Compose File (Required)**
 
-1. **Create `docker-compose.yml` in project root:**
+1. **Create `compose.yaml` in project root:**
 
 ```bash
 # See example above with environment variables
 # This file works for both local and production
 ```
 
-2. **Create `docker-compose.override.yml` for local dev:**
+2. **Create `compose.override.yaml` for local dev:**
 
 ```bash
 # Adds port mapping for local access
@@ -836,8 +836,8 @@ services:
 3. **Commit and push:**
 
 ```bash
-git add docker-compose.yml docker-compose.override.yml
-git commit -m "Add universal compose configuration"
+git add compose.yaml compose.override.yaml
+git commit -m "Add compose configuration"
 git push production main
 ```
 
@@ -869,13 +869,12 @@ Files are copied to `/var/apps/myapp/docker-compose.yaml`
 
 **Deployment behavior:**
 
-- ✅ Root `docker-compose.yml` → copied to `/var/apps/myapp/docker-compose.yaml` (RECOMMENDED)
-- ✅ Root `docker-compose.yaml` → copied if .yml doesn't exist
-- ✅ `.swarm/kong.yaml` in repo → copied to `/var/apps/myapp/kong.yaml`
-- ⚠️ No compose file found → deployment fails
+- ✅ Root `compose.yaml` → copied to `/var/apps/myapp/docker-compose.yaml` (REQUIRED)
+- ✅ `.swarm/kong.yaml` in repo → copied to `/var/apps/myapp/kong.yaml` (optional)
+- ⚠️ No compose.yaml found → deployment fails
 - ❌ `.env` is NEVER copied from repository (runtime-specific)
 - ❌ `data/` is NEVER copied from repository (runtime-specific)
-- ❌ `docker-compose.override.yml` is NOT copied (local only)
+- ❌ `compose.override.yaml` is NOT copied (local only)
 
 #### Quick changes on the server
 

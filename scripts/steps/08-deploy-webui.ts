@@ -73,7 +73,7 @@ const domain = config.DOMAIN
 // Deploy stack
 console.log("  Deploying Web UI stack (includes Kong)...")
 try {
-  docker("stack deploy --detach=true -c .swarm/docker-compose.yaml swarm-config", {
+  docker("stack deploy --detach=true -c compose.yaml swarm-config", {
     env: { ...process.env, DOMAIN: domain },
   })
   console.log("  ✓ Stack deployed (Kong, Redis, Web UI)")

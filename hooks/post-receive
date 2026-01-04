@@ -5,7 +5,7 @@
 # Required setup:
 # - /var/apps/{appname}/ directory with .env file
 # - Docker Swarm initialized
-# - Project must have: Dockerfile, docker-compose.yml, package.json
+# - Project must have: Dockerfile, compose.yaml (or docker-compose.yaml), package.json
 
 set -e
 
@@ -55,16 +55,13 @@ while read oldrev newrev refname; do
       echo "  ✓ Keeping existing kong.yaml on server"
     fi
     
-    # Handle docker-compose.yaml - check root directory
-    if [ -f "docker-compose.yml" ]; then
-      echo "  ✓ Copying docker-compose.yml from root to server"
-      cp docker-compose.yml "$APP_DIR/docker-compose.yaml"
-    elif [ -f "docker-compose.yaml" ]; then
-      echo "  ✓ Copying docker-compose.yaml from root to server"
-      cp docker-compose.yaml "$APP_DIR/docker-compose.yaml"
+    # Handle compose file - only compose.yaml expected
+    if [ -f "compose.yaml" ]; then
+      echo "  ✓ Copying compose.yaml from root to server"
+      cp compose.yaml "$APP_DIR/docker-compose.yaml"
     elif [ ! -f "$APP_DIR/docker-compose.yaml" ]; then
-      echo "  ❌ Error: No docker-compose file found in repository!"
-      echo "  📝 Please create docker-compose.yml in your repository root"
+      echo "  ❌ Error: compose.yaml not found in repository!"
+      echo "  📝 Please create compose.yaml in your repository root"
       exit 1
     else
       echo "  ✓ Using existing docker-compose.yaml on server"

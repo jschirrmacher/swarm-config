@@ -97,7 +97,7 @@ The complete stack (Kong, Redis, UI) is deployed via Docker Compose:
 
 ```bash
 cd /var/apps/swarm-config
-docker stack deploy -c .swarm/docker-compose.yaml swarm-config
+docker stack deploy -c compose.yaml swarm-config
 ```
 
 **Important:** This command is automatically executed by the setup.sh script.

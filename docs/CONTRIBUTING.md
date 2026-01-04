@@ -261,7 +261,7 @@ docker run --rm -v $PWD/generated:/config kong:3.0 \
 ```bash
 # Deploy stack locally
 docker swarm init  # If not already initialized
-docker stack deploy -c .swarm/docker-compose.yaml test-swarm-config
+docker stack deploy -c compose.yaml test-swarm-config
 
 # Cleanup
 docker stack rm test-swarm-config

@@ -125,15 +125,13 @@ function detectPort(appDir: string): number {
     // .env doesn't exist
   }
 
-  // Check docker-compose files
-  for (const file of ["docker-compose.yml", "docker-compose.yaml"]) {
-    try {
-      const composeContent = readFileSync(join(appDir, file), "utf-8")
-      const portMatch = composeContent.match(/- "(\d+):/m)
-      if (portMatch?.[1]) return parseInt(portMatch[1], 10)
-    } catch (error) {
-      // File doesn't exist
-    }
+  // Check compose.yaml only
+  try {
+    const composeContent = readFileSync(join(appDir, "compose.yaml"), "utf-8")
+    const portMatch = composeContent.match(/- "(\d+):/m)
+    if (portMatch?.[1]) return parseInt(portMatch[1], 10)
+  } catch (error) {
+    // File doesn't exist
   }
 
   // Check package.json
@@ -152,7 +150,7 @@ function createServiceConfig(appName: string, port: number): void {
   const appDir = join(workspaceBase, appName)
   const swarmDir = join(appDir, ".swarm")
   const servicePath = join(swarmDir, "kong.yaml")
-  const composePathRoot = join(appDir, "docker-compose.yml")
+  const composePathRoot = join(appDir, "compose.yaml")
 
   // Create .swarm directory if it doesn't exist
   if (!existsSync(swarmDir)) {
@@ -185,7 +183,7 @@ routes:
     console.log(`  ✓ Created .swarm/kong.yaml`)
   }
 
-  // Create docker-compose.yml in root if it doesn't exist
+  // Create compose.yaml in root if it doesn't exist
   if (!existsSync(composePathRoot)) {
     const composeContent = `services:
   ${appName}:
@@ -207,7 +205,7 @@ networks:
     external: true
 `
     writeFileSync(composePathRoot, composeContent, "utf-8")
-    console.log(`  ✓ Created docker-compose.yml`)
+    console.log(`  ✓ Created compose.yaml`)
   }
 }
 

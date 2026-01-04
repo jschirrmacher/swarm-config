@@ -14,10 +14,7 @@ export function getConfigFilePaths(projectDir: string): ConfigFilePaths {
   return {
     kong: [join(projectDir, ".swarm", "kong.yaml"), join(projectDir, "kong.yaml")],
     compose: [
-      // Check root compose files (recommended)
-      join(projectDir, "docker-compose.yml"),
-      join(projectDir, "docker-compose.yaml"),
-      join(projectDir, "compose.yml"),
+      // Only compose.yaml - no fallbacks
       join(projectDir, "compose.yaml"),
     ],
   }
