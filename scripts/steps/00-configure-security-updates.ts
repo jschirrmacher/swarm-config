@@ -5,7 +5,7 @@ import { writeFileSync } from "fs"
 
 await runStep(
   "00-configure-security-updates",
-  "🔒 Step 0: Configuring automatic security updates...",
+  "Configuring automatic security updates...",
   async () => {
     console.log("Installing unattended-upgrades package...")
     exec("apt update")

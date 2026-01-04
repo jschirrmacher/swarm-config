@@ -134,6 +134,17 @@ export function useSystemUpdate() {
     }
   }
 
+  function markRemainingStepsCompleted() {
+    // Mark all pending or running steps as completed
+    // This is used after a reconnect when we know the update succeeded
+    steps.value.forEach(step => {
+      if (step.status === "pending" || step.status === "running") {
+        step.status = "completed"
+        step.expanded = false
+      }
+    })
+  }
+
   return {
     steps,
     currentStepIndex,
@@ -144,5 +155,6 @@ export function useSystemUpdate() {
     addLogToStep,
     markCurrentStepCompleted,
     markCurrentStepStatus,
+    markRemainingStepsCompleted,
   }
 }

@@ -21,6 +21,7 @@ const {
   addLogToStep,
   markCurrentStepCompleted,
   markCurrentStepStatus,
+  markRemainingStepsCompleted,
 } = useSystemUpdate()
 
 const { reconnecting, attemptReconnect, resetReconnectAttempts } = useUpdateReconnect()
@@ -99,7 +100,7 @@ async function runUpdate() {
         attemptReconnect(token || '', {
           onLog: addLogToStep,
           onSuccess: () => {
-            markCurrentStepCompleted()
+            markRemainingStepsCompleted()
             completed.value = true
             updating.value = false
             success.value = 'System successfully updated and restarted'

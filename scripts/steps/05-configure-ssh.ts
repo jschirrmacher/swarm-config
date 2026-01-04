@@ -3,7 +3,7 @@ import { exec } from "../lib/docker.js"
 import { runStep } from "../lib/step.js"
 import { readFileSync, writeFileSync, appendFileSync } from "fs"
 
-await runStep("05-configure-ssh", "🔒 Step 5: Configuring SSH security...", async () => {
+await runStep("05-configure-ssh", "Configuring SSH security...", async () => {
   const usernames = process.env.USERNAMES
 
   if (!usernames) {

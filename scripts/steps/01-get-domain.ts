@@ -3,7 +3,7 @@ import { saveConfig, loadConfig } from "../lib/config.js"
 import { runStep } from "../lib/step.js"
 import { existsSync } from "fs"
 
-await runStep("01-get-domain", "🌐 Step 1: Getting domain configuration...", async () => {
+await runStep("01-get-domain", "Getting domain configuration...", async () => {
   const envPath = "/var/apps/swarm-config/.env"
 
   // Check if DOMAIN already exists in .env

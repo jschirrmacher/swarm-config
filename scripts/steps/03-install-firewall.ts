@@ -2,7 +2,7 @@
 import { exec } from "../lib/docker.js"
 import { runStep } from "../lib/step.js"
 
-await runStep("03-install-firewall", "🔥 Step 3: Configuring UFW Firewall...", async () => {
+await runStep("03-install-firewall", "Configuring UFW Firewall...", async () => {
   exec("apt install -y ufw")
 
   // Allow necessary ports

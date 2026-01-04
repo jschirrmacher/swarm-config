@@ -2,7 +2,7 @@
 import { docker, networkExists } from "../lib/docker.js"
 import { runStep } from "../lib/step.js"
 
-await runStep("06-create-network", "🌐 Step 6: Creating Kong network...", async () => {
+await runStep("06-create-network", "Creating Kong network...", async () => {
   if (networkExists("kong-net")) {
     console.log("✅ kong-net network already exists")
   } else {

@@ -5,7 +5,7 @@ import { existsSync, readFileSync, appendFileSync, writeFileSync } from "fs"
 
 await runStep(
   "06.5-setup-host-manager-token",
-  "🔐 Step 6.5: Setting up host-manager authentication...",
+  "Setting up host-manager authentication...",
   async () => {
     // Check if running in Docker Swarm mode
     let isSwarmMode = false
@@ -23,14 +23,14 @@ await runStep(
 
       // Check if secret already exists
       try {
-        exec("docker secret inspect host_manager_token 2>/dev/null")
+        docker("secret inspect host_manager_token 2>/dev/null")
         console.log("  ✓ Secret 'host_manager_token' already exists")
       } catch (error) {
         // Secret doesn't exist, create it
         console.log("  Creating new token secret...")
         try {
           const token = exec("openssl rand -hex 32", { encoding: "utf-8" }) as string
-          exec("docker secret create host_manager_token -", {
+          docker("secret create host_manager_token -", {
             input: token.trim(),
           })
           console.log("  ✓ Secret 'host_manager_token' created")
