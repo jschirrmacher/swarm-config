@@ -46,6 +46,18 @@
 
 ### CI/CD Enhancements
 
+- [ ] **Automatic Updates via GitHub Actions Webhook**
+  - Implement webhook-based automatic updates triggered by GitHub push
+  - Components needed:
+    - GitHub Actions workflow (`.github/workflows/auto-update.yml`) that triggers on push to main
+    - API endpoint (`server/api/system/update.post.ts`) to receive webhook calls
+    - Update script (`scripts/webhook-update.sh`) with root privileges via sudo
+    - Setup script (`scripts/setup-webhook.sh`) to generate UPDATE_SECRET and configure sudoers
+  - Security: Use UPDATE_SECRET for webhook authentication
+  - Flow: Push to main → GitHub Actions → POST to /api/system/update → Server validates secret → Runs update script → git pull + npm install + rebuild + restart
+  - Benefits: Updates within seconds after push, only on actual code changes
+  - See implementation details in commit history
+
 - [ ] **GitHub Actions**: Add CI/CD pipeline for swarm-config repository
   - Automated testing
   - Docker image building
@@ -62,4 +74,4 @@
 
 ---
 
-_Last updated: 2026-01-03_
+_Last updated: 2026-01-04_

@@ -125,11 +125,21 @@ export async function generateKongConfig(silent = false) {
     plugins: [],
   }
 
+  // Extract all services from all configs
+  const extractedServices = allServices.flatMap(config => {
+    // If config has a 'services' array, use that
+    if (config.services && Array.isArray(config.services)) {
+      return config.services as any[]
+    }
+    // Otherwise, return empty array (plugins-only configs)
+    return []
+  })
+
   const config = {
     _format_version: "3.0",
     _transform: true,
 
-    services: [...allServices.flatMap(s => s.services ?? []), acmeDummyService],
+    services: [...extractedServices, acmeDummyService],
     plugins: [...processPlugins(allServices.flatMap(s => s.plugins ?? []))],
   }
 
