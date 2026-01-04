@@ -65,7 +65,7 @@ Visit `https://config.your-domain.com` and create your repository with a few cli
 
 ```bash
 # Create repository via API
-curl -X POST https://config.your-domain.com/api/repositories/create \
+curl -X POST https://config.your-domain.com/api/services \
   -H "Content-Type: application/json" \
   -u username:password \
   -d '{"name":"myapp","port":3000}'
@@ -188,9 +188,10 @@ App developers manage Kong configuration via YAML files in their repositories:
 
 ```
 myapp/
+├── docker-compose.yml         # Universal compose file
+├── docker-compose.override.yml # Local dev overrides
 ├── .swarm/
-│   ├── kong.yaml              # Kong routes and plugins
-│   └── docker-compose.yaml    # Docker Compose config
+│   └── kong.yaml              # Kong routes and plugins
 ├── Dockerfile
 └── src/
 ```

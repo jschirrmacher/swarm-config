@@ -55,13 +55,16 @@ while read oldrev newrev refname; do
       echo "  ✓ Keeping existing kong.yaml on server"
     fi
     
-    # Handle .swarm/docker-compose.yaml - required
-    if [ -f ".swarm/docker-compose.yaml" ]; then
-      echo "  ✓ Copying .swarm/docker-compose.yaml from repository"
-      cp .swarm/docker-compose.yaml "$APP_DIR/docker-compose.yaml"
+    # Handle docker-compose.yaml - check root directory
+    if [ -f "docker-compose.yml" ]; then
+      echo "  ✓ Copying docker-compose.yml from root to server"
+      cp docker-compose.yml "$APP_DIR/docker-compose.yaml"
+    elif [ -f "docker-compose.yaml" ]; then
+      echo "  ✓ Copying docker-compose.yaml from root to server"
+      cp docker-compose.yaml "$APP_DIR/docker-compose.yaml"
     elif [ ! -f "$APP_DIR/docker-compose.yaml" ]; then
-      echo "  ❌ Error: No .swarm/docker-compose.yaml found in repository or on server!"
-      echo "  📝 Please create .swarm/docker-compose.yaml in your repository"
+      echo "  ❌ Error: No docker-compose file found in repository!"
+      echo "  📝 Please create docker-compose.yml in your repository root"
       exit 1
     else
       echo "  ✓ Using existing docker-compose.yaml on server"
@@ -131,6 +134,11 @@ while read oldrev newrev refname; do
     # Deploy to Docker Swarm
     echo ""
     echo "🚀 Deploying to Docker Swarm..."
+    
+    # Set environment variables for Swarm deployment
+    export DATA_PATH="/var/apps/${APPNAME}/data"
+    export ENV_FILE="/var/apps/${APPNAME}/.env"
+    export NETWORK_NAME="kong-net"
     
     if docker stack ls 2>/dev/null | grep -q "^${APPNAME} "; then
       echo "📦 Updating existing stack..."

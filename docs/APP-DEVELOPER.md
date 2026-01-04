@@ -145,10 +145,10 @@ myapp/
 myapp/
 ├── Dockerfile
 ├── .dockerignore
-├── .swarm/                    # Deployment configuration (in repository!)
-│   ├── kong.yaml             # Kong configuration (optional)
-│   └── docker-compose.yaml   # Docker Compose (REQUIRED)
-├── docker-compose.dev.yaml   # For local development
+├── docker-compose.yml         # Universal compose file (RECOMMENDED)
+├── docker-compose.override.yml # Local dev overrides
+├── .swarm/                    # Deployment configuration (optional)
+│   └── kong.yaml             # Kong configuration (optional)
 ├── package.json
 ├── .env.example              # Example configuration
 ├── README.md
@@ -159,8 +159,9 @@ myapp/
 
 **Important:**
 
-- `.swarm/` directory belongs in the repository
-- Files are copied to `/var/apps/myapp/` during deployment
+- `docker-compose.yml` in root is the recommended approach
+- `docker-compose.override.yml` is used automatically for local development
+- `.swarm/docker-compose.yaml` is optional (legacy approach)
 - `.env` and `data/` stay on the server (runtime-specific)
 
 ````
@@ -732,11 +733,55 @@ routes:
     service: myapp_myapp
 ````
 
-#### .swarm/docker-compose.yaml (REQUIRED)
+#### .swarm/docker-compose.yaml (Recommended - but optional)
 
-Docker Compose configuration for deployment. **Must have `.yaml` file extension.**
+Docker Compose configuration for deployment. **Must have `.yaml` or `.yml` file extension.**
 
-**Create in repository:**
+**Best Practice: Universal Compose File**
+
+Starting with this system, we recommend using a **single `docker-compose.yml` in the project root** that works for both local development and production deployment, using environment variables:
+
+```yaml
+# docker-compose.yml (in project root)
+services:
+  myapp:
+    image: myapp:${VERSION:-latest}
+    volumes:
+      - ${DATA_PATH:-./data}:/app/data
+    env_file:
+      - ${ENV_FILE:-./.env}
+    networks:
+      - ${NETWORK_NAME:-default}
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+networks:
+  default:
+  kong-net:
+    external: true
+```
+
+**For local development**, create a `docker-compose.override.yml`:
+
+```yaml
+# docker-compose.override.yml (automatically loaded locally)
+services:
+  myapp:
+    ports:
+      - "3000:3000" # Map to a free port
+```
+
+**For production**, the post-receive hook sets these environment variables:
+
+- `DATA_PATH=/var/apps/myapp/data`
+- `ENV_FILE=/var/apps/myapp/.env`
+- `NETWORK_NAME=kong-net`
+
+**Legacy Option: Separate .swarm/ file**
+
+You can still use `.swarm/docker-compose.yaml` if you prefer:
 
 ```yaml
 # .swarm/docker-compose.yaml
@@ -764,9 +809,39 @@ networks:
 
 - Paths are relative to the deployment directory `/var/apps/myapp/`
 - `.env` and `data/` exist only on the server
-- File extension must be `.yaml` (not `.yml`)
+- File extension can be `.yaml` or `.yml`
+- Root files (`docker-compose.yml`) have priority over `.swarm/` versions
 
 #### Deployment Workflow
+
+**Option A: Universal Compose File (Recommended)**
+
+1. **Create `docker-compose.yml` in project root:**
+
+```bash
+# See example above with environment variables
+# This file works for both local and production
+```
+
+2. **Create `docker-compose.override.yml` for local dev:**
+
+```bash
+# Adds port mapping for local access
+services:
+  myapp:
+    ports:
+      - "3000:3000"
+```
+
+3. **Commit and push:**
+
+```bash
+git add docker-compose.yml docker-compose.override.yml
+git commit -m "Add universal compose configuration"
+git push production main
+```
+
+**Option B: Legacy .swarm/ Directory**
 
 1. **Create `.swarm/` directory in your project:**
 
@@ -784,18 +859,23 @@ git commit -m "Add deployment configuration"
 git push production main
 ```
 
-The post-receive hook automatically copies:
+The post-receive hook automatically uses files in this priority:
 
-- `.swarm/kong.yaml` → `/var/apps/myapp/kong.yaml`
-- `.swarm/docker-compose.yaml` → `/var/apps/myapp/docker-compose.yaml`
+1. `.swarm/docker-compose.yaml` (if exists)
+2. `docker-compose.yml` (root)
+3. `docker-compose.yaml` (root)
+
+Files are copied to `/var/apps/myapp/docker-compose.yaml`
 
 **Deployment behavior:**
 
+- ✅ Root `docker-compose.yml` → copied to `/var/apps/myapp/docker-compose.yaml` (RECOMMENDED)
+- ✅ Root `docker-compose.yaml` → copied if .yml doesn't exist
 - ✅ `.swarm/kong.yaml` in repo → copied to `/var/apps/myapp/kong.yaml`
-- ✅ `.swarm/docker-compose.yaml` in repo → copied to `/var/apps/myapp/docker-compose.yaml` (REQUIRED)
-- ⚠️ No `.swarm/docker-compose.yaml` → deployment fails
+- ⚠️ No compose file found → deployment fails
 - ❌ `.env` is NEVER copied from repository (runtime-specific)
 - ❌ `data/` is NEVER copied from repository (runtime-specific)
+- ❌ `docker-compose.override.yml` is NOT copied (local only)
 
 #### Quick changes on the server
 

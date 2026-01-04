@@ -27,7 +27,7 @@ async function loadRepositories() {
   error.value = ''
 
   try {
-    const data = await $fetch<Repository[]>('/api/repositories', { headers: getAuthHeaders() })
+    const data = await $fetch<Repository[]>('/api/services', { headers: getAuthHeaders() })
     repositories.value = data
   } catch (err: any) {
     if (err?.statusCode === 401) {
@@ -49,7 +49,7 @@ async function createRepository() {
   successMessage.value = ''
 
   try {
-    const response = await $fetch('/api/repositories/create', {
+    const response = await $fetch('/api/services', {
       method: 'POST',
       body: newRepo.value,
       headers: getAuthHeaders()

@@ -1,122 +1,60 @@
-import { readdirSync, existsSync } from "fs"
+import type { Repository } from "~/types"
+import { listRepositories } from "~/server/utils/gitRepo"
+import { requireAuth } from "~/server/utils/auth"
 import { join } from "path"
-import { execSync } from "child_process"
-import { findKongConfig, findComposeConfig } from "../../utils/findConfigFiles"
+import { getDockerStatus, isSwarmActive } from "~/server/utils/dockerStatus"
+import { findComposeConfig } from "~/server/utils/findConfigFiles"
+import { getServicePort } from "~/server/utils/getServicePort"
 
-// Check if Docker Swarm is active
-function isSwarmActive(): boolean {
-  try {
-    const output = execSync('docker info --format "{{.Swarm.LocalNodeState}}"', {
-      encoding: "utf-8",
-      timeout: 3000,
-      stdio: ["pipe", "pipe", "ignore"],
-    }).trim()
-    return output === "active"
-  } catch {
-    return false
-  }
-}
+export default defineEventHandler(async (event): Promise<Repository[]> => {
+  const config = useRuntimeConfig()
 
-// Get running stacks/containers and their status
-function getDockerStatus(stackName: string): { exists: boolean; running: number; total: number } {
   try {
+    const owner = await requireAuth(event)
+    const repos = await listRepositories(owner, config.workspaceBase)
     const swarmActive = isSwarmActive()
 
-    if (swarmActive) {
-      // On server with Swarm: check if stack exists
-      const stacks = execSync('docker stack ls --format "{{.Name}}"', {
-        encoding: "utf-8",
-        timeout: 5000,
-        stdio: ["pipe", "pipe", "ignore"],
-      })
-        .trim()
-        .split("\n")
-        .filter(Boolean)
+    return repos.map(repo => {
+      // For legacy apps, use the old structure (no username subdirectory)
+      const isLegacy = (repo as any).legacy === true
+      const workspaceDir = isLegacy
+        ? `${config.workspaceBase}/${repo.name}`
+        : `${config.workspaceBase}/${owner}/${repo.name}`
 
-      if (!stacks.includes(stackName)) {
-        return { exists: false, running: 0, total: 0 }
+      // Check if there's a docker-compose file in the project directory
+      const projectDir = join(config.workspaceBase, repo.name)
+      const hasStack = findComposeConfig(projectDir) !== undefined
+
+      // Get Docker status only if docker-compose.yaml exists
+      const dockerStack = hasStack
+        ? getDockerStatus(repo.name)
+        : { exists: false, running: 0, total: 0 }
+
+      // Generate kongRoute: use localhost with port in local dev, domain in production
+      let kongRoute: string
+      if (swarmActive) {
+        // Production with Swarm: use the configured domain
+        kongRoute = `https://${repo.name}.${config.domain}`
+      } else {
+        // Local development: use localhost with the service's port
+        const port = getServicePort(projectDir, repo.name)
+        kongRoute = `http://localhost:${port}`
       }
 
-      // Get service replicas for the stack
-      const services = execSync(`docker stack services ${stackName} --format "{{.Replicas}}"`, {
-        encoding: "utf-8",
-        timeout: 5000,
-        stdio: ["pipe", "pipe", "ignore"],
-      })
-        .trim()
-        .split("\n")
-        .filter(Boolean)
-
-      let totalRunning = 0
-      let totalReplicas = 0
-
-      for (const replica of services) {
-        const match = replica.match(/(\d+)\/(\d+)/)
-        if (match) {
-          totalRunning += parseInt(match[1]!, 10)
-          totalReplicas += parseInt(match[2]!, 10)
-        }
+      return {
+        name: repo.name,
+        path: `${config.gitRepoBase}/${owner}/${repo.name}.git`,
+        workspaceDir,
+        gitUrl: `git@${config.domain}:${config.gitRepoBase}/${owner}/${repo.name}.git`,
+        kongRoute,
+        createdAt: repo.createdAt,
+        owner: repo.owner,
+        hasStack,
+        dockerStack,
       }
-
-      return { exists: true, running: totalRunning, total: totalReplicas }
-    } else {
-      // Local without Swarm: check running containers by name prefix
-      const containers = execSync(`docker ps --filter "name=${stackName}" --format "{{.Names}}"`, {
-        encoding: "utf-8",
-        timeout: 5000,
-        stdio: ["pipe", "pipe", "ignore"],
-      })
-        .trim()
-        .split("\n")
-        .filter(Boolean)
-
-      if (containers.length === 0) {
-        return { exists: false, running: 0, total: 0 }
-      }
-
-      // In non-swarm mode, we assume all found containers should be running
-      return { exists: true, running: containers.length, total: containers.length }
-    }
+    })
   } catch (error) {
-    return { exists: false, running: 0, total: 0 }
-  }
-}
-
-export default defineEventHandler(async () => {
-  try {
-    const config = useRuntimeConfig()
-    const workspaceBase = config.workspaceBase
-
-    // Read all project directories (excluding swarm-config itself)
-    const projectDirs = readdirSync(workspaceBase, { withFileTypes: true })
-      .filter(dirent => dirent.isDirectory() && dirent.name !== "swarm-config")
-      .map(dirent => dirent.name)
-
-    const services = projectDirs
-      .filter(name => {
-        const projectDir = join(workspaceBase, name)
-        return findKongConfig(projectDir) !== undefined
-      })
-      .map(name => {
-        const projectDir = join(workspaceBase, name)
-        const hasStack = findComposeConfig(projectDir) !== undefined
-
-        // Get Docker status only if docker-compose.yaml exists
-        const dockerStatus = hasStack
-          ? getDockerStatus(name)
-          : { exists: false, running: 0, total: 0 }
-
-        return {
-          name,
-          file: "kong.yaml",
-          hasStack,
-          dockerStack: dockerStatus,
-        }
-      })
-
-    return services
-  } catch (error) {
-    console.error("Error reading services:", error)
-    throw createError({ statusCode: 500, message: "Failed to read services" })
+    console.error("Failed to list services:", error)
+    return []
   }
 })

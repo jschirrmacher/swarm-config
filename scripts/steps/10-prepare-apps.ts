@@ -152,7 +152,7 @@ function createServiceConfig(appName: string, port: number): void {
   const appDir = join(workspaceBase, appName)
   const swarmDir = join(appDir, ".swarm")
   const servicePath = join(swarmDir, "kong.yaml")
-  const composePath = join(swarmDir, "docker-compose.yaml")
+  const composePathRoot = join(appDir, "docker-compose.yml")
 
   // Create .swarm directory if it doesn't exist
   if (!existsSync(swarmDir)) {
@@ -185,29 +185,29 @@ routes:
     console.log(`  ✓ Created .swarm/kong.yaml`)
   }
 
-  // Create .swarm/docker-compose.yaml if it doesn't exist
-  if (!existsSync(composePath)) {
+  // Create docker-compose.yml in root if it doesn't exist
+  if (!existsSync(composePathRoot)) {
     const composeContent = `services:
   ${appName}:
-    image: \${IMAGE_NAME:-${appName}:latest}
-    restart: unless-stopped
-    env_file:
-      - .env
-    ports:
-      - "\${PORT:-${port}}:${port}"
+    image: ${appName}:\${VERSION:-latest}
     volumes:
-      - ./data:/app/data
+      - \${DATA_PATH:-./data}:/app/data
+    env_file:
+      - \${ENV_FILE:-./.env}
     networks:
-      - kong-net
-    labels:
-      - "com.docker.stack.namespace=${appName}"
+      - \${NETWORK_NAME:-default}
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
 
 networks:
+  default:
   kong-net:
     external: true
 `
-    writeFileSync(composePath, composeContent, "utf-8")
-    console.log(`  ✓ Created .swarm/docker-compose.yaml`)
+    writeFileSync(composePathRoot, composeContent, "utf-8")
+    console.log(`  ✓ Created docker-compose.yml`)
   }
 }
 
