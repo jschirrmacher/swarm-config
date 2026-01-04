@@ -47,12 +47,12 @@ try {
   // Distribute host-manager image
   if (imageExists("host-manager")) {
     const hostManagerData = docker("save host-manager:latest", { encoding: null }) as Buffer
-    exec("docker load", { input: hostManagerData })
+    docker("load", { input: hostManagerData })
   }
 
   // Distribute UI image
   const imageData = docker("save swarm-config-ui:latest", { encoding: null }) as Buffer
-  exec("docker load", { input: imageData })
+  docker("load", { input: imageData })
 } catch (error) {
   // Continue anyway
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { exec } from "../lib/docker.js"
+import { exec, docker } from "../lib/docker.js"
 import { runStep } from "../lib/step.js"
 import { existsSync, readFileSync, appendFileSync, writeFileSync } from "fs"
 
@@ -10,7 +10,7 @@ await runStep(
     // Check if running in Docker Swarm mode
     let isSwarmMode = false
     try {
-      const swarmInfo = exec("docker info --format '{{.Swarm.LocalNodeState}}'", {
+      const swarmInfo = docker("info --format '{{.Swarm.LocalNodeState}}'", {
         encoding: "utf-8",
       }) as string
       isSwarmMode = swarmInfo.trim() === "active"

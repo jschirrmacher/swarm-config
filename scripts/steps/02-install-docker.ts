@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { exec } from "../lib/docker.js"
+import { exec, docker } from "../lib/docker.js"
 import { runStep } from "../lib/step.js"
 import { execSync } from "child_process"
 
@@ -45,7 +45,7 @@ await runStep(
 
     // Initialize Docker Swarm
     const swarmState = (
-      exec('docker info --format "{{.Swarm.LocalNodeState}}" 2>/dev/null || echo "inactive"', {
+      docker('info --format "{{.Swarm.LocalNodeState}}" 2>/dev/null || echo "inactive"', {
         encoding: "utf-8",
       }) as string
     ).trim()
