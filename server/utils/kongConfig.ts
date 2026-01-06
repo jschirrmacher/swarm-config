@@ -7,6 +7,7 @@ type KongConfig = {
   services: unknown[]
   routes: unknown[]
   plugins: unknown[]
+  consumers?: unknown[]
 }
 
 // Process plugins: replace ${ENV_VAR} placeholders and add domains for ACME
@@ -61,14 +62,14 @@ function loadProjectServices(silent = false) {
           const content = readFileSync(join(workspaceBase, entry.name, relativePath), "utf-8")
           const config = load(content) as KongConfig
 
-          // Check if config is valid and has at least services, routes, or plugins
-          if (config && (config.services || config.routes || config.plugins)) {
+          // Check if config is valid and has at least services, routes, plugins, or consumers
+          if (config && (config.services || config.routes || config.plugins || config.consumers)) {
             if (!silent) console.log(`  ✓ ${entry.name}/${relativePath}`)
             return config
           } else {
             if (!silent) {
               console.log(
-                `  ⚠ ${entry.name}/${relativePath} - no services, routes, or plugins found`,
+                `  ⚠ ${entry.name}/${relativePath} - no services, routes, plugins, or consumers found`,
               )
             }
           }
@@ -188,6 +189,7 @@ export async function generateKongConfig(silent = false) {
 
     services: [...extractedServices, acmeDummyService],
     plugins: [...processPlugins(allServices.flatMap(s => s.plugins ?? []))],
+    consumers: [...allServices.flatMap(s => s.consumers ?? [])],
   }
 
   if (!silent) {
@@ -195,6 +197,7 @@ export async function generateKongConfig(silent = false) {
     console.log("Summary:")
     console.log(`  - ${allServices.length} services`)
     console.log(`  - 1 ACME dummy service`)
+    console.log(`  - ${allServices.flatMap(s => s.consumers ?? []).length} consumers`)
     console.log("")
   }
 

@@ -130,6 +130,10 @@ async function runUpdate() {
 
 <template>
   <div class="container">
+    <nav class="breadcrumb">
+      <NuxtLink to="/">← Back to Repositories</NuxtLink>
+    </nav>
+
     <div class="page-header">
       <div class="header-content">
         <div>
@@ -155,6 +159,23 @@ async function runUpdate() {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+.breadcrumb {
+  margin-bottom: 2rem;
+}
+
+.breadcrumb a {
+  color: white;
+  text-decoration: none;
+  font-size: 0.95rem;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+
+.breadcrumb a:hover {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 .page-header {
