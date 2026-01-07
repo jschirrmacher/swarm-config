@@ -1,24 +1,77 @@
 #!/usr/bin/env node
 import { runStep } from "../lib/step.js"
 import { exec } from "../lib/docker.js"
-import { existsSync, writeFileSync, readFileSync, createReadStream } from "fs"
+import { existsSync, writeFileSync, readFileSync, openSync, closeSync } from "fs"
 import { createInterface } from "readline"
+import { ReadStream, WriteStream } from "tty"
 
 /**
- * Prompt user for input using direct TTY access
- * This works even when the script is piped (curl ... | bash)
+ * Prompt user for input using /dev/tty for pipe compatibility
  */
-function prompt(question: string): Promise<string> {
-  const rl = createInterface({
-    input: createReadStream("/dev/tty"),
-    output: process.stdout,
-  })
+function prompt(question: string, hidden = false): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let ttyFd: number
 
-  return new Promise(resolve => {
-    rl.question(question, answer => {
-      rl.close()
-      resolve(answer.trim())
-    })
+    try {
+      ttyFd = openSync("/dev/tty", "r+")
+    } catch (error) {
+      reject(new Error("No TTY available"))
+      return
+    }
+
+    const input = new ReadStream(ttyFd)
+    const output = new WriteStream(ttyFd)
+
+    if (hidden) {
+      // Password input with masking
+      input.setRawMode(true)
+      output.write(question)
+
+      let password = ""
+
+      const onData = (char: Buffer) => {
+        const c = char.toString("utf8")
+
+        switch (c) {
+          case "\n":
+          case "\r":
+          case "\u0004": // Ctrl+D
+            input.setRawMode(false)
+            input.removeListener("data", onData)
+            output.write("\n")
+            closeSync(ttyFd)
+            resolve(password)
+            break
+          case "\u0003": // Ctrl+C
+            closeSync(ttyFd)
+            process.exit(1)
+            break
+          case "\u007f": // Backspace
+            if (password.length > 0) {
+              password = password.slice(0, -1)
+              output.write("\b \b")
+            }
+            break
+          default:
+            password += c
+            output.write("*")
+        }
+      }
+
+      input.on("data", onData)
+    } else {
+      // Normal input
+      const rl = createInterface({
+        input,
+        output,
+      })
+
+      rl.question(question, answer => {
+        rl.close()
+        closeSync(ttyFd)
+        resolve(answer.trim())
+      })
+    }
   })
 }
 
@@ -61,7 +114,7 @@ await runStep("06.7-configure-email", "Configuring email settings...", async () 
 
   const smtpPort = await prompt("  SMTP Port (e.g., 587 for TLS, 465 for SSL): ")
   const smtpUser = await prompt("  SMTP Username/Email: ")
-  const smtpPassword = await prompt("  SMTP Password: ")
+  const smtpPassword = await prompt("  SMTP Password: ", true)
   const smtpFrom = (await prompt(`  From Address (default: ${smtpUser}): `)) || smtpUser
   const useTls = (await prompt("  Use TLS? (Y/n): ")).toLowerCase() !== "n"
 

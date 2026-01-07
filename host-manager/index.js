@@ -340,11 +340,13 @@ app.post("/smtp", authenticate, express.json(), async (req, res) => {
     const fromAddress = from || user
     const useTls = tls !== false
 
-    // Install msmtp if not present (Alpine Linux)
+    // Install msmtp if not present (on the host system)
     await executeOnHost(`
       if ! command -v msmtp &> /dev/null; then
-        echo "Installing msmtp..."
-        apk add --no-cache msmtp
+        echo "Installing msmtp on host system..."
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq
+        apt-get install -y -qq msmtp msmtp-mta
       fi
     `)
 
