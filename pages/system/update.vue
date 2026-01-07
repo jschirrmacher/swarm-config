@@ -3,6 +3,7 @@ definePageMeta({
   layout: 'default'
 })
 
+const isLinux = ref(false)
 const updating = ref(false)
 const completed = ref(false)
 const error = ref('')
@@ -26,8 +27,20 @@ const {
 
 const { reconnecting, attemptReconnect, resetReconnectAttempts } = useUpdateReconnect()
 
-// Load and initialize steps on mount
+// Check platform and load steps
 onMounted(async () => {
+  // Check if server is running on Linux
+  try {
+    const response = await fetch('/api/system/platform')
+    const data = await response.json()
+    isLinux.value = data.platform === 'linux'
+  } catch {
+    isLinux.value = false
+  }
+
+  if (!isLinux.value) {
+    return
+  }
   await loadStepDefinitions()
   initializeSteps()
 })
@@ -134,7 +147,15 @@ async function runUpdate() {
       <NuxtLink to="/">← Back to Repositories</NuxtLink>
     </nav>
 
-    <div class="page-header">
+    <div v-if="!isLinux" class="platform-warning">
+      <div class="alert alert-warning">
+        <h2>⚠️ System Updates Not Available</h2>
+        <p>System updates are only available on Linux servers.</p>
+        <p>This feature uses Linux-specific package management and system commands.</p>
+      </div>
+    </div>
+
+    <div v-else class="page-header">
       <div class="header-content">
         <div>
           <h1>System Update</h1>
@@ -145,7 +166,7 @@ async function runUpdate() {
       </div>
     </div>
 
-    <div class="update-section">
+    <div v-if="isLinux" class="update-section">
       <AppAlert v-if="success" type="success" :message="success" />
       <AppAlert v-if="error" type="error" :message="error" />
 
@@ -205,6 +226,29 @@ async function runUpdate() {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.platform-warning {
+  margin-top: 2rem;
+}
+
+.alert-warning {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 2rem;
+  color: #856404;
+}
+
+.alert-warning h2 {
+  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  color: #856404;
+}
+
+.alert-warning p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
 }
 
 @media (max-width: 768px) {

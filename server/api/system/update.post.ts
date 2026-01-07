@@ -19,6 +19,14 @@ function getHostManagerToken(): string | null {
 }
 
 export default defineEventHandler(async event => {
+  // Check if running on Linux
+  if (process.platform !== "linux") {
+    throw createError({
+      statusCode: 400,
+      message: "System updates are only available on Linux servers",
+    })
+  }
+
   // Require JWT authentication
   const query = getQuery(event)
 
