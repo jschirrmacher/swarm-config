@@ -22,9 +22,9 @@ await runStep("09-install-glusterfs", "GlusterFS installation (optional)...", as
   }
 
   if (!installGlusterFS) {
-    // Check if running interactively
-    if (!process.stdin.isTTY) {
-      console.log("  ⏭️  Non-interactive mode: Skipping GlusterFS installation")
+    // Check if /dev/tty is available for interactive input
+    if (!existsSync("/dev/tty")) {
+      console.log("  ⏭️  No terminal available: Skipping GlusterFS installation")
       console.log("  ℹ️  To install later, set INSTALL_GLUSTERFS=true in .env and re-run setup")
       appendFileSync(envPath, "INSTALL_GLUSTERFS=false\n")
       return

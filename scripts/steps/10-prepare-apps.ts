@@ -95,6 +95,12 @@ await runStep("10-prepare-apps", "Preparing apps and services...", async () => {
       return users[0]!
     }
 
+    // Check if /dev/tty is available for interactive input
+    if (!existsSync("/dev/tty")) {
+      console.log("⚠️  No terminal available, using first user: ${users[0]}")
+      return users[0]!
+    }
+
     console.log("Available users:")
     users.forEach((user, i) => console.log(`  ${i + 1}. ${user}`))
     console.log("")

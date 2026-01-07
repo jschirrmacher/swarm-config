@@ -38,11 +38,14 @@ await runStep("06.7-configure-email", "Configuring email settings...", async () 
     if (portMatch?.[1]) console.log(`     SMTP Port: ${portMatch[1]}`)
     if (userMatch?.[1]) console.log(`     SMTP User: ${userMatch[1]}`)
     if (fromMatch?.[1]) console.log(`     From Address: ${fromMatch[1]}`)
+    return
+  }
 
-    const reconfigure = await prompt("\n  Do you want to reconfigure email settings? (y/N): ")
-    if (reconfigure.toLowerCase() !== "y") {
-      return
-    }
+  // Check if /dev/tty is available for interactive input
+  if (!existsSync("/dev/tty")) {
+    console.log("  ⏭️  No terminal available: Skipping email configuration")
+    console.log("  ℹ️  Configure SMTP settings via the web interface (coming soon)")
+    return
   }
 
   console.log("\n  📧 Email Configuration with msmtp")
