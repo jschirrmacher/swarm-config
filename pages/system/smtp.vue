@@ -9,7 +9,7 @@ const error = ref('')
 const success = ref('')
 
 // Inject auth utilities from layout
-const useAuthFetch = inject<typeof $fetch>('authFetch', $fetch)
+const getAuthHeaders = inject<() => HeadersInit>('getAuthHeaders', () => ({}))
 
 // Form data
 const smtpConfig = ref({
@@ -27,7 +27,9 @@ const isConfigured = ref(false)
 onMounted(async () => {
   loading.value = true
   try {
-    const data = await useAuthFetch('/api/system/smtp')
+    const data = await $fetch('/api/system/smtp', {
+      headers: getAuthHeaders()
+    })
     if (data.configured) {
       isConfigured.value = true
       smtpConfig.value = {
@@ -66,8 +68,9 @@ async function saveConfig() {
   success.value = ''
 
   try {
-    await useAuthFetch('/api/system/smtp', {
+    await $fetch('/api/system/smtp', {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: smtpConfig.value
     })
 

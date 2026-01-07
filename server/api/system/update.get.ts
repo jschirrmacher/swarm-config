@@ -1,22 +1,5 @@
 import { requireAuth } from "~/server/utils/auth"
-import { readFileSync, existsSync } from "node:fs"
-
-// Read token from Docker secret or environment variable
-function getHostManagerToken(): string | null {
-  const secretPath = "/run/secrets/host_manager_token"
-
-  // Try Docker secret first (production)
-  if (existsSync(secretPath)) {
-    try {
-      return readFileSync(secretPath, "utf8").trim()
-    } catch (error) {
-      console.error("Failed to read Docker secret:", error)
-    }
-  }
-
-  // Fall back to environment variable (development)
-  return process.env.HOST_MANAGER_TOKEN || null
-}
+import { hostManagerFetch } from "~/server/utils/hostManager"
 
 export default defineEventHandler(async event => {
   // Get token from query string (EventSource can't send custom headers)
@@ -41,15 +24,6 @@ export default defineEventHandler(async event => {
     })
   }
 
-  const token = getHostManagerToken()
-
-  if (!token) {
-    throw createError({
-      statusCode: 500,
-      message: "HOST_MANAGER_TOKEN not configured",
-    })
-  }
-
   try {
     console.log(`[${new Date().toISOString()}] System update request initiated`)
 
@@ -59,11 +33,8 @@ export default defineEventHandler(async event => {
     setResponseHeader(event, "Connection", "keep-alive")
 
     // Create fetch with streaming
-    const response = await fetch("http://host-manager:3001/update", {
+    const response = await hostManagerFetch("/update", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
     })
 
     if (!response.body) {
