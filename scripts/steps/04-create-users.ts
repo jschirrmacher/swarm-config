@@ -93,37 +93,12 @@ await runStep("04-create-users", "Creating team users from SSH authorized_keys..
     chmodSync(authorizedKeysFile, 0o600)
     exec(`chown -R ${username}:team ${sshDir}`)
 
-    // Generate password for Web UI
-    const password = (exec("openssl rand -base64 32", { encoding: "utf-8" }) as string)
-      .replace(/[=+/]/g, "")
-      .substring(0, 32)
-
-    // Save password to user's home
-    const domain = process.env.DOMAIN || "your-domain.com"
-    const passwordFile = `/home/${username}/.swarm-config-password`
-    const passwordContent = `# Swarm Config Web UI Password
-# Generated on: ${new Date().toISOString()}
-# Access the Web UI at: https://config.${domain}
-
-Username: ${username}
-Password: ${password}
-
-# This password is for accessing:
-# - Web UI: https://config.${domain}
-# - All services protected with basic-auth
-
-# Keep this file secure!
-`
-    writeFileSync(passwordFile, passwordContent)
-    chmodSync(passwordFile, 0o400)
-    exec(`chown ${username}:team ${passwordFile}`)
-
-    console.log(`  ✅ User ${username} configured`)
-    console.log(`     Password saved to /home/${username}/.swarm-config-password`)
+    console.log(`  ✅ User ${username} configured with SSH key authentication`)
   }
 
   console.log(`✅ Team users created: ${usernames.join(" ")}`)
-  console.log("📋 Passwords saved to each user's home directory in .swarm-config-password")
+  console.log("🔑 Users can now log in via SSH key authentication on the Web UI")
+  console.log("💡 Fallback: Password authentication is still available (if Kong consumers exist)")
 
   // Export for SSH security step
   process.env.USERNAMES = usernames.join(" ")

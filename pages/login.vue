@@ -6,21 +6,16 @@
         <p>Repository Management Platform</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="login-form">
+      <!-- Step 1: Username -->
+      <form v-if="step === 'username'" @submit.prevent="requestChallenge" class="login-form">
         <div class="form-group">
           <label for="username">Username</label>
           <input id="username" v-model="credentials.username" type="text" autocomplete="username" required
             :disabled="loading" placeholder="Enter your username" />
         </div>
 
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input id="password" v-model="credentials.password" type="password" autocomplete="current-password" required
-            :disabled="loading" placeholder="Enter your password" />
-        </div>
-
         <button type="submit" class="btn btn-primary" :disabled="loading">
-          {{ loading ? 'Signing in...' : 'Sign In' }}
+          {{ loading ? "Requesting challenge..." : "Continue" }}
         </button>
 
         <div v-if="error" class="alert alert-error">
@@ -28,8 +23,46 @@
         </div>
       </form>
 
+      <!-- Step 2: Challenge & Signature -->
+      <div v-else-if="step === 'challenge'" class="login-form">
+        <div class="challenge-section">
+          <h3>Sign with your SSH Key</h3>
+          <p class="instruction">Run this command in your terminal:</p>
+
+          <div class="code-block">
+            <code>{{ signCommand }}</code>
+            <button type="button" class="btn-copy" @click="copyToClipboard(signCommand)" title="Copy command">
+              📋
+            </button>
+          </div>
+
+          <p class="instruction">Then paste the signature below:</p>
+
+          <div class="form-group">
+            <label for="signature">SSH Signature</label>
+            <textarea id="signature" v-model="signature" rows="8"
+              placeholder="Paste the signature here (-----BEGIN SSH SIGNATURE-----...)" :disabled="loading"
+              required></textarea>
+          </div>
+
+          <button type="button" class="btn btn-primary" @click="verifySignature" :disabled="loading || !signature">
+            {{ loading ? "Verifying..." : "Verify & Sign In" }}
+          </button>
+
+          <button type="button" class="btn btn-secondary" @click="reset()" :disabled="loading">
+            Cancel
+          </button>
+
+          <div v-if="error" class="alert alert-error">
+            {{ error }}
+          </div>
+        </div>
+      </div>
+
       <div class="login-footer">
-        <p>Your password is stored in <code>~/.swarm-config-password</code></p>
+        <p>
+          Authenticate using your SSH private key (<code>~/.ssh/id_rsa</code>)
+        </p>
       </div>
     </div>
   </div>
@@ -37,43 +70,95 @@
 
 <script setup lang="ts">
 const credentials = ref({
-  username: '',
-  password: ''
+  username: "",
 })
 
+const step = ref<"username" | "challenge">("username")
+const challenge = ref("")
+const signCommand = ref("")
+const signature = ref("")
 const loading = ref(false)
-const error = ref('')
+const error = ref("")
 const router = useRouter()
 
-async function handleLogin() {
+async function requestChallenge() {
+  if (!credentials.value.username) {
+    error.value = "Username is required"
+    return
+  }
+
   loading.value = true
-  error.value = ''
+  error.value = ""
 
   try {
-    // Authenticate and get JWT token
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + btoa(`${credentials.value.username}:${credentials.value.password}`)
-      }
+    const response = await fetch("/api/auth/challenge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: credentials.value.username }),
     })
 
     if (!response.ok) {
-      throw new Error('Invalid username or password')
+      const data = await response.json()
+      throw new Error(data.message || "Failed to get challenge")
+    }
+
+    const data = await response.json()
+    challenge.value = data.challenge
+
+    // Generate sign command for user
+    signCommand.value = `echo -n '${challenge.value}' | ssh-keygen -Y sign -f ~/.ssh/id_rsa -n login`
+
+    step.value = "challenge"
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "Failed to get challenge"
+  } finally {
+    loading.value = false
+  }
+}
+
+async function verifySignature() {
+  loading.value = true
+  error.value = ""
+
+  try {
+    const response = await fetch("/api/auth/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: credentials.value.username,
+        signature: signature.value,
+      }),
+    })
+
+    if (!response.ok) {
+      const data = await response.json()
+      throw new Error(data.message || "Authentication failed")
     }
 
     const { token } = await response.json()
 
-    // Store JWT token in localStorage for subsequent API calls
-    localStorage.setItem('swarm-config-token', token)
+    // Store JWT token in localStorage
+    localStorage.setItem("swarm-config-token", token)
 
     // Redirect to main page
-    router.push('/')
+    router.push("/")
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Login failed'
+    error.value = err instanceof Error ? err.message : "Authentication failed"
   } finally {
     loading.value = false
   }
+}
+
+function copyToClipboard(text: string) {
+  navigator.clipboard.writeText(text)
+}
+
+function reset() {
+  step.value = "username"
+  challenge.value = ""
+  signCommand.value = ""
+  signature.value = ""
+  error.value = ""
 }
 </script>
 
@@ -93,7 +178,7 @@ async function handleLogin() {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   padding: 3rem;
   width: 100%;
-  max-width: 420px;
+  max-width: 600px;
 }
 
 .login-header {
@@ -202,5 +287,107 @@ async function handleLogin() {
   padding: 0.2rem 0.4rem;
   border-radius: 3px;
   font-size: 0.8rem;
+}
+
+.divider {
+  text-align: center;
+  color: #999;
+  font-size: 0.9rem;
+  position: relative;
+  margin: 0.5rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: #e0e0e0;
+}
+
+.divider::before {
+  left: 0;
+}
+
+.divider::after {
+  right: 0;
+}
+
+.btn-secondary {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.challenge-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.challenge-section h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.instruction {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.code-block {
+  background: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: 6px;
+  padding: 1rem;
+  position: relative;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.85rem;
+  word-break: break-all;
+  color: #e2e8f0;
+  line-height: 1.6;
+}
+
+.btn-copy {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.btn-copy:hover {
+  background: #f5f5f5;
+}
+
+.form-group textarea {
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: monospace;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.form-group textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.form-group textarea:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
 }
 </style>
