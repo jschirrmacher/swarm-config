@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 import { runStep } from "../lib/step.js"
 import { exec } from "../lib/docker.js"
-import { existsSync, writeFileSync, readFileSync } from "fs"
+import { existsSync, writeFileSync, readFileSync, createReadStream } from "fs"
 import { createInterface } from "readline"
 
 /**
- * Prompt user for input
+ * Prompt user for input using direct TTY access
+ * This works even when the script is piped (curl ... | bash)
  */
 function prompt(question: string): Promise<string> {
   const rl = createInterface({
-    input: process.stdin,
+    input: createReadStream("/dev/tty"),
     output: process.stdout,
   })
 

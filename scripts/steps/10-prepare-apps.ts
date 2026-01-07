@@ -9,6 +9,7 @@ import {
   existsSync,
   mkdirSync,
   copyFileSync,
+  createReadStream,
 } from "fs"
 import { join, dirname, resolve } from "path"
 import { createInterface } from "readline"
@@ -98,7 +99,7 @@ await runStep("10-prepare-apps", "Preparing apps and services...", async () => {
     users.forEach((user, i) => console.log(`  ${i + 1}. ${user}`))
     console.log("")
 
-    const rl = createInterface({ input: process.stdin, output: process.stdout })
+    const rl = createInterface({ input: createReadStream("/dev/tty"), output: process.stdout })
     const answer = await new Promise<string>(resolve => {
       rl.question(`Select user (1-${users.length}): `, resolve)
     })
