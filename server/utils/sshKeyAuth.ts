@@ -136,13 +136,11 @@ export function verifySshSignature(
 }
 
 /**
- * Check if user exists on the system
+ * Check if user has authorized_keys (instead of checking system user)
+ * This works in containers where /home is mounted but users don't exist
  */
 export function userExists(username: string): boolean {
-  try {
-    execSync(`id ${username}`, { stdio: "pipe" })
-    return true
-  } catch {
-    return false
-  }
+  // Check if user has any authorized keys
+  const keys = getUserAuthorizedKeys(username)
+  return keys.length > 0
 }
