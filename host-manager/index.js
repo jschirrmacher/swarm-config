@@ -254,3 +254,146 @@ app.listen(PORT, "0.0.0.0", () => {
     )
   }
 })
+
+// Get SMTP configuration from host
+app.get("/smtp", authenticate, async (req, res) => {
+  console.log(`[${new Date().toISOString()}] SMTP GET request received`)
+
+  try {
+    const msmtpConfigPath = "/etc/msmtprc"
+
+    // Check if config file exists
+    const checkExists = await executeOnHost(
+      `test -f ${msmtpConfigPath} && echo "exists" || echo "not_found"`,
+    )
+
+    if (checkExists.trim() === "not_found") {
+      return res.json({ configured: false })
+    }
+
+    // Read and parse config
+    const config = await executeOnHost(`cat ${msmtpConfigPath}`)
+
+    const hostMatch = config.match(/^host\s+(.+)$/m)
+    const portMatch = config.match(/^port\s+(.+)$/m)
+    const userMatch = config.match(/^user\s+(.+)$/m)
+    const fromMatch = config.match(/^from\s+(.+)$/m)
+    const tlsMatch = config.match(/^tls\s+(.+)$/m)
+
+    res.json({
+      configured: true,
+      host: hostMatch?.[1] || "",
+      port: portMatch?.[1] || "587",
+      user: userMatch?.[1] || "",
+      from: fromMatch?.[1] || "",
+      tls: tlsMatch?.[1] !== "off",
+    })
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] SMTP GET error:`, error)
+    res.status(500).json({
+      success: false,
+      error: `Failed to read SMTP configuration: ${error.message}`,
+    })
+  }
+})
+
+// Save SMTP configuration on host
+app.post("/smtp", authenticate, express.json(), async (req, res) => {
+  console.log(`[${new Date().toISOString()}] SMTP POST request received`)
+
+  const { host, port = "587", user, password, from, tls = true } = req.body
+
+  // Validate required fields
+  if (!host || !user) {
+    return res.status(400).json({
+      success: false,
+      error: "SMTP Host and User are required",
+    })
+  }
+
+  try {
+    const msmtpConfigPath = "/etc/msmtprc"
+    let finalPassword = password
+
+    // If password is empty, try to keep existing one
+    if (!finalPassword) {
+      const checkExists = await executeOnHost(
+        `test -f ${msmtpConfigPath} && echo "exists" || echo "not_found"`,
+      )
+
+      if (checkExists.trim() === "exists") {
+        const existingConfig = await executeOnHost(`cat ${msmtpConfigPath}`)
+        const passwordMatch = existingConfig.match(/^password\s+(.+)$/m)
+        if (passwordMatch?.[1]) {
+          finalPassword = passwordMatch[1]
+        }
+      }
+    }
+
+    if (!finalPassword) {
+      return res.status(400).json({
+        success: false,
+        error: "Password is required",
+      })
+    }
+
+    const fromAddress = from || user
+    const useTls = tls !== false
+
+    // Install msmtp if not present
+    await executeOnHost(`
+      if ! command -v msmtp &> /dev/null; then
+        echo "Installing msmtp..."
+        apt update && apt install -y msmtp msmtp-mta
+      fi
+    `)
+
+    // Create config file content
+    const msmtpConfig = `# msmtp configuration for swarm-config
+defaults
+auth           on
+tls            ${useTls ? "on" : "off"}
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        /var/log/msmtp.log
+
+# SMTP account configuration
+account        default
+host           ${host}
+port           ${port}
+from           ${fromAddress}
+user           ${user}
+password       ${finalPassword}
+`
+
+    // Write config file
+    await executeOnHost(`cat > ${msmtpConfigPath} << 'EOF'
+${msmtpConfig}
+EOF
+chmod 600 ${msmtpConfigPath}`)
+
+    // Create log file with proper permissions
+    await executeOnHost(`
+      touch /var/log/msmtp.log
+      chmod 666 /var/log/msmtp.log
+    `)
+
+    // Create symlink for sendmail compatibility if needed
+    await executeOnHost(`
+      if [ ! -f /usr/sbin/sendmail ]; then
+        ln -s /usr/bin/msmtp /usr/sbin/sendmail
+      fi
+    `)
+
+    console.log(`[${new Date().toISOString()}] SMTP configuration saved successfully`)
+    res.json({
+      success: true,
+      message: "SMTP configuration saved successfully",
+    })
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] SMTP POST error:`, error)
+    res.status(500).json({
+      success: false,
+      error: `Failed to save SMTP configuration: ${error.message}`,
+    })
+  }
+})
