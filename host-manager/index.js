@@ -345,8 +345,22 @@ app.post("/smtp", authenticate, express.json(), async (req, res) => {
       if ! command -v msmtp &> /dev/null; then
         echo "Installing msmtp on host system..."
         export DEBIAN_FRONTEND=noninteractive
+        
+        # Ensure software-properties-common is installed
         apt-get update -qq
-        apt-get install -y -qq msmtp msmtp-mta
+        apt-get install -y -qq software-properties-common
+        
+        # Add universe repository if not present
+        if ! grep -q "^deb.*universe" /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
+          add-apt-repository -y universe || echo "Universe repository already configured"
+        fi
+        
+        # Update and install msmtp
+        apt-get update -qq
+        apt-get install -y -qq msmtp msmtp-mta || {
+          echo "Failed to install msmtp packages"
+          exit 1
+        }
       fi
     `)
 
