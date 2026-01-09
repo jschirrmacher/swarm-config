@@ -26,46 +26,12 @@ install_node_and_workspace() {
   # Install Node.js 24 LTS via NodeSource
   echo "  Installing Node.js 24 LTS..."
   
-  # Ensure universe repository is enabled (Ubuntu/Debian)
-  echo "  Ensuring all repositories are available..."
-  if [ -f /etc/apt/sources.list ]; then
-    # Enable universe repository if it exists but is commented out
-    sed -i 's/^# deb.*universe/deb http:\/\/archive.ubuntu.com\/ubuntu\/ focal universe/' /etc/apt/sources.list 2>/dev/null || true
-    # Ensure universe is added if not present
-    if ! grep -q "universe" /etc/apt/sources.list 2>/dev/null; then
-      add-apt-repository -y universe 2>/dev/null || true
-    fi
-  fi
-  
   # Update package lists
   apt update
   
-  # Install base packages with fallback
+  # Install base packages
   echo "  Installing base packages..."
-  apt install -y git curl software-properties-common
-  
-  # Install msmtp for email functionality
-  echo "  Installing msmtp for email..."
-  apt install -y msmtp msmtp-mta || {
-    echo "  ⚠️  msmtp not available, will be configured later via Web UI"
-  }
-  
-  # Try to install jq, if it fails, download it manually
-  echo "  Installing jq..."
-  set +e  # Temporarily disable exit on error
-  apt install -y jq 2>/dev/null
-  JQ_INSTALL_STATUS=$?
-  set -e  # Re-enable exit on error
-  
-  if [ $JQ_INSTALL_STATUS -ne 0 ]; then
-    echo "  ⚠️  jq not available via apt, downloading manually..."
-    JQ_VERSION="1.8.1"
-    curl -L "https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-linux-amd64" -o /usr/local/bin/jq
-    chmod +x /usr/local/bin/jq
-    echo "  ✅ jq installed manually"
-  else
-    echo "  ✅ jq installed via apt"
-  fi
+  apt install -y git curl
   
   # Now install Node.js
   curl -fsSL https://deb.nodesource.com/setup_24.x | bash -

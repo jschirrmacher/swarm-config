@@ -8,7 +8,6 @@ await runStep("07-deploy-kong", "Preparing Kong API Gateway...", async () => {
   process.chdir(workDir)
 
   // Ensure redis-data directory exists with correct permissions
-  console.log("Setting up Redis data directory...")
   const redisDataDir = `${workDir}/redis-data`
   if (!existsSync(redisDataDir)) {
     mkdirSync(redisDataDir, { recursive: true })

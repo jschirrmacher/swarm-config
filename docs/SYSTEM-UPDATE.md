@@ -1,103 +1,75 @@
 # System Update Feature
 
-Dieses Feature ermöglicht es authentifizierten Benutzern, über die Web-Oberfläche ein System-Update durchzuführen, das das `setup.sh`-Script auf dem Docker Host ausführt.
+This feature allows authenticated users to trigger system updates directly from the Web UI, which executes the `setup.sh` script on the Docker host.
 
-## Architektur
+## Architecture
 
 ```
 ┌─────────────────┐
 │   Web Browser   │
 └────────┬────────┘
-         │ HTTPS (JWT Auth)
+         │ HTTPS (JWT or SSH Key Auth)
          ↓
 ┌─────────────────┐
-│  UI Container   │──────────┐
-│  (Nuxt/Vue)     │          │ admin-net (isoliert)
-└────────┬────────┘          │
-         │                   │
-         │ HTTP (Token)      │
-         ↓                   │
-┌─────────────────┐          │
-│  host-manager   │──────────┘
-│   (Express)     │
+│  UI Container   │
+│  (Nuxt/Vue)     │
 └────────┬────────┘
-         │ Docker Socket
+         │ HTTP (Bearer Token)
          ↓
 ┌─────────────────┐
-│ Privileged      │
-│ Container       │──> chroot /host /path/to/setup.sh
+│  host-manager   │──> Executes commands via nsenter
+│   (Node.js)     │    with host PID namespace access
 └─────────────────┘
 ```
 
-## Sicherheit
+## Security
 
-1. **Netzwerk-Isolation**: Der `host-manager` läuft in einem separaten `admin-net`, auf das nur der UI-Container Zugriff hat
-2. **Doppelte Authentifizierung**:
-   - Web UI: JWT-basierte Authentifizierung
-   - host-manager: Eigener Token (`HOST_MANAGER_TOKEN`)
-3. **Docker Socket**: Nur `host-manager` hat Zugriff auf den Docker Socket
-4. **Privilegierte Ausführung**: Setup-Script wird in isoliertem, privilegiertem Container mit chroot ausgeführt
+1. **JWT or SSH Key Authentication**: Users authenticate via SSH key signatures, no password login
+2. **Host-Manager Token**: Additional token for communication between UI and host-manager
+3. **Network Isolation**: host-manager runs in an isolated network
+4. **Privileged Execution**: Commands execute with proper host access via nsenter
 
 ## Installation
 
-### Automatische Installation (empfohlen)
-
-Das Setup-Script richtet automatisch alles ein, inkl. host-manager und Token:
+The setup script automatically configures everything including host-manager and tokens:
 
 ```bash
-# Erstinstallation oder Update
 curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/main/scripts/setup.sh | sudo bash -s your-domain.com
 ```
 
-Das Script:
+The script automatically:
 
-- Erstellt automatisch ein Docker Secret (Swarm) oder .env Datei (Compose)
-- Baut beide Docker Images (UI + host-manager)
-- Deployed den kompletten Stack
+- Creates Docker Secret (Swarm) or .env file (Compose) for host-manager token
+- Builds both Docker images (UI + host-manager)
+- Deploys the complete stack
 
-### Manuelle Installation
+### Manual Installation
 
-Falls du das Token manuell verwalten möchtest:
+If you want to manage the token manually:
 
-### 1. Token generieren und als Docker Secret anlegen
+### 1. Generate and store token as Docker Secret
 
-**Für Production (empfohlen - Docker Swarm):**
+**For Production (recommended - Docker Swarm):**
 
 ```bash
-# Token generieren und als Docker Secret anlegen
 openssl rand -hex 32 | docker secret create host_manager_token -
-
-# Überprüfen
 docker secret ls
 ```
 
-**Für Development (mit .env Datei):**
+**For Development (with .env file):**
 
 ```bash
-# Token generieren
-openssl rand -hex 32 > .token.tmp
-
-# In .env Datei speichern
-echo "HOST_MANAGER_TOKEN=$(cat .token.tmp)" >> .env
-
-# Temporäre Datei löschen
-rm .token.tmp
+echo "HOST_MANAGER_TOKEN=$(openssl rand -hex 32)" >> .env
 ```
 
-**Für Development (mit Umgebungsvariable):**
-
-```bash
-export HOST_MANAGER_TOKEN=$(openssl rand -hex 32)
-```
-
-### 2. host-manager Image bauen
+### 2. Build host-manager image
 
 ```bash
 cd host-manager
 docker build -t host-manager:latest .
 ```
 
-### 3. Services deployen
+### 3. Deploy services
 
 **Mit Docker Stack (Production - verwendet Secrets):**
 
@@ -113,24 +85,22 @@ docker compose up -d
 
 > **Wichtig:** Bei Docker Stack werden automatisch die Docker Secrets verwendet. Bei Docker Compose wird die `.env` Datei oder die Umgebungsvariable `HOST_MANAGER_TOKEN` verwendet.
 
-## Verwendung
+## Usage
 
-### Über die Web-Oberfläche
+### Via Web UI
 
-1. In die Web-Oberfläche einloggen
-2. Im Header auf den "System Update" Button klicken
-3. Bestätigen
-4. Warten auf die Ausführung (kann mehrere Minuten dauern)
-5. Live-Logs verfolgen
+1. Log in to the Web UI (SSH key authentication)
+2. Click "System Update" button in header
+3. Confirm
+4. Wait for execution (may take several minutes)
+5. Follow live logs
 
-**Hinweis:** Nach einem erfolgreichen Update werden die Services neu gestartet. Dies führt zu einem kurzen Verbindungsabbruch. Die Seite muss anschließend neu geladen werden.
+**Note:** After a successful update, services restart, causing a brief connection interruption. Reload the page afterward.
 
-### Über die API
+### Via API
 
 ```bash
-# Token aus localStorage oder JWT erhalten
-curl -X POST https://your-domain.com/api/system/update \
-  -H "Authorization: Bearer $JWT_TOKEN"
+curl -X GET https://your-domain.com/api/system/update?token=$JWT_TOKEN
 ```
 
 ## Monitoring

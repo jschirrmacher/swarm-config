@@ -8,7 +8,6 @@ await runStep("08-deploy-webui", "Building and deploying Swarm Config Web UI..."
   process.chdir(workDir)
 
   // Build host-manager Docker image
-  console.log("Building host-manager Docker image...")
   try {
     process.chdir(`${workDir}/host-manager`)
     docker("build -t host-manager:latest .")

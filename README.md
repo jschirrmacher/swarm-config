@@ -81,10 +81,10 @@ Visit `https://config.your-domain.com` and create your repository with a few cli
 ### Alternative: API Access
 
 ```bash
-# Create repository via API
+# Create repository via API (requires SSH key authentication)
 curl -X POST https://config.your-domain.com/api/services \
   -H "Content-Type: application/json" \
-  -u username:password \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{"name":"myapp","port":3000}'
 
 # In your local project

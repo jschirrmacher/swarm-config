@@ -32,7 +32,7 @@ The script automatically performs the following steps:
 - ✅ System updates
 - ✅ Git installation
 - ✅ Docker & Docker Swarm installation and initialization
-- ✅ UFW Firewall configuration (ports 22, 80, 443, 9000)
+- ✅ UFW Firewall configuration (ports 22, 80, 443)
 - ✅ Node.js 24 LTS via NodeSource
 - ✅ Create workspace `/var/apps`
 - ✅ Clone repository
@@ -45,10 +45,11 @@ The script automatically performs the following steps:
 
 **Note:** The setup.sh script:
 
-- Interactively prompts for your domain and creates the `.swarm-config` file
+- Interactively prompts for your domain and creates the `.env` file
 - Creates the Kong network (`kong-net`)
 - Generates the Kong configuration and automatically deploys the Kong stack
 - Builds and deploys the Web UI for repository management
+- Installs msmtp for email functionality (configure via Web UI later)
 - Optionally prompts for GlusterFS installation (for multi-node clusters)
 
 After setup, Kong and the Web UI are ready to use!
@@ -82,6 +83,55 @@ npm run kong:generate
 ### Step 3: Configure Additional Services (Optional)
 
 You can configure additional optional services:
+
+#### SMTP Configuration (Optional)
+
+Configure email sending for your applications via the Web UI:
+
+1. Visit `https://config.your-domain.com`
+2. Click "SMTP Settings" in the user menu
+3. Enter your SMTP server details (host, port, username, password)
+4. Save configuration
+
+The system uses `msmtp` to send emails. Configuration is stored in `/etc/msmtprc` on the host.
+
+**Note:** You must configure SMTP settings via the Web UI first before testing email functionality.
+
+**Test email sending:**
+
+```bash
+# First, verify configuration file exists
+test -f /etc/msmtprc && echo "Config exists" || echo "Config missing - configure via Web UI first"
+
+# Verify configuration
+cat /etc/msmtprc
+
+# Check permissions (must be 600 or 644)
+ls -la /etc/msmtprc
+
+# Test with msmtp directly (as root)
+sudo bash -c 'echo "Test" | msmtp -a default recipient@example.com'
+
+# Or specify config file explicitly
+echo "Test" | msmtp --file=/etc/msmtprc -a default recipient@example.com
+
+# Check msmtp log for errors
+tail -f /var/log/msmtp.log
+
+# Verify sendmail symlink
+ls -la /usr/sbin/sendmail
+```
+
+**Common issues:**
+
+- **"account default not found: no configuration file available"**: msmtp sucht standardmäßig in `~/.msmtprc` statt `/etc/msmtprc`. Verwende `--file=/etc/msmtprc` oder führe als root aus
+- **Connection timed out (port 465)**: Port 465 is often blocked by providers. Use port 587 with STARTTLS instead (recommended)
+- **Authentication failed**: Check username/password in SMTP settings
+- **Connection refused**: Verify host and port settings
+- **TLS errors**: Some providers require TLS off (port 25) or specific TLS settings
+- **Permission denied**: Check that `/etc/msmtprc` has mode 600
+
+**Note:** UFW allows outgoing connections by default, so no additional firewall rules are needed for SMTP.
 
 #### Customize Kong Configuration (Optional)
 

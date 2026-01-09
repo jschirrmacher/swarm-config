@@ -7,11 +7,9 @@ await runStep(
   "00-configure-security-updates",
   "Configuring automatic security updates...",
   async () => {
-    console.log("Installing unattended-upgrades package...")
     exec("apt update")
     exec("apt install -y unattended-upgrades")
 
-    console.log("Configuring automatic updates...")
     const unattendedUpgradesConfig = `// Automatically upgrade packages from these origins
 Unattended-Upgrade::Allowed-Origins {
     "\${distro_id}:\${distro_codename}-security";
