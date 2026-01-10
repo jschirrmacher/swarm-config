@@ -86,7 +86,12 @@ start_host_manager() {
   docker run -d \
     --name host-manager-setup \
     --network host \
+    --cap-add SYS_ADMIN \
+    --cap-add SYS_PTRACE \
+    --security-opt apparmor=unconfined \
+    --pid host \
     -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /proc:/host/proc:ro \
     -e HOST_MANAGER_TOKEN="$TOKEN" \
     host-manager:latest
   

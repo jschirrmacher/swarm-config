@@ -94,10 +94,17 @@ services:
       - SETUP_SCRIPT=/var/apps/swarm-config/scripts/setup.sh
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/host/proc:ro
     networks:
       - admin-net
     secrets:
       - host_manager_token
+    cap_add:
+      - SYS_ADMIN
+      - SYS_PTRACE
+    security_opt:
+      - apparmor=unconfined
+    pid: host
     deploy:
       replicas: 1
       restart_policy:
