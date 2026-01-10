@@ -27,18 +27,13 @@ clone_or_update_repo() {
       git remote set-url origin https://github.com/jschirrmacher/swarm-config.git
     fi
     
-    BACKUP_DIR=$(mktemp -d)
-    cp .env "$BACKUP_DIR/" 2>/dev/null || true
-    
     if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+      echo "  💾 Stashing local changes..."
       git stash push -m "Auto-stash during setup.sh"
     fi
     
     git fetch origin
     git checkout -B main origin/main
-    
-    [ -f "$BACKUP_DIR/.env" ] && cp "$BACKUP_DIR/.env" .env
-    rm -rf "$BACKUP_DIR"
   else
     git clone https://github.com/jschirrmacher/swarm-config.git
     cd swarm-config
@@ -155,6 +150,9 @@ start_host_manager() {
 run_setup() {
   echo "📋 Running setup via host-manager API..."
   
+  # Pass DOMAIN to setup steps
+  export DOMAIN="${DOMAIN:-}"
+  
   curl -N -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
        -H "Content-Type: application/json" \
        -d '{}' \
@@ -184,12 +182,26 @@ install_docker
 start_host_manager
 run_setup
 
+# Get DOMAIN from .env if not provided as argument
+if [ -z "$DOMAIN" ] && [ -f /var/apps/swarm-config/.env ]; then
+  DOMAIN=$(grep '^DOMAIN=' /var/apps/swarm-config/.env | cut -d'=' -f2)
+fi
+
 echo ""
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║                    Installation Complete! 🎉                    ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "🎉 Services are now running:"
-echo "  • Kong API Gateway: https://$DOMAIN"
-echo "  • Web UI: https://config.$DOMAIN"
+if [ -n "$DOMAIN" ]; then
+  echo "🎉 Services are now running:"
+  echo "  • Kong API Gateway: https://$DOMAIN"
+  echo "  • Web UI: https://config.$DOMAIN"
+  echo ""
+  echo "Next steps:"
+  echo "  1. Access Web UI: https://config.$DOMAIN"
+  echo "  2. Complete manual setup steps (SMTP, GlusterFS, Apps)"
+  echo "  3. Create your first app repository"
+else
+  echo "⚠️  DOMAIN not configured. Please set DOMAIN in /var/apps/swarm-config/.env"
+fi
 echo ""

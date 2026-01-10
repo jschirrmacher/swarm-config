@@ -21,17 +21,16 @@ export default defineSetupCommand({
     const workDir = "/var/apps/swarm-config"
 
     // Pull latest code from git
-    yield "📦 Checking for code updates..."
     try {
       const statusResult = await executeOnHost(`cd ${workDir} && git status --porcelain`)
       const hasChanges = statusResult.stdout.trim().length > 0
 
       if (hasChanges) {
-        yield "⚠️  Found uncommitted changes, stashing..."
+        yield "💾 Stashing uncommitted changes..."
         await executeOnHost(`cd ${workDir} && git stash push -m "Auto-stash before update"`)
       }
 
-      yield "🔄 Pulling latest changes from origin/main..."
+      yield "🔄 Checking for code updates..."
       const pullResult = await executeOnHost(`cd ${workDir} && git pull origin main`)
       if (pullResult.stdout.includes("Already up to date")) {
         yield "✅ Code is up to date"
