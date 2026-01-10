@@ -159,15 +159,11 @@ start_host_manager() {
 run_setup() {
   echo "📋 Running setup via host-manager API..."
   
-  # Pass DOMAIN and BRANCH to setup steps
-  export DOMAIN="${DOMAIN:-}"
-  export BRANCH="${BRANCH:-main}"
-  
-  curl -N -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
+  curl -sS -N -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
        -H "Content-Type: application/json" \
        -d '{"force": false}' \
-       http://localhost:3001/setup/run | while IFS= read -r line; do
-    # Parse JSON streaming output
+       http://localhost:3001/setup/run | while IFS= read -r line
+  do
     event=$(echo "$line" | jq -r '.event // empty' 2>/dev/null)
     
     case "$event" in
