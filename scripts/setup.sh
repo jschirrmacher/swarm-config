@@ -33,10 +33,13 @@ clone_or_update_repo() {
     fi
     
     git fetch origin
-    git checkout -B main origin/main
+    git checkout -B "${BRANCH:-main}" "origin/${BRANCH:-main}"
   else
     git clone https://github.com/jschirrmacher/swarm-config.git
     cd swarm-config
+    if [ -n "$BRANCH" ] && [ "$BRANCH" != "main" ]; then
+      git checkout -B "$BRANCH" "origin/$BRANCH"
+    fi
   fi
 
   echo "✅ Repository ready"
@@ -150,8 +153,9 @@ start_host_manager() {
 run_setup() {
   echo "📋 Running setup via host-manager API..."
   
-  # Pass DOMAIN to setup steps
+  # Pass DOMAIN and BRANCH to setup steps
   export DOMAIN="${DOMAIN:-}"
+  export BRANCH="${BRANCH:-main}"
   
   curl -N -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
        -H "Content-Type: application/json" \
@@ -172,9 +176,18 @@ if [ -n "$1" ]; then
   export DOMAIN="$1"
 fi
 
+if [ -n "$2" ]; then
+  export BRANCH="$2"
+else
+  export BRANCH="main"
+fi
+
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║            Swarm Config - Server Setup & Installation          ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
+echo "📍 Domain: ${DOMAIN:-<not set>}"
+echo "🌿 Branch: $BRANCH"
+echo ""
 
 check_root
 clone_or_update_repo

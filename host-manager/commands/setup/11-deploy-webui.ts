@@ -19,6 +19,7 @@ export default defineSetupCommand({
 
   async *execute() {
     const workDir = "/var/apps/swarm-config"
+    const branch = process.env.BRANCH || "main"
 
     // Pull latest code from git
     try {
@@ -30,8 +31,8 @@ export default defineSetupCommand({
         await executeOnHost(`cd ${workDir} && git stash push -m "Auto-stash before update"`)
       }
 
-      yield "🔄 Checking for code updates..."
-      const pullResult = await executeOnHost(`cd ${workDir} && git pull origin main`)
+      yield `🔄 Checking for code updates (branch: ${branch})...`
+      const pullResult = await executeOnHost(`cd ${workDir} && git pull origin ${branch}`)
       if (pullResult.stdout.includes("Already up to date")) {
         yield "✅ Code is up to date"
       } else {
