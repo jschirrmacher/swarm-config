@@ -19,6 +19,7 @@ export default defineSetupCommand({
 
   async *execute() {
     const workDir = "/var/apps/swarm-config"
+    const workspaceDir = "/workspace" // Mounted in container
     const redisDataDir = `${workDir}/redis-data`
 
     yield "Creating Redis data directory..."
@@ -40,7 +41,49 @@ export default defineSetupCommand({
     }
 
     yield "Generating Kong configuration..."
-    await executeOnHost(`cd ${workDir} && npx tsx src/generate-kong-config.ts`)
+    // Run inside container using mounted workspace
+    const { execSync } = await import("child_process")
+
+    try {
+      // Ensure dependencies are installed
+      yield "  Installing dependencies..."
+      const installOutput = execSync("cd /workspace && npm install", {
+        encoding: "utf-8",
+        env: { ...process.env },
+      })
+      if (installOutput) {
+        yield `  ${installOutput.trim()}`
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      yield `  ⚠️  npm install output: ${errorMessage}`
+    }
+
+    try {
+      // Generate Kong config
+      yield "  Generating config file..."
+      const output = execSync("cd /workspace && npx tsx src/generate-kong-config.ts", {
+        encoding: "utf-8",
+        env: {
+          ...process.env,
+          WORKSPACE_BASE: "/var/apps",
+        },
+      })
+      if (output) {
+        yield `  ${output.trim()}`
+      }
+
+      // Verify file was created
+      const { existsSync } = await import("fs")
+      if (!existsSync("/workspace/generated/kong.yaml")) {
+        throw new Error("kong.yaml was not generated")
+      }
+
+      yield "  ✓ kong.yaml generated successfully"
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      throw new Error(`Failed to generate Kong configuration: ${errorMessage}`)
+    }
 
     yield "✓ Kong preparation complete"
     yield "  (Kong will be deployed with Web UI)"

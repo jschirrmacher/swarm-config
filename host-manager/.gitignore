@@ -4,3 +4,4 @@ package-lock.json
 dist
 *.js
 !*.config.js
+!run-setup.js

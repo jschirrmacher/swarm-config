@@ -90,11 +90,12 @@ services:
   host-manager:
     image: host-manager:latest
     environment:
-      - HOST_MANAGER_TOKEN=${HOST_MANAGER_TOKEN}
       - SETUP_SCRIPT=/var/apps/swarm-config/scripts/setup.sh
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /proc:/host/proc:ro
+      - /var/lib/host-manager:/var/lib/host-manager
+      - /var/apps:/var/apps
     networks:
       - admin-net
     secrets:

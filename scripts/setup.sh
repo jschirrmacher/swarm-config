@@ -136,6 +136,8 @@ start_host_manager() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /proc:/host/proc:ro \
     -v /var/lib/host-manager:/var/lib/host-manager \
+    -v /var/apps:/var/apps \
+    -v /var/apps/swarm-config:/workspace \
     -e HOST_MANAGER_TOKEN="$TOKEN" \
     -e DOMAIN="${DOMAIN:-}" \
     -e BRANCH="${BRANCH:-main}" \
@@ -165,61 +167,17 @@ run_setup() {
     rm -f /var/lib/host-manager/setup-state.json
   fi
   
-  # Get list of steps
-  STEPS=$(curl -sS -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
-               http://localhost:3001/setup/steps | jq -r '.steps[] | select(.manualOnly != true) | .id' 2>/dev/null)
+  echo "🚀 Running setup steps..."
   
-  if [ -z "$STEPS" ]; then
-    echo "❌ Failed to get setup steps from API"
-    return 1
-  fi
-  
-  # Run each step individually
-  for step_id in $STEPS; do
-    step_name=$(curl -sS -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
-                     http://localhost:3001/setup/steps | \
-                     jq -r ".steps[] | select(.id == \"$step_id\") | .name" 2>/dev/null)
-    
-    echo ""
-    echo "🔄 $step_name"
-    
-    # Check if already completed
-    step_status=$(curl -sS -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
-                       http://localhost:3001/setup/steps | \
-                       jq -r ".steps[] | select(.id == \"$step_id\") | .status" 2>/dev/null)
-    
-    # Run the step and show output in real-time
-    curl -sS -N -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
-         -H "Content-Type: application/json" \
-         -d "{\"steps\": [\"$step_id\"], \"force\": false}" \
-         http://localhost:3001/setup/run | while IFS= read -r line; do
-      event=$(echo "$line" | jq -r '.event // empty' 2>/dev/null)
-      
-      case "$event" in
-        "log")
-          message=$(echo "$line" | jq -r '.data.message // empty')
-          [ -n "$message" ] && echo "  $message"
-          ;;
-        "step-skip")
-          echo "  ⏭️  Already completed"
-          ;;
-        "step-complete")
-          echo "  ✅ Success"
-          ;;
-        "step-error")
-          error=$(echo "$line" | jq -r '.data.error // empty')
-          echo "  ❌ Error: $error"
-          return 1
-          ;;
-      esac
-    done || {
-      echo "❌ Setup failed at step: $step_name"
+  docker run --rm -it \
+    --network container:host-manager-setup \
+    -e HOST_MANAGER_TOKEN="$TOKEN" \
+    -v /var/apps:/var/apps:ro \
+    node:24-alpine \
+    node /var/apps/swarm-config/host-manager/scripts/run-setup.js || {
+      echo "❌ Setup failed"
       return 1
     }
-  done
-  
-  echo ""
-  echo "✅ All setup steps completed successfully"
   
   echo ""
   echo "🧹 Cleaning up temporary host-manager container..."
