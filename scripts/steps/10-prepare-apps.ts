@@ -97,7 +97,7 @@ await runStep("10-prepare-apps", "Preparing apps and services...", async () => {
 
     // Check if /dev/tty is available for interactive input
     if (!existsSync("/dev/tty")) {
-      console.log("⚠️  No terminal available, using first user: ${users[0]}")
+      console.log(`⚠️  No terminal available, using first user: ${users[0]}`)
       return users[0]!
     }
 
@@ -105,18 +105,38 @@ await runStep("10-prepare-apps", "Preparing apps and services...", async () => {
     users.forEach((user, i) => console.log(`  ${i + 1}. ${user}`))
     console.log("")
 
-    const rl = createInterface({ input: createReadStream("/dev/tty"), output: process.stdout })
-    const answer = await new Promise<string>(resolve => {
-      rl.question(`Select user (1-${users.length}): `, resolve)
-    })
-    rl.close()
+    try {
+      const rl = createInterface({ input: createReadStream("/dev/tty"), output: process.stdout })
 
-    const choice = parseInt(answer, 10)
-    if (choice >= 1 && choice <= users.length) {
-      return users[choice - 1]!
+      // Set a timeout to prevent hanging
+      const timeoutPromise = new Promise<string>(resolve => {
+        setTimeout(() => {
+          rl.close()
+          console.log("⚠️  Input timeout, using first user")
+          resolve(users[0]!)
+        }, 10000) // 10 second timeout
+      })
+
+      const answerPromise = new Promise<string>(resolve => {
+        rl.question(`Select user (1-${users.length}): `, answer => {
+          rl.close()
+          resolve(answer)
+        })
+      })
+
+      const answer = await Promise.race([answerPromise, timeoutPromise])
+
+      const choice = parseInt(answer, 10)
+      if (choice >= 1 && choice <= users.length) {
+        return users[choice - 1]!
+      }
+    } catch (error) {
+      console.log(
+        `⚠️  Error reading input: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
 
-    console.log("⚠️  Invalid selection, using first user")
+    console.log("⚠️  Invalid selection or error, using first user")
     return users[0]!
   }
 

@@ -35,23 +35,43 @@ await runStep("09-install-glusterfs", "GlusterFS installation (optional)...", as
     console.log("")
 
     // Ask user (using /dev/tty for direct terminal access)
-    const rl = createInterface({
-      input: createReadStream("/dev/tty"),
-      output: process.stdout,
-    })
-
-    const answer = await new Promise<string>(resolve => {
-      rl.question("Do you want to install GlusterFS? (y/N): ", answer => {
-        rl.close()
-        resolve(answer)
+    try {
+      const rl = createInterface({
+        input: createReadStream("/dev/tty"),
+        output: process.stdout,
       })
-    })
 
-    // Save decision to .env
-    if (answer.match(/^[Yy]$/)) {
-      appendFileSync(envPath, "INSTALL_GLUSTERFS=true\n")
-      installGlusterFS = "true"
-    } else {
+      // Set a timeout to prevent hanging
+      const timeoutPromise = new Promise<string>(resolve => {
+        setTimeout(() => {
+          rl.close()
+          console.log("⚠️  Input timeout, skipping GlusterFS installation")
+          resolve("N")
+        }, 10000) // 10 second timeout
+      })
+
+      const answerPromise = new Promise<string>(resolve => {
+        rl.question("Do you want to install GlusterFS? (y/N): ", answer => {
+          rl.close()
+          resolve(answer)
+        })
+      })
+
+      const answer = await Promise.race([answerPromise, timeoutPromise])
+
+      // Save decision to .env
+      if (answer.match(/^[Yy]$/)) {
+        appendFileSync(envPath, "INSTALL_GLUSTERFS=true\n")
+        installGlusterFS = "true"
+      } else {
+        appendFileSync(envPath, "INSTALL_GLUSTERFS=false\n")
+        installGlusterFS = "false"
+      }
+    } catch (error) {
+      console.log(
+        `⚠️  Error reading input: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      console.log("  Defaulting to skip GlusterFS installation")
       appendFileSync(envPath, "INSTALL_GLUSTERFS=false\n")
       installGlusterFS = "false"
     }
