@@ -159,47 +159,75 @@ start_host_manager() {
 run_setup() {
   echo "📋 Running setup via host-manager API..."
   
-  curl -sS -N -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
-       -H "Content-Type: application/json" \
-       -d '{"force": false}' \
-       http://localhost:3001/setup/run | while IFS= read -r line
-  do
-    event=$(echo "$line" | jq -r '.event // empty' 2>/dev/null)
+  # Reset state for critical deployment steps if this is initial setup
+  if [ ! -f /var/lib/host-manager/.setup-completed ]; then
+    echo "First-time setup detected, resetting deployment steps..."
+    rm -f /var/lib/host-manager/setup-state.json
+  fi
+  
+  # Get list of steps
+  STEPS=$(curl -sS -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
+               http://localhost:3001/setup/steps | jq -r '.steps[] | select(.manualOnly != true) | .id' 2>/dev/null)
+  
+  if [ -z "$STEPS" ]; then
+    echo "❌ Failed to get setup steps from API"
+    return 1
+  fi
+  
+  # Run each step individually
+  for step_id in $STEPS; do
+    step_name=$(curl -sS -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
+                     http://localhost:3001/setup/steps | \
+                     jq -r ".steps[] | select(.id == \"$step_id\") | .name" 2>/dev/null)
     
-    case "$event" in
-      "step-start")
-        name=$(echo "$line" | jq -r '.data.name // empty')
-        echo ""
-        echo "🔄 $name"
-        ;;
-      "log")
-        message=$(echo "$line" | jq -r '.data.message // empty')
-        [ -n "$message" ] && echo "  $message"
-        ;;
-      "step-skip")
-        echo "  ⏭️  Already completed"
-        ;;
-      "step-complete")
-        echo "  ✅ Success"
-        ;;
-      "step-error")
-        error=$(echo "$line" | jq -r '.data.error // empty')
-        echo "  ❌ Error: $error"
-        ;;
-      "complete")
-        echo ""
-        succeeded=$(echo "$line" | jq -r '.data.succeeded // 0')
-        failed=$(echo "$line" | jq -r '.data.failed // 0')
-        skipped=$(echo "$line" | jq -r '.data.skipped // 0')
-        echo "✅ Setup completed: $succeeded succeeded, $skipped skipped, $failed failed"
-        ;;
-    esac
+    echo ""
+    echo "🔄 $step_name"
+    
+    # Check if already completed
+    step_status=$(curl -sS -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
+                       http://localhost:3001/setup/steps | \
+                       jq -r ".steps[] | select(.id == \"$step_id\") | .status" 2>/dev/null)
+    
+    # Run the step and show output in real-time
+    curl -sS -N -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
+         -H "Content-Type: application/json" \
+         -d "{\"steps\": [\"$step_id\"], \"force\": false}" \
+         http://localhost:3001/setup/run | while IFS= read -r line; do
+      event=$(echo "$line" | jq -r '.event // empty' 2>/dev/null)
+      
+      case "$event" in
+        "log")
+          message=$(echo "$line" | jq -r '.data.message // empty')
+          [ -n "$message" ] && echo "  $message"
+          ;;
+        "step-skip")
+          echo "  ⏭️  Already completed"
+          ;;
+        "step-complete")
+          echo "  ✅ Success"
+          ;;
+        "step-error")
+          error=$(echo "$line" | jq -r '.data.error // empty')
+          echo "  ❌ Error: $error"
+          return 1
+          ;;
+      esac
+    done || {
+      echo "❌ Setup failed at step: $step_name"
+      return 1
+    }
   done
+  
+  echo ""
+  echo "✅ All setup steps completed successfully"
   
   echo ""
   echo "🧹 Cleaning up temporary host-manager container..."
   docker stop host-manager-setup 2>/dev/null || true
   docker rm host-manager-setup 2>/dev/null || true
+  
+  # Mark setup as completed
+  touch /var/lib/host-manager/.setup-completed
 }
 
 if [ -n "$1" ]; then
