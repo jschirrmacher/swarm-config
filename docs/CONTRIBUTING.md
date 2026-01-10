@@ -36,8 +36,17 @@ swarm-config/
 │   └── services/              # Service Management
 │
 ├── scripts/                    # Setup & Deployment Scripts
-│   ├── setup.sh               # Server Bootstrap
-│   └── steps/                 # Individual Setup Steps
+│   ├── setup.sh               # Server Bootstrap (calls host-manager)
+│   └── deploy-stack.sh        # Stack Deployment Helper
+│
+├── host-manager/               # Host Command Service (Port 3001)
+│   ├── index.js               # Express Server
+│   ├── commands/
+│   │   └── setup/             # Setup Step Commands (01-13)
+│   └── lib/
+│       ├── defineSetupCommand.ts    # Command Pattern Definition
+│       ├── setupState.ts            # State & Log Management
+│       └── setupCommandRegistry.ts  # Command Registry
 │
 ├── hooks/                      # Git Hook Templates
 │   ├── post-receive           # Server-side Deployment
@@ -85,14 +94,28 @@ npm run kong:generate (Regenerate Kong)
 ```
 scripts/setup.sh
     ↓
-Automatic installation:
-- Docker & Swarm
-- UFW Firewall
-- Node.js 24 LTS
-- Team Users
-- SSH Security
-- Kong Network
-- Optional: GlusterFS
+Initial setup:
+- Clone repository
+- Install & initialize Docker Swarm
+- Start host-manager service
+    ↓
+host-manager API (port 3001)
+    ↓
+Setup Commands (13 steps):
+ 1. Configure security updates
+ 2. Get domain name
+ 3. Install Docker (already done)
+ 4. Install firewall (UFW)
+ 5. Create team users
+ 6. Configure SSH security
+ 7. Create Docker network
+ 8. Setup host-manager token
+ 9. Install msmtp
+ 9.5. Configure SMTP (manual)
+ 10. Deploy Kong
+ 11. Deploy Web UI
+ 12. Install GlusterFS (manual)
+ 13. Prepare apps directory (manual)
 ```
 
 ## Development Environment
@@ -126,6 +149,200 @@ npm run kong:generate    # Generate Kong YAML
 npm run install-hooks    # Install Git hooks
 npm run dev              # Start Web UI development server
 npm run build            # Build Web UI for production
+```
+
+## Host-Manager Service
+
+### Architecture
+
+The host-manager is a TypeScript Express service running on port 3001 that provides a centralized interface for executing setup commands and other host operations. It runs as a Docker container with access to the host's Docker socket.
+
+**Key Features:**
+
+- Executes setup commands with idempotency checks
+- Manages setup state and persistent logs
+- Provides REST API for Web UI integration
+- Secured with HOST_MANAGER_TOKEN authentication
+
+**Directory Structure:**
+
+```
+host-manager/
+├── index.js                    # Express server
+├── commands/
+│   └── setup/                  # Setup command definitions
+│       ├── 01-configure-security-updates.ts
+│       ├── 02-get-domain.ts
+│       ├── 03-install-docker.ts
+│       └── ... (13 steps total)
+├── lib/
+│   ├── defineSetupCommand.ts   # Command pattern & types
+│   ├── setupState.ts           # State & log persistence
+│   └── setupCommandRegistry.ts # Command registration
+└── package.json
+```
+
+### Setup Command Pattern
+
+Setup commands follow a consistent pattern defined by `defineSetupCommand`:
+
+```typescript
+// host-manager/commands/setup/XX-step-name.ts
+import { defineSetupCommand } from "../../lib/defineSetupCommand"
+
+export default defineSetupCommand({
+  id: "XX-step-name",
+  name: "Human-Readable Step Name",
+  description: "What this step does",
+  manualOnly: false, // true if requires user input
+
+  // Optional: Input configuration for manual steps
+  inputs: [
+    {
+      id: "fieldName",
+      label: "Field Label",
+      type: "text", // 'text' | 'password' | 'boolean' | 'select'
+      required: true,
+      options: ["option1", "option2"], // for type: 'select'
+    },
+  ],
+
+  // Check if step is already completed (idempotency)
+  async check() {
+    // Return true if step is already done
+    // Return false if step needs to run
+  },
+
+  // Execute the step
+  async *execute(inputValues) {
+    yield "Starting step..."
+
+    // Use inputValues for manual steps
+    // Yield log messages for UI display
+
+    yield "Step completed"
+  },
+
+  // Optional: Pre-fill input values from system
+  async getInputValues() {
+    return {
+      fieldName: "detected-value",
+    }
+  },
+})
+```
+
+**Command Lifecycle:**
+
+1. **Check Phase**: Verify if step is already completed
+2. **Input Phase** (manual only): Get user input via Web UI
+3. **Execute Phase**: Run the step, yield logs in real-time
+4. **State Update**: Mark as completed or failed
+
+### State Management
+
+Setup state is persisted in `/var/lib/host-manager/setup-state.json`:
+
+```json
+{
+  "steps": {
+    "01-configure-security-updates": {
+      "status": "completed",
+      "logs": ["Step completed successfully"]
+    },
+    "09.5-configure-smtp": {
+      "status": "pending",
+      "inputValues": {
+        "host": "smtp.example.com"
+      }
+    }
+  }
+}
+```
+
+**Log Persistence:**
+
+Logs are also stored individually in `/var/lib/host-manager/logs/<step-id>.log`:
+
+- Overwritten (not appended) when step re-runs
+- Loaded from disk when Web UI is accessed
+- Survives container restarts
+
+### API Endpoints
+
+```
+GET  /setup/steps              # List all setup steps with status
+POST /setup/run-step           # Execute a specific step
+POST /setup/save-input-values  # Save input values for manual step
+GET  /system/platform          # Get system platform info
+```
+
+**Authentication:**
+
+All requests require `Authorization: Bearer <HOST_MANAGER_TOKEN>` header.
+
+### Adding a New Setup Step
+
+1. **Create Command File:**
+
+```bash
+touch host-manager/commands/setup/XX-my-step.ts
+```
+
+2. **Implement Command:**
+
+```typescript
+import { defineSetupCommand } from "../../lib/defineSetupCommand"
+import { execSync } from "child_process"
+
+export default defineSetupCommand({
+  id: "XX-my-step",
+  name: "My New Step",
+  description: "Description of what this step does",
+
+  async check() {
+    try {
+      execSync("command-to-check-if-done", { stdio: "ignore" })
+      return true // Already done
+    } catch {
+      return false // Needs to run
+    }
+  },
+
+  async *execute() {
+    yield "Starting my step..."
+
+    try {
+      execSync("command-to-execute")
+      yield "Step completed successfully"
+    } catch (error) {
+      yield `Error: ${error.message}`
+      throw error
+    }
+  },
+})
+```
+
+3. **Test Locally:**
+
+```bash
+# Restart host-manager
+docker service update --force swarm-config_host-manager
+
+# Check in Web UI
+open http://localhost:3000/setup
+```
+
+4. **Numbering Convention:**
+   - Use sequential numbers (01, 02, 03, ...)
+   - Use decimal for inserted steps (09.5 for step between 09 and 10)
+   - Manual-only steps typically at the end or between automated steps
+
+5. **Commit:**
+
+```bash
+git add host-manager/commands/setup/XX-my-step.ts
+git commit -m "feat: add setup step XX - my step"
 ```
 
 ## Code Structure
