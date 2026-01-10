@@ -57,25 +57,37 @@ async function makeRequest(
 ) {
   const token = getHostManagerToken()
 
-  const response = await fetch(`${HOST_MANAGER_URL}${path}`, {
-    ...options,
-    method,
-    body: body ? JSON.stringify(body) : undefined,
-    headers: {
-      ...createHeaders(token),
-      ...options.headers,
-    },
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw createError({
-      statusCode: response.status,
-      message: error.error || `Host manager request failed: ${response.statusText}`,
+  try {
+    const response = await fetch(`${HOST_MANAGER_URL}${path}`, {
+      ...options,
+      method,
+      body: body ? JSON.stringify(body) : undefined,
+      headers: {
+        ...createHeaders(token),
+        ...options.headers,
+      },
     })
-  }
 
-  return response
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw createError({
+        statusCode: response.status,
+        message: error.error || `Host manager request failed: ${response.statusText}`,
+      })
+    }
+
+    return response
+  } catch (error: any) {
+    // Connection failed - service likely not running
+    if (error.cause?.code === "ECONNREFUSED" || error.cause?.code === "ENOTFOUND") {
+      throw createError({
+        statusCode: 503,
+        message:
+          "Host manager service is not available. Please ensure the host-manager service is running.",
+      })
+    }
+    throw error
+  }
 }
 
 export async function systemUpdate(target: NodeJS.WritableStream) {

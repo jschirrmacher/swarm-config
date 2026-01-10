@@ -24,6 +24,14 @@ export default defineEventHandler(async event => {
   } catch (error: any) {
     console.error(`[${new Date().toISOString()}] System update failed:`, error)
 
+    if (error.statusCode === 503) {
+      throw createError({
+        statusCode: 503,
+        message:
+          "Host manager service is not available. Please check if the host-manager Docker service is running: docker service ls | grep host-manager",
+      })
+    }
+
     if (error.statusCode === 401 || error.statusCode === 403) {
       throw createError({
         statusCode: 500,
@@ -33,7 +41,7 @@ export default defineEventHandler(async event => {
 
     throw createError({
       statusCode: 500,
-      message: "System update failed",
+      message: error.message || "System update failed",
       data: error.message || String(error),
     })
   }

@@ -4,6 +4,8 @@ definePageMeta({
 })
 
 const isLinux = ref(false)
+const hostManagerAvailable = ref(false)
+const checkingHostManager = ref(true)
 const updating = ref(false)
 const completed = ref(false)
 const error = ref('')
@@ -27,7 +29,7 @@ const {
 
 const { reconnecting, attemptReconnect, resetReconnectAttempts } = useUpdateReconnect()
 
-// Check platform and load steps
+// Check platform and host-manager status
 onMounted(async () => {
   // Check if server is running on Linux
   try {
@@ -39,8 +41,29 @@ onMounted(async () => {
   }
 
   if (!isLinux.value) {
+    checkingHostManager.value = false
     return
   }
+
+  // Check host-manager service status
+  try {
+    const response = await fetch('/api/system/host-manager-status', {
+      headers: getAuthHeaders()
+    })
+    const data = await response.json()
+    hostManagerAvailable.value = data.available
+
+    if (!data.available) {
+      error.value = 'Host manager service is not available. Please ensure the service is running.'
+    }
+  } catch (err) {
+    console.error('Failed to check host-manager status:', err)
+    hostManagerAvailable.value = false
+    error.value = 'Could not check host manager status'
+  } finally {
+    checkingHostManager.value = false
+  }
+
   await loadStepDefinitions()
   initializeSteps()
 })
@@ -48,6 +71,12 @@ onMounted(async () => {
 async function runUpdate() {
   // Prevent double-clicks
   if (updating.value) {
+    return
+  }
+
+  // Check host-manager availability before starting
+  if (!hostManagerAvailable.value) {
+    error.value = 'Host manager service is not available. Please check the service status.'
     return
   }
 
@@ -155,6 +184,37 @@ async function runUpdate() {
       </div>
     </div>
 
+    <div v-else-if="checkingHostManager" class="platform-warning">
+      <div class="alert alert-info">
+        <p>🔍 Checking host manager service...</p>
+      </div>
+    </div>
+
+    <div v-else-if="!hostManagerAvailable" class="platform-warning">
+      <div class="alert alert-error">
+        <h2>⚠️ Host Manager Service Not Available</h2>
+        <p>The host manager service is required for system updates but is not currently running.</p>
+        <h3>Troubleshooting Steps:</h3>
+        <ol>
+          <li>Check if the service is running:
+            <pre>docker service ls | grep host-manager</pre>
+          </li>
+          <li>Check service logs:
+            <pre>docker service logs swarm-config_host-manager</pre>
+          </li>
+          <li>Verify the host-manager image exists:
+            <pre>docker images | grep host-manager</pre>
+          </li>
+          <li>If the image is missing, rebuild it:
+            <pre>cd /var/apps/swarm-config/host-manager && docker build -t host-manager:latest .</pre>
+          </li>
+          <li>Redeploy the stack:
+            <pre>cd /var/apps/swarm-config && docker stack deploy -c compose.yaml swarm-config</pre>
+          </li>
+        </ol>
+      </div>
+    </div>
+
     <div v-else class="page-header">
       <div class="header-content">
         <div>
@@ -166,7 +226,7 @@ async function runUpdate() {
       </div>
     </div>
 
-    <div v-if="isLinux" class="update-section">
+    <div v-if="isLinux && !checkingHostManager && hostManagerAvailable" class="update-section">
       <AppAlert v-if="success" type="success" :message="success" />
       <AppAlert v-if="error" type="error" :message="error" />
 
@@ -249,6 +309,63 @@ async function runUpdate() {
 .alert-warning p {
   margin: 0.5rem 0;
   font-size: 1rem;
+}
+
+.alert-info {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  color: #0c5460;
+}
+
+.alert-info p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.alert-error {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  padding: 2rem;
+  color: #721c24;
+}
+
+.alert-error h2 {
+  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  color: #721c24;
+}
+
+.alert-error h3 {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1.2rem;
+  color: #721c24;
+}
+
+.alert-error p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+}
+
+.alert-error ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.alert-error li {
+  margin: 0.75rem 0;
+}
+
+.alert-error pre {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+  font-size: 0.875rem;
 }
 
 @media (max-width: 768px) {
