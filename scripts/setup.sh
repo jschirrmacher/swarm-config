@@ -137,7 +137,6 @@ start_host_manager() {
     -v /proc:/host/proc:ro \
     -v /var/lib/host-manager:/var/lib/host-manager \
     -v /var/apps:/var/apps \
-    -v /var/apps/swarm-config:/workspace \
     -e HOST_MANAGER_TOKEN="$TOKEN" \
     -e DOMAIN="${DOMAIN:-}" \
     -e BRANCH="${BRANCH:-main}" \
@@ -169,7 +168,7 @@ run_setup() {
   
   echo "🚀 Running setup steps..."
   
-  docker run --rm -it \
+  docker run --rm \
     --network container:host-manager-setup \
     -e HOST_MANAGER_TOKEN="$TOKEN" \
     -v /var/apps:/var/apps:ro \
@@ -218,7 +217,7 @@ fi
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════════╗"
-echo "║                    Installation Complete! 🎉                    ║"
+echo "║                    Installation Complete!                      ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 if [ -n "$DOMAIN" ]; then

@@ -141,17 +141,6 @@ export default defineSetupCommand({
 
     yield `✓ Web UI deployed at: https://config.${domain}`
 
-    // Clean up old setup container if exists
-    yield "🔍 Checking for host-manager-setup container..."
-    const setupContainer = await executeOnHost("docker ps -a --filter name=host-manager-setup -q")
-
-    if (setupContainer.stdout.trim()) {
-      yield "🗑️  Removing old host-manager-setup container..."
-      await executeOnHost("docker stop host-manager-setup 2>/dev/null || true")
-      await executeOnHost("docker rm host-manager-setup")
-      yield "✅ Setup container removed, now using swarm-config_host-manager service"
-    }
-
     return { success: true }
   },
 })
