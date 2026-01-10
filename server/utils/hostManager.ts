@@ -2,15 +2,25 @@ import { readFileSync, existsSync } from "node:fs"
 
 const HOST_MANAGER_URL = "http://host-manager:3001"
 
-interface ExecuteResult {
+interface SmtpConfig {
+  host: string
+  port: string
+  user: string
+  from: string
+  tls: boolean
+}
+
+interface SmtpReadResult {
+  config?: SmtpConfig
+}
+
+interface SmtpWriteResult {
   success: boolean
-  stdout: string
-  stderr: string
-  exitCode: number
+  message?: string
   error?: string
 }
 
-function getHostManagerToken() {
+function getHostManagerToken(): string {
   const secretPath = "/run/secrets/host_manager_token"
 
   if (existsSync(secretPath)) {
@@ -39,18 +49,23 @@ function createHeaders(token: string) {
   }
 }
 
-async function makeRequest(command: string, stream: boolean) {
+async function makeRequest(
+  method: RequestInit["method"],
+  path: string,
+  body?: unknown,
+  options: RequestInit = {},
+) {
   const token = getHostManagerToken()
 
-  return fetch(`${HOST_MANAGER_URL}/exec`, {
-    method: "POST",
-    headers: createHeaders(token),
-    body: JSON.stringify({ command, stream }),
+  const response = await fetch(`${HOST_MANAGER_URL}${path}`, {
+    ...options,
+    method,
+    body: body ? JSON.stringify(body) : undefined,
+    headers: {
+      ...createHeaders(token),
+      ...options.headers,
+    },
   })
-}
-
-export async function executeOnHost(command: string): Promise<ExecuteResult> {
-  const response = await makeRequest(command, false)
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
@@ -60,29 +75,11 @@ export async function executeOnHost(command: string): Promise<ExecuteResult> {
     })
   }
 
-  const result: ExecuteResult = await response.json()
-
-  if (!result.success) {
-    throw createError({
-      statusCode: 500,
-      message: result.error || "Command execution failed",
-      data: { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode },
-    })
-  }
-
-  return result
+  return response
 }
 
-export async function executeOnHostStreaming(target: NodeJS.WritableStream, command: string) {
-  const response = await makeRequest(command, true)
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw createError({
-      statusCode: response.status,
-      message: error.error || `Host manager request failed: ${response.statusText}`,
-    })
-  }
+export async function systemUpdate(target: NodeJS.WritableStream) {
+  const response = await makeRequest("POST", "/system/update", {})
 
   if (!response.body) {
     throw createError({
@@ -103,4 +100,15 @@ export async function executeOnHostStreaming(target: NodeJS.WritableStream, comm
   } finally {
     reader.releaseLock()
   }
+}
+
+export async function smtpRead() {
+  const response = await makeRequest("GET", "/smtp")
+  return response.json()
+}
+
+export async function smtpWrite(data: SmtpConfig & { password: string }) {
+  const response = await makeRequest("POST", "/smtp", data)
+
+  return (await response.json()).config
 }

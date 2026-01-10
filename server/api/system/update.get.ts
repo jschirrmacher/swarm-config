@@ -1,5 +1,5 @@
 import { requireAuth } from "~/server/utils/auth"
-import { executeOnHostStreaming } from "~/server/utils/hostManager"
+import { systemUpdate } from "~/server/utils/hostManager"
 
 export default defineEventHandler(async event => {
   if (process.platform !== "linux") {
@@ -18,14 +18,7 @@ export default defineEventHandler(async event => {
     setResponseHeader(event, "Cache-Control", "no-cache")
     setResponseHeader(event, "Connection", "keep-alive")
 
-    await executeOnHostStreaming(
-      event.node.res,
-      `
-      cd /var/apps/swarm-config
-      git pull origin main
-      npx tsx scripts/setup.sh
-    `,
-    )
+    await systemUpdate(event.node.res)
 
     event.node.res.end()
   } catch (error: any) {

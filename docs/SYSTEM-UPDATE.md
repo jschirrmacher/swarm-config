@@ -4,23 +4,53 @@ This feature allows authenticated users to trigger system updates directly from 
 
 ## Architecture
 
+```mermaid
+graph TB
+    Browser[🌐 Web Browser]
+    UI[🐳 UI Container<br/>Nuxt/Vue]
+    HostMgr[🔧 host-manager<br/>Privileged Container<br/>nsenter]
+    Host[💻 Docker Host<br/>Ubuntu Server]
+    Setup[📜 setup.sh<br/>Direct Execution]
+
+    Browser -->|HTTPS<br/>JWT/SSH Auth| UI
+    UI -->|HTTP<br/>Bearer Token| HostMgr
+    HostMgr -->|nsenter<br/>PID namespace| Host
+    Setup -.->|sudo<br/>Direct| Host
+
+    style UI fill:#e1f5ff
+    style HostMgr fill:#fff3e0
+    style Host fill:#f3e5f5
+    style Setup fill:#e8f5e9
+
+    subgraph "Container-to-Host Access"
+        UI
+        HostMgr
+    end
+
+    subgraph "Direct Host Access"
+        Setup
+    end
 ```
-┌─────────────────┐
-│   Web Browser   │
-└────────┬────────┘
-         │ HTTPS (JWT or SSH Key Auth)
-         ↓
-┌─────────────────┐
-│  UI Container   │
-│  (Nuxt/Vue)     │
-└────────┬────────┘
-         │ HTTP (Bearer Token)
-         ↓
-┌─────────────────┐
-│  host-manager   │──> Executes commands via nsenter
-│   (Node.js)     │    with host PID namespace access
-└─────────────────┘
-```
+
+**Execution Contexts:**
+
+1. **Setup Scripts** (`scripts/setup.sh`, `scripts/steps/*.ts`)
+   - Run directly on the host with `sudo`
+   - Full root privileges
+   - No container isolation
+   - Used during initial setup and system updates
+
+2. **API Endpoints** (`server/api/**/*.ts`)
+   - Run inside Nuxt container
+   - Need host-manager to access host system
+   - Limited to whitelisted operations
+   - User must be authenticated
+
+3. **host-manager Service**
+   - Runs in privileged container
+   - Uses `nsenter` to access host PID namespace
+   - Validates all incoming requests
+   - Command-specific endpoints (no generic exec)
 
 ## Security
 
