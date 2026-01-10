@@ -103,9 +103,12 @@ start_host_manager() {
   echo "🚀 Starting host-manager..."
   cd /var/apps/swarm-config
   
+  # Create host-manager state directory
+  mkdir -p /var/lib/host-manager/logs
+  
   if ! docker images | grep -q "host-manager.*latest"; then
     echo "Building host-manager image..."
-    docker build -t host-manager:latest ./host-manager
+    DOCKER_BUILDKIT=1 docker build -t host-manager:latest ./host-manager
   fi
   
   if [ "$(docker ps -q -f name=host-manager-setup)" ]; then
@@ -132,6 +135,7 @@ start_host_manager() {
     --pid host \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /proc:/host/proc:ro \
+    -v /var/lib/host-manager:/var/lib/host-manager \
     -e HOST_MANAGER_TOKEN="$TOKEN" \
     host-manager:latest
   
@@ -159,17 +163,45 @@ run_setup() {
   
   curl -N -H "Authorization: Bearer $HOST_MANAGER_TOKEN" \
        -H "Content-Type: application/json" \
-       -d '{}' \
+       -d '{"force": false}' \
        http://localhost:3001/setup/run | while IFS= read -r line; do
-    if [[ $line == data:* ]]; then
-      echo "${line#data: }" | jq -r '.data.message // .data.error // empty' 2>/dev/null || true
-    fi
+    # Parse JSON streaming output
+    event=$(echo "$line" | jq -r '.event // empty' 2>/dev/null)
+    
+    case "$event" in
+      "step-start")
+        name=$(echo "$line" | jq -r '.data.name // empty')
+        echo ""
+        echo "🔄 $name"
+        ;;
+      "log")
+        message=$(echo "$line" | jq -r '.data.message // empty')
+        [ -n "$message" ] && echo "  $message"
+        ;;
+      "step-skip")
+        echo "  ⏭️  Already completed"
+        ;;
+      "step-complete")
+        echo "  ✅ Success"
+        ;;
+      "step-error")
+        error=$(echo "$line" | jq -r '.data.error // empty')
+        echo "  ❌ Error: $error"
+        ;;
+      "complete")
+        echo ""
+        succeeded=$(echo "$line" | jq -r '.data.succeeded // 0')
+        failed=$(echo "$line" | jq -r '.data.failed // 0')
+        skipped=$(echo "$line" | jq -r '.data.skipped // 0')
+        echo "✅ Setup completed: $succeeded succeeded, $skipped skipped, $failed failed"
+        ;;
+    esac
   done
   
   echo ""
   echo "🧹 Cleaning up temporary host-manager container..."
-  docker stop host-manager-setup
-  docker rm host-manager-setup
+  docker stop host-manager-setup 2>/dev/null || true
+  docker rm host-manager-setup 2>/dev/null || true
 }
 
 if [ -n "$1" ]; then

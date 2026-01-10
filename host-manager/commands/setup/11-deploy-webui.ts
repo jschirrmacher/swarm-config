@@ -44,13 +44,17 @@ export default defineSetupCommand({
 
     yield "🔨 Building host-manager Docker image..."
     try {
-      await executeOnHost(`cd ${workDir}/host-manager && docker build -t host-manager:latest .`)
+      await executeOnHost(
+        `cd ${workDir}/host-manager && DOCKER_BUILDKIT=1 docker build -t host-manager:latest .`,
+      )
     } catch (error) {
       yield "⚠️  host-manager build failed, but continuing..."
     }
 
     yield "🔨 Building Web UI Docker image..."
-    await executeOnHost(`cd ${workDir} && docker build -t swarm-config-ui:latest .`)
+    await executeOnHost(
+      `cd ${workDir} && DOCKER_BUILDKIT=1 docker build -t swarm-config-ui:latest .`,
+    )
 
     const imageExists = async (name: string) => {
       try {

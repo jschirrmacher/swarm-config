@@ -28,6 +28,12 @@ curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/main/scrip
 
 Replace `your-domain.com` with your actual domain name.
 
+**Optional: Use a specific branch:**
+
+```bash
+curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/main/scripts/setup.sh | sudo bash -s your-domain.com v3
+```
+
 This automated script sets up everything: Docker Swarm, firewall, Node.js, users, SSH security, Kong Gateway, and Web UI.
 
 **→ See [ADMIN-SETUP.md](./docs/ADMIN-SETUP.md) for complete instructions**
