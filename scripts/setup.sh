@@ -115,8 +115,15 @@ start_host_manager() {
     docker rm host-manager-setup
   fi
   
-  TOKEN=$(openssl rand -hex 32)
-  docker secret create host_manager_token - <<< "$TOKEN" 2>/dev/null || TOKEN=$(docker secret inspect host_manager_token --format '{{.Spec.Data}}' | base64 -d)
+  # Generate or retrieve existing token
+  if docker secret inspect host_manager_token >/dev/null 2>&1; then
+    # Secret exists, retrieve it
+    TOKEN=$(docker secret inspect host_manager_token --format '{{.Spec.Data}}')
+  else
+    # Create new secret
+    TOKEN=$(openssl rand -hex 32)
+    echo "$TOKEN" | docker secret create host_manager_token -
+  fi
   
   docker run -d \
     --name host-manager-setup \
