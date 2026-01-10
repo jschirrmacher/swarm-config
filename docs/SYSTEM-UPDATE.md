@@ -1,6 +1,27 @@
-# System Update Feature
+# System Setup & Update Feature
 
-This feature allows authenticated users to trigger system updates directly from the Web UI, which executes the `setup.sh` script on the Docker host.
+This feature provides two interfaces for managing system setup and updates:
+
+1. **System Setup** (`/setup`) - Detailed control over individual setup steps
+2. **System Update** (`/system/update`) - Quick update workflow (git pull + automatic setup)
+
+Both interfaces use the centralized host-manager service to execute commands on the Docker host.
+
+## Quick Update vs. Detailed Setup
+
+### Use `/setup` when:
+
+- First-time system setup
+- Running specific steps individually
+- Executing manual steps (GlusterFS, Apps preparation)
+- Debugging or troubleshooting specific components
+- Need to see detailed logs per step
+
+### Use `/system/update` when:
+
+- Quick updates to latest code version
+- Running all automatic setup steps in one go
+- Regular maintenance updates
 
 ## Architecture
 

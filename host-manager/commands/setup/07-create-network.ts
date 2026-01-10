@@ -6,7 +6,7 @@ import { executeOnHost } from "../../lib/execute.js"
  * Creates an overlay network that can be used by Kong and application services
  */
 export default defineSetupCommand({
-  id: "06-create-network",
+  id: "07-create-network",
   name: "Create Kong Network",
   description: "Create Kong overlay network for Docker Swarm",
 

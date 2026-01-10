@@ -6,7 +6,7 @@ import { executeOnHost } from "../../lib/execute.js"
  * Creates Docker secret or .env token depending on Swarm mode
  */
 export default defineSetupCommand({
-  id: "06.5-setup-host-manager-token",
+  id: "08-setup-host-manager-token",
   name: "Setup Host-Manager Token",
   description: "Configure host-manager authentication token (Docker secret or .env)",
 

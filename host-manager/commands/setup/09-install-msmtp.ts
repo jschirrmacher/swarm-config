@@ -2,7 +2,7 @@ import { defineSetupCommand } from "../../lib/defineSetupCommand.js"
 import { executeOnHost } from "../../lib/execute.js"
 
 export default defineSetupCommand({
-  id: "06.7-install-msmtp",
+  id: "09-install-msmtp",
   name: "Install msmtp",
   description: "Install msmtp for email functionality",
 

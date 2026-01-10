@@ -2,9 +2,10 @@ import { defineSetupCommand } from "../../lib/defineSetupCommand.js"
 import { executeOnHost } from "../../lib/execute.js"
 
 export default defineSetupCommand({
-  id: "08-deploy-webui",
-  name: "Deploy Web UI",
-  description: "Build and deploy Swarm Config Web UI",
+  id: "11-deploy-webui",
+  name: "Deploy/Update Swarm Config Stack",
+  description:
+    "Pull latest code, build images, and deploy complete stack (Kong, Redis, Web UI, host-manager)",
 
   async check() {
     try {
@@ -18,6 +19,28 @@ export default defineSetupCommand({
 
   async *execute() {
     const workDir = "/var/apps/swarm-config"
+
+    // Pull latest code from git
+    yield "📦 Checking for code updates..."
+    try {
+      const statusResult = await executeOnHost(`cd ${workDir} && git status --porcelain`)
+      const hasChanges = statusResult.stdout.trim().length > 0
+
+      if (hasChanges) {
+        yield "⚠️  Found uncommitted changes, stashing..."
+        await executeOnHost(`cd ${workDir} && git stash push -m "Auto-stash before update"`)
+      }
+
+      yield "🔄 Pulling latest changes from origin/main..."
+      const pullResult = await executeOnHost(`cd ${workDir} && git pull origin main`)
+      if (pullResult.stdout.includes("Already up to date")) {
+        yield "✅ Code is up to date"
+      } else {
+        yield "✅ Code updated"
+      }
+    } catch (error) {
+      yield "⚠️  Git pull failed, continuing with existing code..."
+    }
 
     yield "🔨 Building host-manager Docker image..."
     try {
@@ -113,6 +136,18 @@ export default defineSetupCommand({
     }
 
     yield `✓ Web UI deployed at: https://config.${domain}`
+
+    // Clean up old setup container if exists
+    yield "🔍 Checking for host-manager-setup container..."
+    const setupContainer = await executeOnHost("docker ps -a --filter name=host-manager-setup -q")
+
+    if (setupContainer.stdout.trim()) {
+      yield "🗑️  Removing old host-manager-setup container..."
+      await executeOnHost("docker stop host-manager-setup 2>/dev/null || true")
+      await executeOnHost("docker rm host-manager-setup")
+      yield "✅ Setup container removed, now using swarm-config_host-manager service"
+    }
+
     return { success: true }
   },
 })

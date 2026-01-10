@@ -2,7 +2,7 @@ import { defineSetupCommand } from "../../lib/defineSetupCommand.js"
 import { executeOnHost } from "../../lib/execute.js"
 
 export default defineSetupCommand({
-  id: "02-install-docker",
+  id: "03-install-docker",
   name: "Install Docker",
   description: "Install Docker and initialize Swarm mode",
 

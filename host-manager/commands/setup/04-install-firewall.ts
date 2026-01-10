@@ -6,7 +6,7 @@ import { executeOnHost } from "../../lib/execute.js"
  * Configures firewall with necessary ports for web services
  */
 export default defineSetupCommand({
-  id: "03-install-firewall",
+  id: "04-install-firewall",
   name: "Configure Firewall",
   description: "Install and configure UFW firewall with required ports",
 

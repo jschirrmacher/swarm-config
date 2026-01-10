@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from "node:fs"
 import systemUpdate from "./commands/systemUpdate.js"
 import smtpRead from "./commands/smtpRead.js"
 import smtpWrite from "./commands/smtpWrite.js"
+import platform from "./commands/platform.js"
 import setupCommands from "./commands/setup/index.js"
 import { setupRegistry } from "./commands/setup/registry.js"
 
@@ -62,7 +63,7 @@ app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok", service: "host-manager" })
 })
 
-const commands = [systemUpdate, smtpRead, smtpWrite, ...setupCommands]
+const commands = [systemUpdate, smtpRead, smtpWrite, platform, ...setupCommands]
 const jsonParser = express.json()
 
 commands.forEach(command => command(app, authenticate, jsonParser))

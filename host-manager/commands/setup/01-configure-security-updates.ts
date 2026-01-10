@@ -6,7 +6,7 @@ import { executeOnHost } from "../../lib/execute.js"
  * This demonstrates the setup command pattern
  */
 export default defineSetupCommand({
-  id: "00-configure-security-updates",
+  id: "01-configure-security-updates",
   name: "Configure Security Updates",
   description: "Enable automatic security updates via unattended-upgrades",
 

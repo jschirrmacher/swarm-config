@@ -6,7 +6,7 @@ import { executeOnHost } from "../../lib/execute.js"
  * Disables root login and password authentication for enhanced security
  */
 export default defineSetupCommand({
-  id: "05-configure-ssh",
+  id: "06-configure-ssh",
   name: "Configure SSH Security",
   description: "Disable root login and password authentication for SSH",
 

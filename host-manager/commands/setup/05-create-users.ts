@@ -6,7 +6,7 @@ import { executeOnHost } from "../../lib/execute.js"
  * Extracts usernames from SSH keys and creates system users with proper permissions
  */
 export default defineSetupCommand({
-  id: "04-create-users",
+  id: "05-create-users",
   name: "Create Team Users",
   description: "Create team users from SSH authorized_keys with sudo and docker access",
 

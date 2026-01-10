@@ -2,7 +2,7 @@ import { defineSetupCommand } from "../../lib/defineSetupCommand.js"
 import { executeOnHost } from "../../lib/execute.js"
 
 export default defineSetupCommand({
-  id: "09-install-glusterfs",
+  id: "12-install-glusterfs",
   name: "Install GlusterFS",
   description: "Install GlusterFS for multi-node distributed storage (optional)",
   manualOnly: true,

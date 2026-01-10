@@ -1,11 +1,26 @@
 import type { Application, Request, Response } from "express"
 
+export interface SetupInput {
+  name: string
+  label: string
+  type: "text" | "boolean" | "select"
+  required?: boolean
+  default?: string | boolean
+  options?: { value: string; label: string }[]
+  description?: string
+}
+
 export interface SetupCommandConfig {
   id: string
   name: string
   description: string
+  manualOnly?: boolean
+  inputs?: SetupInput[]
+  getInputValues?: () => Promise<Record<string, any>>
   check: () => Promise<boolean>
-  execute: () => AsyncGenerator<string, { success: boolean; error?: string }, unknown>
+  execute: (
+    inputs?: Record<string, any>,
+  ) => AsyncGenerator<string, { success: boolean; error?: string }, unknown>
 }
 
 export interface SetupCommand extends SetupCommandConfig {
@@ -27,6 +42,7 @@ export function defineSetupCommand(config: SetupCommandConfig): SetupCommand {
       app.post(`/setup/step/${config.id}`, authenticate, async (req: Request, res: Response) => {
         try {
           const force = req.body?.force === true
+          const inputs = req.body?.inputs || {}
 
           // Check if already completed (unless forced)
           if (!force) {
@@ -46,7 +62,7 @@ export function defineSetupCommand(config: SetupCommandConfig): SetupCommand {
           res.setHeader("Cache-Control", "no-cache")
           res.setHeader("Connection", "keep-alive")
 
-          for await (const message of config.execute()) {
+          for await (const message of config.execute(inputs)) {
             res.write(`data: ${JSON.stringify({ type: "log", message })}\n\n`)
           }
 

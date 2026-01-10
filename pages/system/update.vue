@@ -38,9 +38,7 @@ onMounted(async () => {
     isLinux.value = false
   }
 
-  if (!isLinux.value) {
-    return
-  }
+  // Load steps regardless of platform for development
   await loadStepDefinitions()
   initializeSteps()
 })
@@ -147,15 +145,10 @@ async function runUpdate() {
       <NuxtLink to="/">← Back to Repositories</NuxtLink>
     </nav>
 
-    <div v-if="!isLinux" class="platform-warning">
-      <div class="alert alert-warning">
-        <h2>⚠️ System Updates Not Available</h2>
-        <p>System updates are only available on Linux servers.</p>
-        <p>This feature uses Linux-specific package management and system commands.</p>
+    <div class="page-header">
+      <div v-if="!isLinux" class="dev-mode-hint">
+        ⚠️ Development Mode - Running on non-Linux system
       </div>
-    </div>
-
-    <div v-else class="page-header">
       <div class="header-content">
         <div>
           <h1>System Update</h1>
@@ -166,7 +159,7 @@ async function runUpdate() {
       </div>
     </div>
 
-    <div v-if="isLinux" class="update-section">
+    <div class="update-section">
       <AppAlert v-if="success" type="success" :message="success" />
       <AppAlert v-if="error" type="error" :message="error" />
 
@@ -187,11 +180,15 @@ async function runUpdate() {
 }
 
 .breadcrumb a {
-  color: white;
+  color: #333;
   text-decoration: none;
   font-size: 0.95rem;
   opacity: 0.9;
   transition: opacity 0.2s;
+}
+
+:global(.dark) .breadcrumb a {
+  color: white;
 }
 
 .breadcrumb a:hover {
@@ -228,27 +225,15 @@ async function runUpdate() {
   gap: 1.5rem;
 }
 
-.platform-warning {
-  margin-top: 2rem;
-}
-
-.alert-warning {
+.dev-mode-hint {
   background: #fff3cd;
   border: 1px solid #ffc107;
-  border-radius: 8px;
-  padding: 2rem;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
   color: #856404;
-}
-
-.alert-warning h2 {
-  margin: 0 0 1rem;
-  font-size: 1.5rem;
-  color: #856404;
-}
-
-.alert-warning p {
-  margin: 0.5rem 0;
-  font-size: 1rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  display: inline-block;
 }
 
 @media (max-width: 768px) {

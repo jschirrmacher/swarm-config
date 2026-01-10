@@ -19,7 +19,7 @@ export default defineStreamingCommand(
 
     const commands = requestedSteps
       ? requestedSteps.map(id => setupRegistry.get(id)).filter(cmd => cmd !== undefined)
-      : setupRegistry.getAll()
+      : setupRegistry.getAll().filter(cmd => !cmd.manualOnly)
 
     let succeeded = 0
     let failed = 0

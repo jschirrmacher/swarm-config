@@ -6,7 +6,7 @@ import { executeOnHost } from "../../lib/execute.js"
  * Creates /var/apps and sets up basic structure for application deployments
  */
 export default defineSetupCommand({
-  id: "10-prepare-apps",
+  id: "13-prepare-apps",
   name: "Prepare Apps Directory",
   description: "Create /var/apps directory structure for application deployments",
   manualOnly: true,

@@ -3,47 +3,40 @@ import { join } from "node:path"
 
 export default defineEventHandler(async () => {
   try {
-    // Try multiple possible paths (container vs host)
-    const possiblePaths = [
-      join(process.cwd(), "scripts", "steps"), // Development/Container
-      "/var/apps/swarm-config/scripts/steps", // Host system
-    ]
+    // System update uses the setup steps
+    // Get them from the host-manager setup API
+    try {
+      const response = await fetch(
+        `${process.env.HOST_MANAGER_URL || "http://localhost:3001"}/setup/steps`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.HOST_MANAGER_TOKEN}`,
+          },
+        },
+      )
 
-    let stepsDir = ""
-    for (const path of possiblePaths) {
-      if (existsSync(path)) {
-        stepsDir = path
-        break
+      if (response.ok) {
+        const data = await response.json()
+        // Transform setup steps to system update format
+        return (
+          data.steps?.map((step: any) => ({
+            id: step.id,
+            title: step.name,
+            description: step.description,
+            filename: step.id + ".ts",
+            isComplete: step.isComplete,
+            status: step.status,
+            lastRun: step.lastRun,
+            manualOnly: step.manualOnly,
+          })) || []
+        )
       }
+    } catch (error) {
+      console.warn("Could not fetch steps from host-manager:", error)
     }
 
-    if (!stepsDir) {
-      throw new Error("Steps directory not found")
-    }
-
-    const stepFiles = readdirSync(stepsDir)
-      .filter(file => file.endsWith(".ts"))
-      .sort()
-
-    const steps = stepFiles.map(file => {
-      const filePath = join(stepsDir, file)
-      const content = readFileSync(filePath, "utf-8")
-
-      // Extract step ID and title from runStep() call
-      // Pattern: runStep("step-id", "🎨 Title...", ...)
-      const match = content.match(/runStep\s*\(\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']/)
-
-      const id = match ? match[1] : file.replace(".ts", "")
-      const title = match ? match[2] : file.replace(".ts", "").replace(/^\d+-/, "")
-
-      return {
-        id,
-        title,
-        filename: file,
-      }
-    })
-
-    return steps
+    // Fallback: return empty array for development without host-manager
+    return []
   } catch (error: any) {
     console.error("Failed to load steps:", error)
     throw createError({

@@ -6,7 +6,7 @@ import { executeOnHost } from "../../lib/execute.js"
  * Sets the domain in /var/apps/swarm-config/.env
  */
 export default defineSetupCommand({
-  id: "01-get-domain",
+  id: "02-get-domain",
   name: "Configure Domain",
   description: "Set domain name in configuration",
 

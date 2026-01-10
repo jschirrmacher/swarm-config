@@ -24,9 +24,21 @@ const statusBadges = {
           stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
-        <span class="step-title">{{ step.title }}</span>
-        <span v-if="step.status !== 'pending'" class="status-badge" :class="step.status">{{ statusBadges[step.status]
-          }}</span>
+        <div class="step-info">
+          <div class="step-title-line">
+            <span class="step-title">{{ step.title }}</span>
+            <span v-if="step.isComplete && step.status === 'completed'" class="completion-badge">
+              ✓ Already complete
+            </span>
+            <span v-else-if="step.status !== 'pending'" class="status-badge" :class="step.status">{{
+              statusBadges[step.status]
+              }}</span>
+            <span v-if="step.manualOnly" class="manual-badge" title="Manual execution only">
+              Manual
+            </span>
+          </div>
+          <div v-if="step.description" class="step-description">{{ step.description }}</div>
+        </div>
       </div>
     </div>
     <div v-show="step.expanded" class="log-output step-logs">
@@ -142,6 +154,42 @@ const statusBadges = {
 .status-badge.running {
   background: #3b82f6;
   color: white;
+}
+
+.completion-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #10b981;
+  color: white;
+}
+
+.manual-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #f59e0b;
+  color: white;
+}
+
+.step-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.step-title-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.step-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+  font-style: italic;
 }
 
 .log-output {

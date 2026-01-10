@@ -4,12 +4,20 @@ export interface Step {
   status: "pending" | "running" | "completed" | "failed"
   expanded: boolean
   id?: string
+  isComplete?: boolean
+  description?: string
+  lastRun?: string | null
+  manualOnly?: boolean
 }
 
 interface StepDefinition {
   id: string
   title: string
   filename: string
+  isComplete?: boolean
+  description?: string
+  lastRun?: string | null
+  manualOnly?: boolean
 }
 
 export function useSystemUpdate() {
@@ -32,9 +40,13 @@ export function useSystemUpdate() {
     steps.value = stepDefinitions.value.map(def => ({
       id: def.id,
       title: def.title,
+      description: def.description,
       logs: [],
-      status: "pending",
+      status: def.isComplete ? "completed" : "pending",
       expanded: false,
+      isComplete: def.isComplete,
+      lastRun: def.lastRun,
+      manualOnly: def.manualOnly,
     }))
     currentStepIndex.value = -1
     hasMatchedStepPattern.value = false

@@ -10,7 +10,12 @@ export const useSetup = () => {
       const { authFetch } = useAuthFetch()
       const response = await authFetch("/api/setup/steps")
       const data = await response.json()
-      steps.value = data.steps
+      // Initialize expanded and logs properties for each step
+      steps.value = data.steps.map((step: any) => ({
+        ...step,
+        expanded: false,
+        logs: [],
+      }))
     } catch (error) {
       console.error("Failed to fetch setup steps:", error)
     } finally {
@@ -75,9 +80,16 @@ export const useSetup = () => {
     }
   }
 
-  const runStep = async (stepId: string, force = false) => {
+  const runStep = async (stepId: string, inputs?: Record<string, any>, force = false) => {
     running.value = true
-    logs.value = []
+
+    // Find the step and expand it
+    const step = steps.value.find(s => s.id === stepId)
+    if (step) {
+      step.status = "running"
+      step.expanded = true
+      step.logs = []
+    }
 
     try {
       const { authFetch } = useAuthFetch()
@@ -86,21 +98,34 @@ export const useSetup = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ force }),
+        body: JSON.stringify({ force, inputs }),
       })
 
       const data = await response.json()
 
-      if (data.skipped) {
-        logs.value.push(`⏭️  ${stepId} already completed`)
-      } else if (data.success) {
-        logs.value.push(`✅ ${stepId} completed successfully`)
+      if (step) {
+        if (data.skipped) {
+          step.logs.push(`⏭️  Step already completed (use force to re-run)`)
+          step.status = "completed"
+        } else if (data.success) {
+          if (data.logs && Array.isArray(data.logs)) {
+            step.logs = data.logs
+          }
+          step.logs.push(`✅ Step completed successfully`)
+          step.status = "completed"
+        } else {
+          step.logs.push(`❌ Step failed`)
+          step.status = "failed"
+        }
       }
 
       await fetchSteps()
     } catch (error) {
       console.error("Step failed:", error)
-      logs.value.push(`❌ ${stepId} failed: ${error}`)
+      if (step) {
+        step.logs.push(`❌ Step failed: ${error}`)
+        step.status = "failed"
+      }
     } finally {
       running.value = false
     }

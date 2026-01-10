@@ -2,7 +2,7 @@ import { defineSetupCommand } from "../../lib/defineSetupCommand.js"
 import { executeOnHost } from "../../lib/execute.js"
 
 export default defineSetupCommand({
-  id: "07-deploy-kong",
+  id: "10-deploy-kong",
   name: "Prepare Kong Gateway",
   description: "Prepare Kong API Gateway configuration and Redis data directory",
 
