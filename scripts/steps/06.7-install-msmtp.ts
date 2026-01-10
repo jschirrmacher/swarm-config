@@ -90,7 +90,7 @@ EOF`)
 
     // Install msmtp
     console.log("  📦 Installing msmtp packages...")
-    exec("apt-get install -y msmtp msmtp-mta")
+    exec("DEBIAN_FRONTEND=noninteractive apt-get install -y -qq msmtp msmtp-mta")
 
     // Verify installation
     const version = exec("msmtp --version").split("\n")[0]
