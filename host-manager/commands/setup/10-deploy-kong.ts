@@ -7,14 +7,9 @@ export default defineSetupCommand({
   description: "Prepare Kong API Gateway configuration and Redis data directory",
 
   async check() {
-    try {
-      const result = await executeOnHost(
-        "test -d /var/apps/swarm-config/redis-data && test -f /var/apps/swarm-config/generated/kong.yaml",
-      )
-      return result.exitCode === 0
-    } catch {
-      return false
-    }
+    // Always return false to ensure Kong config is regenerated on every run
+    // This picks up any changes to kong.yaml files in projects
+    return false
   },
 
   async *execute() {
