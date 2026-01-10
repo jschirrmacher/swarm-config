@@ -137,6 +137,8 @@ start_host_manager() {
     -v /proc:/host/proc:ro \
     -v /var/lib/host-manager:/var/lib/host-manager \
     -e HOST_MANAGER_TOKEN="$TOKEN" \
+    -e DOMAIN="${DOMAIN:-}" \
+    -e BRANCH="${BRANCH:-main}" \
     host-manager:latest
   
   echo "⏳ Waiting for host-manager to be ready..."
