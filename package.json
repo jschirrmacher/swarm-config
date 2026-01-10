@@ -1,6 +1,6 @@
 {
   "name": "swarm-config",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Complete Docker Swarm infrastructure with Kong API Gateway and Git-based CI/CD deployment platform.",
   "scripts": {
     "kong:generate": "tsx src/generate-kong-config.ts",

@@ -4,6 +4,8 @@ import { readFileSync, existsSync } from "node:fs"
 import systemUpdate from "./commands/systemUpdate.js"
 import smtpRead from "./commands/smtpRead.js"
 import smtpWrite from "./commands/smtpWrite.js"
+import setupCommands from "./commands/setup/index.js"
+import { setupRegistry } from "./commands/setup/registry.js"
 
 const app = express()
 const PORT = 3001
@@ -60,10 +62,13 @@ app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok", service: "host-manager" })
 })
 
-const commands = [systemUpdate, smtpRead, smtpWrite]
+const commands = [systemUpdate, smtpRead, smtpWrite, ...setupCommands]
 const jsonParser = express.json()
 
 commands.forEach(command => command(app, authenticate, jsonParser))
+
+// Register individual setup step routes
+setupRegistry.registerAll(app, authenticate)
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`[${new Date().toISOString()}] host-manager listening on port ${PORT}`)
