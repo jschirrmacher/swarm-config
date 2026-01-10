@@ -1,7 +1,8 @@
 import { promises as fs } from "fs"
-import { dirname } from "path"
+import { dirname, join } from "path"
 
 const STATE_FILE = "/var/lib/host-manager/setup-state.json"
+const LOGS_DIR = "/var/lib/host-manager/logs"
 
 export interface SetupStepState {
   status: "pending" | "running" | "completed" | "failed"
@@ -25,6 +26,12 @@ export class SetupStateManager {
     try {
       const content = await fs.readFile(STATE_FILE, "utf-8")
       this.state = JSON.parse(content)
+
+      // Load logs from disk for each step
+      for (const stepId of Object.keys(this.state.steps)) {
+        const logs = await this.loadLogsFromDisk(stepId)
+        this.state.steps[stepId].logs = logs
+      }
     } catch (error) {
       // File doesn't exist yet, use empty state
       this.state = { steps: {} }
@@ -61,6 +68,9 @@ export class SetupStateManager {
   }
 
   async startStep(stepId: string): Promise<void> {
+    // Clear log file when starting step (overwrite, don't append)
+    await this.clearLogFile(stepId)
+
     await this.updateStepState(stepId, {
       status: "running",
       lastRun: new Date().toISOString(),
@@ -80,10 +90,48 @@ export class SetupStateManager {
     const state = this.getStepState(stepId)
     state.logs.push(message)
     await this.updateStepState(stepId, { logs: state.logs })
+
+    // Also write to disk
+    await this.appendLogToDisk(stepId, message)
   }
 
   getAllSteps(): Record<string, SetupStepState> {
     return this.state.steps
+  }
+
+  private getLogFilePath(stepId: string): string {
+    return join(LOGS_DIR, `${stepId}.log`)
+  }
+
+  private async loadLogsFromDisk(stepId: string): Promise<string[]> {
+    try {
+      const logFile = this.getLogFilePath(stepId)
+      const content = await fs.readFile(logFile, "utf-8")
+      return content.split("\n").filter(line => line.trim() !== "")
+    } catch {
+      // Log file doesn't exist or can't be read
+      return []
+    }
+  }
+
+  private async clearLogFile(stepId: string): Promise<void> {
+    try {
+      await fs.mkdir(LOGS_DIR, { recursive: true })
+      const logFile = this.getLogFilePath(stepId)
+      await fs.writeFile(logFile, "", "utf-8")
+    } catch (error) {
+      console.error(`Failed to clear log file for ${stepId}:`, error)
+    }
+  }
+
+  private async appendLogToDisk(stepId: string, message: string): Promise<void> {
+    try {
+      await fs.mkdir(LOGS_DIR, { recursive: true })
+      const logFile = this.getLogFilePath(stepId)
+      await fs.appendFile(logFile, message + "\n", "utf-8")
+    } catch (error) {
+      console.error(`Failed to append log for ${stepId}:`, error)
+    }
   }
 }
 

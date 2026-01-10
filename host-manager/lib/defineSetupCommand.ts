@@ -3,7 +3,7 @@ import type { Application, Request, Response } from "express"
 export interface SetupInput {
   name: string
   label: string
-  type: "text" | "boolean" | "select"
+  type: "text" | "password" | "boolean" | "select"
   required?: boolean
   default?: string | boolean
   options?: { value: string; label: string }[]
