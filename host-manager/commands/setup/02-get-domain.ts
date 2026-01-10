@@ -34,11 +34,11 @@ export default defineSetupCommand({
     }
 
     // Check if domain is provided via environment
-    const envDomain = await executeOnHost("echo $SWARM_DOMAIN")
+    const envDomain = await executeOnHost("echo $DOMAIN")
     const domain = envDomain.stdout.trim()
 
     if (!domain) {
-      throw new Error("Domain is required but not provided. Set SWARM_DOMAIN environment variable.")
+      throw new Error("Domain is required but not provided. Set DOMAIN environment variable.")
     }
 
     yield `Setting domain to: ${domain}`

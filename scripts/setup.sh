@@ -55,14 +55,49 @@ install_docker() {
   else
     apt update
     apt install -y docker.io
+    systemctl enable docker
+    systemctl start docker
     echo "✅ Docker installed"
   fi
   
-  if docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null | grep -q "active"; then
+  # Check Swarm status
+  SWARM_STATE=$(docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null || echo "inactive")
+  
+  if [ "$SWARM_STATE" = "active" ]; then
     echo "✅ Docker Swarm already initialized"
   else
-    docker swarm init
-    echo "✅ Docker Swarm initialized"
+    echo "🔧 Initializing Docker Swarm..."
+    
+    # Get primary IP address
+    PRIMARY_IP=$(hostname -I | awk '{print $1}')
+    
+    if [ -z "$PRIMARY_IP" ]; then
+      echo "❌ Could not determine server IP address"
+      exit 1
+    fi
+    
+    echo "   Using IP address: $PRIMARY_IP"
+    
+    if docker swarm init --advertise-addr "$PRIMARY_IP"; then
+      echo "✅ Docker Swarm initialized successfully"
+    else
+      echo "❌ Failed to initialize Docker Swarm"
+      exit 1
+    fi
+  fi
+  
+  # Verify Swarm is working
+  if docker node ls >/dev/null 2>&1; then
+    echo "✅ Docker Swarm is operational"
+  else
+    echo "❌ Docker Swarm verification failed"
+    exit 1
+  fi
+  
+  # Ensure current user can use Docker
+  if [ -n "$SUDO_USER" ]; then
+    usermod -aG docker "$SUDO_USER" 2>/dev/null || true
+    echo "ℹ️  Note: You may need to log out and back in for Docker group membership to take effect"
   fi
 }
 
@@ -129,7 +164,7 @@ run_setup() {
 }
 
 if [ -n "$1" ]; then
-  export SWARM_DOMAIN="$1"
+  export DOMAIN="$1"
 fi
 
 echo "╔════════════════════════════════════════════════════════════════╗"
