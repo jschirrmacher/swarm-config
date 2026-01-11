@@ -32,6 +32,8 @@ export default defineSetupCommand({
       }
 
       yield `🔄 Checking for code updates (branch: ${branch})...`
+      // Ensure we're on the correct branch before pulling
+      await executeOnHost(`cd ${workDir} && git checkout -B ${branch} origin/${branch}`)
       const pullResult = await executeOnHost(`cd ${workDir} && git pull origin ${branch}`)
       if (pullResult.stdout.includes("Already up to date")) {
         yield "✅ Code is up to date"
@@ -44,17 +46,13 @@ export default defineSetupCommand({
 
     yield "🔨 Building host-manager Docker image..."
     try {
-      await executeOnHost(
-        `cd ${workDir}/host-manager && DOCKER_BUILDKIT=1 docker build -t host-manager:latest .`,
-      )
+      await executeOnHost(`cd ${workDir}/host-manager && docker build -t host-manager:latest .`)
     } catch (error) {
       yield "⚠️  host-manager build failed, but continuing..."
     }
 
     yield "🔨 Building Web UI Docker image..."
-    await executeOnHost(
-      `cd ${workDir} && DOCKER_BUILDKIT=1 docker build -t swarm-config-ui:latest .`,
-    )
+    await executeOnHost(`cd ${workDir} && docker build -t swarm-config-ui:latest .`)
 
     const imageExists = async (name: string) => {
       try {

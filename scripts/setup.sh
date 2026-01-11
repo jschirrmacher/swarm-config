@@ -34,11 +34,13 @@ clone_or_update_repo() {
     
     git fetch origin
     git checkout -B "${BRANCH:-main}" "origin/${BRANCH:-main}"
+    echo "  📍 Switched to branch: ${BRANCH:-main}"
   else
     git clone https://github.com/jschirrmacher/swarm-config.git
     cd swarm-config
     if [ -n "$BRANCH" ] && [ "$BRANCH" != "main" ]; then
       git checkout -B "$BRANCH" "origin/$BRANCH"
+      echo "  📍 Switched to branch: $BRANCH"
     fi
   fi
 
@@ -108,7 +110,7 @@ start_host_manager() {
   
   if ! docker images | grep -q "host-manager.*latest"; then
     echo "Building host-manager image..."
-    DOCKER_BUILDKIT=1 docker build -t host-manager:latest ./host-manager
+    docker build -t host-manager:latest ./host-manager
   fi
   
   if [ "$(docker ps -q -f name=host-manager-setup)" ]; then
