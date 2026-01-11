@@ -102,6 +102,11 @@ export async function systemUpdate(target: NodeJS.WritableStream) {
   }
 }
 
+export async function getSetupSteps() {
+  const response = await makeRequest("GET", "/setup/steps")
+  return response.json()
+}
+
 export async function smtpRead() {
   const response = await makeRequest("GET", "/smtp")
   return response.json()

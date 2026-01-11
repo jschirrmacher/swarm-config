@@ -63,6 +63,7 @@ services:
       - NUXT_DOMAIN=${DOMAIN}
       - NUXT_GIT_REPO_BASE=/home
       - NUXT_WORKSPACE_BASE=/var/apps
+      - HOST_MANAGER_URL=http://host-manager:3001
       - HOST_MANAGER_TOKEN=${HOST_MANAGER_TOKEN}
     volumes:
       - /home:/home

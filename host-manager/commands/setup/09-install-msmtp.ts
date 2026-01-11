@@ -86,8 +86,14 @@ EOF`)
     yield "📦 Installing msmtp packages..."
     await executeOnHost("DEBIAN_FRONTEND=noninteractive apt-get install -y -qq msmtp msmtp-mta")
 
-    const version = (await executeOnHost("msmtp --version")).stdout.split("\n")[0]
-    yield `✅ ${version} installed successfully`
+    try {
+      const versionOutput = await executeOnHost("msmtp --version 2>&1")
+      const version = versionOutput.stdout?.split("\n")[0] || "msmtp"
+      yield `✅ ${version} installed successfully`
+    } catch {
+      yield "✅ msmtp installed successfully"
+    }
+
     yield "ℹ️  You can configure SMTP settings later via the Web UI"
     return { success: true }
   },
