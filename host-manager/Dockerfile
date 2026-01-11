@@ -1,31 +1,32 @@
-FROM node:24-alpine
-
-# Install Docker CLI
-RUN apk add --no-cache docker-cli
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json tsconfig.json ./
+RUN npm install -g npm@latest
 
-# Install dependencies (including dev dependencies for build)
+COPY package*.json tsconfig.json ./
 RUN npm install
 
-# Copy source code
 COPY lib/ ./lib/
 COPY commands/ ./commands/
 COPY index.ts ./
 
-# Build TypeScript
 RUN npm run build
 
-# Remove dev dependencies
-RUN npm prune --omit=dev
+# Production stage
+FROM node:24-alpine
 
-# Expose port
+RUN apk add --no-cache docker-cli && \
+  npm install -g npm@latest
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --omit=dev
+
+COPY --from=builder /app/dist ./dist
+
 EXPOSE 3001
-
-# Run as root (needed for Docker socket access)
 USER root
 
 CMD ["node", "dist/index.js"]
