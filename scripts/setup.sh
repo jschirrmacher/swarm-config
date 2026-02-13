@@ -64,6 +64,13 @@ configure_firewall() {
   echo "✅ Firewall configured"
 }
 
+configure_auto_updates() {
+  echo "🔄 Configuring automatic security updates..."
+  apt install -y unattended-upgrades
+  dpkg-reconfigure -f noninteractive unattended-upgrades
+  echo "✅ Automatic security updates enabled"
+}
+
 create_users() {
   echo "👥 Creating team users from SSH keys..."
   if [ -f /root/.ssh/authorized_keys ]; then
@@ -176,6 +183,7 @@ check_root
 clone_or_update_repo
 install_docker
 configure_firewall
+configure_auto_updates
 create_users
 configure_ssh
 setup_kong_network
