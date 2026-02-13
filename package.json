@@ -1,10 +1,10 @@
 {
   "name": "swarm-config",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Complete Docker Swarm infrastructure with Kong API Gateway and Git-based CI/CD deployment platform.",
   "scripts": {
     "kong:generate": "tsx src/generate-kong-config.ts",
-    "kong:reload": "tsx src/reload-kong.ts",
+    "kong:reload": "docker exec $(docker ps --format '{{.Names}}' | grep _kong.1) kong reload",
     "install-hooks": "tsx src/install-hooks.ts",
     "dev": "nuxt dev",
     "build": "nuxt build",
@@ -18,7 +18,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "devDependencies": {
-    "@nuxt/devtools": "^1.5.0",
+    "@nuxt/devtools": "3.1.1",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "9.0.10",
     "@types/node": "^22.0.0",

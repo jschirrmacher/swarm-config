@@ -166,10 +166,10 @@ async function saveService() {
 }
 
 .service-detail {
-  background: white;
+  background: var(--bg-secondary);
   border-radius: 12px;
   padding: 2rem;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 30px var(--shadow);
 }
 
 .service-header {
@@ -182,14 +182,14 @@ async function saveService() {
 
 .service-header h2 {
   margin: 0;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .tabs {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
-  border-bottom: 2px solid #e1e4e8;
+  border-bottom: 2px solid var(--border-color);
 }
 
 .tab-button {
@@ -197,7 +197,7 @@ async function saveService() {
   border: none;
   padding: 0.75rem 1.5rem;
   font-size: 0.95rem;
-  color: #666;
+  color: var(--text-secondary);
   cursor: pointer;
   border-bottom: 3px solid transparent;
   margin-bottom: -2px;
@@ -205,12 +205,12 @@ async function saveService() {
 }
 
 .tab-button:hover {
-  color: #667eea;
+  color: var(--accent);
 }
 
 .tab-button.active {
-  color: #667eea;
-  border-bottom-color: #667eea;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
   font-weight: 600;
 }
 
@@ -225,21 +225,21 @@ async function saveService() {
 .code-editor {
   width: 100%;
   min-height: 500px;
-  background: #f8f9fa;
-  border: 1px solid #e1e4e8;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 1.5rem;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 0.9rem;
   line-height: 1.6;
-  color: #24292e;
+  color: var(--text-primary);
   resize: vertical;
   overflow: auto;
 }
 
 .code-editor:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -253,7 +253,7 @@ async function saveService() {
 }
 
 .btn-save {
-  background: #667eea;
+  background: var(--accent);
   color: white;
   border: none;
   padding: 0.5rem 1.5rem;
@@ -264,12 +264,13 @@ async function saveService() {
 }
 
 .btn-save:hover:not(:disabled) {
-  background: #5568d3;
+  background: var(--accent-hover);
 }
 
 .btn-save:disabled {
-  background: #ccc;
+  background: var(--border-color);
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .save-success {

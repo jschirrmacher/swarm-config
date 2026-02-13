@@ -20,6 +20,12 @@
 - Add comments for complex logic
 - Keep functions small and focused
 
+## TypeScript Guidelines
+
+- **Never use `any` type** - Use `unknown` or proper types instead
+- **Prefer named functions over arrow functions** - Use `function name()` instead of `const name = () =>`
+- **Avoid unnecessary return type annotations** - Only add return types when they add clarity or are required
+
 ## Vue Component Structure
 
 - **Always use this order in Vue components**: `<script setup>`, `<template>`, `<style>`

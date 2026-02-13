@@ -6,7 +6,7 @@ services:
     routes:
       - name: swarm-config-base
         hosts:
-          - config.justso.de
+          - config.${DOMAIN}
         paths:
           - /
         protocols:
@@ -16,7 +16,7 @@ services:
 
       - name: swarm-config-auth
         hosts:
-          - config.justso.de
+          - config.${DOMAIN}
         paths:
           - /api/auth/login
         protocols:

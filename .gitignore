@@ -2,9 +2,8 @@
 .swarm-config
 .env
 .env.*
-generated/kong.yaml
+data/kong.yaml
 redis-data
-/data
 .DS_Store
 
 # Nuxt

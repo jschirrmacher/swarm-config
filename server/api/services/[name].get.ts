@@ -1,7 +1,10 @@
 import { readFileSync } from "fs"
 import { findKongConfigByName, findComposeConfigByName } from "../../utils/findConfigFiles"
+import { requireAuth } from "~/server/utils/auth"
 
 export default defineEventHandler(async event => {
+  await requireAuth(event)
+
   const name = getRouterParam(event, "name")
 
   if (!name) {

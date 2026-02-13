@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "fs"
+import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "fs"
 import { resolve, join } from "path"
 import { dump, load } from "js-yaml"
 import { getDomains } from "../../src/DomainRegister.js"
@@ -36,22 +36,26 @@ function processPlugins(plugins: any[]) {
   })
 }
 
-// Load .swarm/kong.yaml files from project directories
+// Load kong.yaml files from project directories
 function loadProjectServices(silent = false) {
   const workspaceBase = process.env.WORKSPACE_BASE ?? "/var/apps"
 
   if (!silent) {
     console.log(`  Searching in: ${workspaceBase}`)
+    console.log(`  Current directory: ${process.cwd()}`)
   }
 
   try {
-    const configs = readdirSync(workspaceBase, { withFileTypes: true })
+    const entries = readdirSync(workspaceBase, { withFileTypes: true })
+    if (!silent) {
+      console.log(`  Found ${entries.length} entries in ${workspaceBase}`)
+    }
+
+    const configs = entries
       .filter(entry => entry.isDirectory() || entry.isSymbolicLink())
       .map(entry => {
-        const relativePath = [".swarm/kong.yaml", "kong.yaml"].find(path =>
-          existsSync(join(workspaceBase, entry.name, path)),
-        )
-        if (!relativePath) {
+        const kongYamlPath = join(workspaceBase, entry.name, "kong.yaml")
+        if (!existsSync(kongYamlPath)) {
           if (!silent) {
             console.log(`  ⊘ ${entry.name} - no kong.yaml found`)
           }
@@ -59,24 +63,25 @@ function loadProjectServices(silent = false) {
         }
 
         try {
-          const content = readFileSync(join(workspaceBase, entry.name, relativePath), "utf-8")
+          let content = readFileSync(kongYamlPath, "utf-8")
+          content = content.replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] ?? "")
           const config = load(content) as KongConfig
 
           // Check if config is valid and has at least services, routes, plugins, or consumers
           if (config && (config.services || config.routes || config.plugins || config.consumers)) {
-            if (!silent) console.log(`  ✓ ${entry.name}/${relativePath}`)
+            if (!silent) console.log(`  ✓ ${entry.name}/kong.yaml`)
             return config
           } else {
             if (!silent) {
               console.log(
-                `  ⚠ ${entry.name}/${relativePath} - no services, routes, plugins, or consumers found`,
+                `  ⚠ ${entry.name}/kong.yaml - no services, routes, plugins, or consumers found`,
               )
             }
           }
         } catch (error) {
           if (!silent) {
             console.log(
-              `  ✗ ${entry.name}/${relativePath} - ${error instanceof Error ? error.message : "parse error"}`,
+              `  ✗ ${entry.name}/kong.yaml - ${error instanceof Error ? error.message : "parse error"}`,
             )
           }
         }
@@ -89,8 +94,13 @@ function loadProjectServices(silent = false) {
     }
 
     return configs
-  } catch {
-    if (!silent) console.log(`  ℹ No projects found in ${workspaceBase}`)
+  } catch (error) {
+    if (!silent) {
+      console.log(
+        `  ⚠️  Error reading ${workspaceBase}:`,
+        error instanceof Error ? error.message : String(error),
+      )
+    }
     return []
   }
 }
@@ -102,7 +112,7 @@ export async function generateKongConfig(silent = false) {
     console.log("Loading configuration:")
   }
 
-  // Load all project services (including swarm-config itself)
+  // Load all project services from WORKSPACE_BASE (includes swarm-config itself)
   const allServices = loadProjectServices(silent)
 
   // Import registerDomain and getDomains
@@ -201,8 +211,14 @@ export async function generateKongConfig(silent = false) {
     console.log("")
   }
 
+  // Ensure data directory exists
+  const dataDir = resolve(process.cwd(), "data")
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true })
+  }
+
   writeFileSync(
-    resolve(process.cwd(), "generated", "kong.yaml"),
+    resolve(dataDir, "kong.yaml"),
     dump(config, {
       noCompatMode: true,
       quotingType: '"',
@@ -210,7 +226,7 @@ export async function generateKongConfig(silent = false) {
   )
 
   if (!silent) {
-    console.log("✓ Generated: generated/kong.yaml")
+    console.log("✓ Generated: data/kong.yaml")
     console.log("")
     console.log("ℹ To reload Kong with the new configuration, run: npm run kong:reload")
   }

@@ -5,8 +5,11 @@ import {
   findComposeConfigByName,
   getProjectDir,
 } from "../../utils/findConfigFiles"
+import { requireAuth } from "~/server/utils/auth"
 
 export default defineEventHandler(async event => {
+  await requireAuth(event)
+
   const name = getRouterParam(event, "name")
 
   if (!name) {
@@ -35,9 +38,8 @@ export default defineEventHandler(async event => {
       const composePath = findComposeConfigByName(name)
 
       if (!composePath) {
-        // If no compose file exists, create one in .swarm/
         const projectDir = getProjectDir(name)
-        const newPath = join(projectDir, ".swarm", "docker-compose.yaml")
+        const newPath = join(projectDir, "compose.yaml")
         writeFileSync(newPath, body.compose, "utf-8")
       } else {
         writeFileSync(composePath, body.compose, "utf-8")

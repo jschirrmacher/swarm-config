@@ -112,21 +112,17 @@ while read oldrev newrev refname; do
       echo ""
     fi
     
-    # Get version from package.json or use 'latest'
-    if [ -f "package.json" ]; then
-      VERSION=$(node -p "require('./package.json').version" 2>/dev/null || echo "latest")
-      echo "📌 Version: ${VERSION}"
+    COMMIT_TAG="${newrev:0:8}"
+
+    if docker image inspect ${APPNAME}:${COMMIT_TAG} &>/dev/null; then
+      echo "  Image ${APPNAME}:${COMMIT_TAG} already exists, skipping build and deploy"
     else
-      VERSION="latest"
-    fi
-    export VERSION
-    
-    # Build Docker image
-    echo ""
-    echo "🏗️  Building Docker image..."
-    export DOCKER_BUILDKIT=1
-    export BUILDKIT_PROGRESS=plain
-    docker build -t "${APPNAME}:${VERSION}" -t "${APPNAME}:latest" .
+      # Build Docker image
+      echo ""
+      echo "🏗️  Building Docker image..."
+      export DOCKER_BUILDKIT=1
+      export BUILDKIT_PROGRESS=plain
+      docker build -t "${APPNAME}:${COMMIT_TAG}" .
     
     # Deploy to Docker Swarm
     echo ""
@@ -136,17 +132,18 @@ while read oldrev newrev refname; do
     export DATA_PATH="/var/apps/${APPNAME}/data"
     export ENV_FILE="/var/apps/${APPNAME}/.env"
     export NETWORK_NAME="kong-net"
+    export IMAGE_TAG="${COMMIT_TAG}"
     
     if docker stack ls 2>/dev/null | grep -q "^${APPNAME} "; then
       echo "📦 Updating existing stack..."
       docker stack deploy --detach=true -c "$COMPOSE_FILE" ${APPNAME}
       
-      # Force service update to ensure new image is pulled
       echo "🔄 Forcing service update..."
       docker service update --force ${APPNAME}_${APPNAME}
     else
       echo "📦 Creating new stack..."
       docker stack deploy --detach=true -c "$COMPOSE_FILE" ${APPNAME}
+    fi
     fi
     
     # Regenerate Kong configuration if kong.yaml exists

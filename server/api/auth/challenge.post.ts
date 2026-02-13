@@ -1,4 +1,4 @@
-import { generateChallenge, userExists } from "~/server/utils/sshKeyAuth"
+import { generateChallenge } from "~/server/utils/sshKeyAuth"
 import { storeChallenge } from "~/server/utils/challengeStore"
 
 export default defineEventHandler(async event => {
@@ -20,15 +20,8 @@ export default defineEventHandler(async event => {
     })
   }
 
-  // Check if user exists
-  if (!userExists(username)) {
-    throw createError({
-      statusCode: 404,
-      message: "User not found",
-    })
-  }
-
-  // Generate and store challenge
+  // Always generate and store challenge, even if user doesn't exist
+  // This prevents user enumeration attacks
   const challenge = generateChallenge()
   storeChallenge(username, challenge)
 

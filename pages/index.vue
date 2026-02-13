@@ -12,22 +12,15 @@ const error = ref('')
 const successMessage = ref('')
 const copySuccess = ref('')
 
-// Inject auth utilities from layout
-const getAuthHeaders = inject<() => HeadersInit>('getAuthHeaders', () => ({}))
-const logout = inject<() => void>('logout', () => { })
+const { authFetch } = useAuthFetch()
 
 async function loadRepositories() {
   loading.value = true
   error.value = ''
 
   try {
-    const data = await $fetch<Repository[]>('/api/services', { headers: getAuthHeaders() })
-    repositories.value = data
+    repositories.value = await authFetch<Repository[]>('GET', '/api/services')
   } catch (err: any) {
-    if (err?.statusCode === 401) {
-      logout?.()
-      return
-    }
     error.value = 'Failed to load repositories'
     console.error(err)
   } finally {
@@ -41,11 +34,15 @@ async function createRepository(data: CreateRepoRequest) {
   successMessage.value = ''
 
   try {
-    const response = await $fetch('/api/services', {
-      method: 'POST',
-      body: data,
-      headers: getAuthHeaders()
-    })
+    interface CreateServiceResponse {
+      success: boolean
+      repository?: {
+        name: string
+      }
+      error?: string
+    }
+
+    const response = await authFetch<CreateServiceResponse>('POST', '/api/services', data)
 
     if (response.success && response.repository) {
       successMessage.value = `Project "${response.repository.name}" created successfully!`
@@ -59,10 +56,6 @@ async function createRepository(data: CreateRepoRequest) {
       error.value = response.error || 'Failed to create project'
     }
   } catch (err: any) {
-    if (err?.statusCode === 401) {
-      logout?.()
-      return
-    }
     error.value = 'Failed to create project'
     console.error(err)
   } finally {

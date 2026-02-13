@@ -65,7 +65,6 @@ export async function createWorkspace(
 
   // Create workspace directory structure
   await mkdir(workspaceDir, { recursive: true, mode: 0o755 })
-  await mkdir(join(workspaceDir, ".swarm"), { recursive: true, mode: 0o755 })
   await mkdir(join(workspaceDir, "data"), { recursive: true, mode: 0o755 })
 
   // Create .env file
@@ -75,7 +74,7 @@ PORT=${config.port}
 `
   await writeFile(join(workspaceDir, ".env"), envContent, { mode: 0o600 })
 
-  // Create .swarm/kong.yaml template
+  // Create kong.yaml template
   const domain = process.env.DOMAIN || "example.com"
   const serviceContent = `services:
   - name: ${name}_${name}
@@ -91,29 +90,7 @@ PORT=${config.port}
         preserve_host: true
         strip_path: false
 `
-  await writeFile(join(workspaceDir, ".swarm/kong.yaml"), serviceContent, { mode: 0o644 })
-
-  // Create .swarm/docker-compose.yaml template
-  const composeContent = `services:
-  ${name}:
-    image: \${IMAGE_NAME:-${name}:latest}
-    restart: unless-stopped
-    env_file:
-      - .env
-    ports:
-      - "\${PORT:-${config.port}}:${config.port}"
-    volumes:
-      - ./data:/app/data
-    networks:
-      - kong-net
-    labels:
-      - "com.docker.stack.namespace=${name}"
-
-networks:
-  kong-net:
-    external: true
-`
-  await writeFile(join(workspaceDir, ".swarm/docker-compose.yaml"), composeContent, { mode: 0o644 })
+  await writeFile(join(workspaceDir, "kong.yaml"), serviceContent, { mode: 0o644 })
 
   return workspaceDir
 }
@@ -151,7 +128,9 @@ export async function listRepositories(
     const entries = await readdir(workspaceBaseDir, { withFileTypes: true })
 
     const configPromises = entries
-      .filter(entry => (entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith("."))
+      .filter(
+        entry => (entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith("."),
+      )
       .map(async entry => {
         const projectDir = join(workspaceBaseDir, entry.name)
         const kongFile = findKongConfig(projectDir)
