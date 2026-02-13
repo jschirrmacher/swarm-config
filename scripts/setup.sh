@@ -10,6 +10,12 @@ fi
 DOMAIN="$1"
 BRANCH="${2:-main}"
 
+if [ -z "$DOMAIN" ] || ! echo "$DOMAIN" | grep -qP '^[a-zA-Z0-9]([a-zA-Z0-9-]*\.)+[a-zA-Z]{2,}$'; then
+  echo "Usage: setup.sh <domain> [branch]"
+  echo "  Example: setup.sh example.com v3"
+  exit 1
+fi
+
 apt update && apt install -y git curl
 
 mkdir -p /var/apps
