@@ -1,173 +1,46 @@
 #!/bin/bash
-# Post-receive Hook for automatic CI/CD deployment
-# This hook runs automatically after every git push
-# 
-# Required setup:
-# - /var/apps/{appname}/ directory with .env file
-# - Docker Swarm initialized
-# - Project must have: Dockerfile, compose.yaml (or docker-compose.yaml), package.json
+APPNAME="${PWD##*/}"
+REPO_PATH="$PWD"
+VERSION=$(git rev-parse --short HEAD)
+WORK_DIR="/tmp/build-${VERSION}"
 
-set -e
-
-APPNAME=$(basename "$PWD" .git)
-APP_DIR="/var/apps/${APPNAME}"
-BRANCH="main"
-
-echo "================================================"
-echo "🚀 CI/CD Pipeline for ${APPNAME}"
-echo "================================================"
+echo "🎯 Git Hook: Post-Receive Deployment"
+echo "====================================="
+echo "Repository: ${APPNAME}"
+echo "Version: ${VERSION}"
 echo ""
 
-while read oldrev newrev refname; do
-  BRANCH_NAME=$(echo "$refname" | sed 's/refs\/heads\///')
-  
-  if [[ "$BRANCH_NAME" == "${BRANCH}" ]]; then
-    echo "📍 Branch: ${BRANCH_NAME}"
-    echo "📦 Commit: ${newrev:0:8}"
-    echo ""
-    
-    # Create application directory if it doesn't exist (for .env and data)
-    if [ ! -d "$APP_DIR" ]; then
-      echo "📁 Creating application directory: $APP_DIR"
-      mkdir -p "$APP_DIR"
-    fi
-    
-    # Create temporary working directory for build
-    WORK_DIR=$(mktemp -d -t "${APPNAME}-build-XXXXXX")
-    echo "📥 Checking out code to temporary directory..."
-    trap "rm -rf $WORK_DIR" EXIT
-    
-    # Checkout the latest code to temp directory
-    GIT_WORK_TREE="$WORK_DIR" git checkout -f "$BRANCH_NAME"
-    
-    cd "$WORK_DIR"
-    
-    # Copy/update deployment config files to permanent app directory
-    echo "🔧 Managing deployment configuration files..."
-    
-    # Handle kong.yaml (Kong configuration) - optional
-    if [ -f "kong.yaml" ]; then
-      echo "  ✓ Copying kong.yaml from repository"
-      cp kong.yaml "$APP_DIR/kong.yaml"
-    elif [ ! -f "$APP_DIR/kong.yaml" ]; then
-      echo "  ℹ️  No kong.yaml in repo or on server - Kong config will use defaults"
-    else
-      echo "  ✓ Keeping existing kong.yaml on server"
-    fi
-    
-    # Handle compose file - only compose.yaml expected
-    if [ -f "compose.yaml" ]; then
-      echo "  ✓ Copying compose.yaml from root to server"
-      cp compose.yaml "$APP_DIR/docker-compose.yaml"
-    elif [ ! -f "$APP_DIR/docker-compose.yaml" ]; then
-      echo "  ❌ Error: compose.yaml not found in repository!"
-      echo "  📝 Please create compose.yaml in your repository root"
-      exit 1
-    else
-      echo "  ✓ Using existing docker-compose.yaml on server"
-    fi
-    
-    COMPOSE_FILE="$APP_DIR/docker-compose.yaml"
-    
-    echo ""
-    
-    # Verify required files exist
-    if [ ! -f "Dockerfile" ]; then
-      echo "❌ Error: Dockerfile not found!"
-      exit 1
-    fi
-    
-    # Load environment variables from permanent app directory
-    if [ -f "$APP_DIR/.env" ]; then
-      echo "📋 Loading environment variables from $APP_DIR/.env..."
-      set -a; source "$APP_DIR/.env"; set +a
-    fi
-    
-    echo ""
-    echo "🏗️  Starting CI/CD Pipeline..."
-    echo "================================"
-    echo ""
-    
-    # Install dependencies
-    if [ -f "package.json" ]; then
-      echo "📦 Installing dependencies..."
-      npm ci
-      echo ""
-    fi
-    
-    # Run tests (if not explicitly skipped)
-    if [ "${SKIP_TESTS}" = "true" ]; then
-      echo "⏭️  Tests skipped (SKIP_TESTS=true)"
-      echo ""
-    elif [ -f "package.json" ] && grep -q '"test"' package.json; then
-      echo "🧪 Running tests..."
-      if ! npm test; then
-        echo ""
-        echo "❌ Tests failed! Deployment aborted."
-        exit 1
-      fi
-      echo ""
-    else
-      echo "⏭️  No tests configured, skipping..."
-      echo ""
-    fi
-    
-    COMMIT_TAG="${newrev:0:8}"
+if ! git clone --depth=1 "file://${REPO_PATH}" "$WORK_DIR" 2>&1; then
+  echo "❌ Failed to clone repository"
+  exit 1
+fi
 
-    if docker image inspect ${APPNAME}:${COMMIT_TAG} &>/dev/null; then
-      echo "  Image ${APPNAME}:${COMMIT_TAG} already exists, skipping build and deploy"
-    else
-      # Build Docker image
-      echo ""
-      echo "🏗️  Building Docker image..."
-      export DOCKER_BUILDKIT=1
-      export BUILDKIT_PROGRESS=plain
-      docker build -t "${APPNAME}:${COMMIT_TAG}" .
-    
-    # Deploy to Docker Swarm
-    echo ""
-    echo "🚀 Deploying to Docker Swarm..."
-    
-    # Set environment variables for Swarm deployment
-    export DATA_PATH="/var/apps/${APPNAME}/data"
-    export ENV_FILE="/var/apps/${APPNAME}/.env"
-    export NETWORK_NAME="kong-net"
-    export IMAGE_TAG="${COMMIT_TAG}"
-    
-    if docker stack ls 2>/dev/null | grep -q "^${APPNAME} "; then
-      echo "📦 Updating existing stack..."
-      docker stack deploy --detach=true -c "$COMPOSE_FILE" ${APPNAME}
-      
-      echo "🔄 Forcing service update..."
-      docker service update --force ${APPNAME}_${APPNAME}
-    else
-      echo "📦 Creating new stack..."
-      docker stack deploy --detach=true -c "$COMPOSE_FILE" ${APPNAME}
-    fi
-    fi
-    
-    # Regenerate Kong configuration if kong.yaml exists
-    if [ -f "$APP_DIR/kong.yaml" ]; then
-      echo ""
-      echo "🔄 Regenerating Kong configuration..."
-      cd /var/apps/swarm-config
-      npm run kong:generate --silent && npm run kong:reload --silent || echo "⚠️  Kong reload failed (may need manual intervention)"
-    fi
-    
-    echo ""
-    echo "================================================"
-    echo "✅ Deployment successful!"
-    echo "================================================"
-    echo ""
-    echo "📊 Check status:"
-    echo "   docker service ps ${APPNAME}_${APPNAME}"
-    echo ""
-    echo "📋 View logs:"
-    echo "   docker service logs -f ${APPNAME}_${APPNAME}"
-    echo ""
-  else
-    echo "⏭️  Skipping branch: ${BRANCH_NAME} (only ${BRANCH} triggers deployment)"
-  fi
-done
+cd "$WORK_DIR" || exit 1
 
-exit 0
+echo "🔨 Building Docker image..."
+if ! docker build -t "${APPNAME}:${VERSION}" .; then
+  cd / && rm -rf "$WORK_DIR"
+  echo "❌ Build failed"
+  exit 1
+fi
+
+echo ""
+echo "🚀 Deploying stack to Docker Swarm..."
+
+if [ ! -f "compose.yaml" ]; then
+  echo "❌ compose.yaml not found"
+  cd / && rm -rf "$WORK_DIR"
+  exit 1
+fi
+
+# Deploy direkt aus dem Temp-Verzeichnis
+export VERSION
+if docker stack deploy -c compose.yaml "$APPNAME"; then
+  echo "✅ Deployment completed successfully"
+  cd / && rm -rf "$WORK_DIR"
+  exit 0
+else
+  echo "❌ Deployment failed"
+  cd / && rm -rf "$WORK_DIR"
+  exit 1
+fi
