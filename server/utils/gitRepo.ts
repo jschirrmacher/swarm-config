@@ -155,35 +155,41 @@ export async function listRepositories(
   try {
     const configs: RepoConfig[] = []
     
-    // Check owner's namespace directory
-    const ownerDir = join(workspaceBaseDir, owner)
-    try {
-      await access(ownerDir, constants.R_OK)
-      const entries = await readdir(ownerDir, { withFileTypes: true })
-      
-      for (const entry of entries) {
-        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-        if (entry.name.startsWith(".")) continue
-        
-        const projectDir = join(ownerDir, entry.name)
-        const config = await loadProjectConfig(projectDir, entry.name, owner)
-        if (config) configs.push(config)
-      }
-    } catch {
-      // Owner directory doesn't exist - skip
-    }
-
-    // Also check root level for legacy projects (no namespace)
+    // Scan all namespace directories
     const rootEntries = await readdir(workspaceBaseDir, { withFileTypes: true })
+    
     for (const entry of rootEntries) {
       if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
       if (entry.name.startsWith(".")) continue
-      if (entry.name === owner) continue // Skip namespace directory itself
       
-      const projectDir = join(workspaceBaseDir, entry.name)
-      const config = await loadProjectConfig(projectDir, entry.name, owner)
-      if (config && config.owner === owner) {
-        configs.push(config)
+      const entryPath = join(workspaceBaseDir, entry.name)
+      
+      // Check if this is a namespace directory (contains subdirectories with project.json)
+      try {
+        const subEntries = await readdir(entryPath, { withFileTypes: true })
+        let hasProjects = false
+        
+        for (const subEntry of subEntries) {
+          if (!subEntry.isDirectory() && !subEntry.isSymbolicLink()) continue
+          if (subEntry.name.startsWith(".")) continue
+          
+          const projectDir = join(entryPath, subEntry.name)
+          const config = await loadProjectConfig(projectDir, subEntry.name, entry.name)
+          if (config) {
+            configs.push(config)
+            hasProjects = true
+          }
+        }
+        
+        // If no projects found in subdirectories, check if entry itself is a legacy project
+        if (!hasProjects) {
+          const config = await loadProjectConfig(entryPath, entry.name, owner)
+          if (config && config.owner === owner) {
+            configs.push(config)
+          }
+        }
+      } catch {
+        // Not a directory or access denied - skip
       }
     }
 
