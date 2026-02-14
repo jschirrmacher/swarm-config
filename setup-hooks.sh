@@ -4,7 +4,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOK_SOURCE="${SCRIPT_DIR}/hooks/post-receive"
-GIT_BASE="${1:-/var/git}"
+GIT_BASE="${1:-~git/repos}"
 
 if [ ! -f "$HOOK_SOURCE" ]; then
   echo "❌ Hook source not found: $HOOK_SOURCE"

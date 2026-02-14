@@ -2,20 +2,15 @@
 # Post-receive hook for swarm-config repository
 # Automatically updates all project hooks when swarm-config is pushed
 
-REPO_PATH="$PWD"
-WORK_DIR="/tmp/swarm-config-update"
-GIT_BASE="${GIT_BASE:-/var/git}"
+WORK_DIR="/var/apps/swarm-config"
+GIT_BASE="${GIT_BASE:-~git/repos}"
 
-echo "🔄 Updating swarm-config..."
-
-# Clone latest version
-rm -rf "$WORK_DIR"
-if ! git clone --depth=1 "file://${REPO_PATH}" "$WORK_DIR" 2>&1; then
-  echo "❌ Failed to clone swarm-config"
-  exit 1
-fi
+echo "🔄 Updating swarm-config hooks..."
 
 cd "$WORK_DIR" || exit 1
+
+# Pull latest changes
+git pull
 
 # Run hook setup
 if [ -f "setup-hooks.sh" ]; then
@@ -25,8 +20,5 @@ else
   echo "⚠️  setup-hooks.sh not found"
 fi
 
-# Cleanup
-cd / && rm -rf "$WORK_DIR"
-
 echo ""
-echo "✅ swarm-config updated"
+echo "✅ swarm-config hooks updated"

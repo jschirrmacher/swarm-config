@@ -94,6 +94,30 @@ create_users() {
   echo "✅ Users configured"
 }
 
+create_git_user() {
+  echo "🔧 Creating git user..."
+  if ! id "git" &>/dev/null; then
+    adduser --system --group --shell /bin/bash --home /home/git git
+    mkdir -p ~git/repos
+    mkdir -p ~git/.ssh
+    chmod 700 ~git/.ssh
+    
+    # Copy SSH keys from root for git access
+    if [ -f /root/.ssh/authorized_keys ]; then
+      cp /root/.ssh/authorized_keys ~git/.ssh/authorized_keys
+      chmod 600 ~git/.ssh/authorized_keys
+    fi
+    
+    chown -R git:git ~git
+    echo "  Created git user with repos at: ~git/repos"
+  else
+    echo "  Git user already exists"
+    mkdir -p ~git/repos
+    chown -R git:git ~git/repos
+  fi
+  echo "✅ Git user ready"
+}
+
 configure_ssh() {
   echo "🔐 Hardening SSH..."
   NON_ROOT_USERS=$(awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd)
@@ -185,6 +209,7 @@ install_docker
 configure_firewall
 configure_auto_updates
 create_users
+create_git_user
 configure_ssh
 setup_kong_network
 

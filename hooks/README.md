@@ -7,19 +7,25 @@ Zentralisierte Git-Hooks für automatisches Build und Deployment.
 ### Initiales Setup auf dem Server
 
 ```bash
-cd /path/to/swarm-config
-./setup-hooks.sh /var/git
+cd /var/apps/swarm-config
+./setup-hooks.sh
 ```
 
 ### Automatisches Update
 
-Verlinke den swarm-config Hook im swarm-config Repository selbst:
+Wenn swarm-config als bare repository existiert, verlinke den Hook:
 
 ```bash
-ln -s /path/to/swarm-config/hooks/post-receive-swarm-config /var/git/swarm-config.git/hooks/post-receive
+ln -s /var/apps/swarm-config/hooks/post-receive-swarm-config ~git/repos/swarm-config.git/hooks/post-receive
 ```
 
-Danach werden bei jedem `git push` zum swarm-config automatisch alle Projekt-Hooks aktualisiert.
+Oder wenn swarm-config nur als Working Directory existiert, manuell nach Updates ausführen:
+
+```bash
+cd /var/apps/swarm-config
+git pull
+./setup-hooks.sh
+```
 
 ## Post-Receive Hook
 
