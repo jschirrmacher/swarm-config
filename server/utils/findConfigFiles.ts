@@ -2,11 +2,14 @@ import { existsSync } from "fs"
 import { join } from "path"
 
 /**
- * Finds kong.yaml in project root
+ * Finds kong.yaml or project.json in project root
  */
 export function findKongConfig(projectDir: string): string | undefined {
-  const path = join(projectDir, "kong.yaml")
-  return existsSync(path) ? path : undefined
+  const projectJsonPath = join(projectDir, "project.json")
+  if (existsSync(projectJsonPath)) return projectJsonPath
+  
+  const kongYamlPath = join(projectDir, "kong.yaml")
+  return existsSync(kongYamlPath) ? kongYamlPath : undefined
 }
 
 /**

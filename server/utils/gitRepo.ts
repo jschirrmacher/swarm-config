@@ -18,7 +18,20 @@ export interface RepoConfig {
   port: number
   owner: string
   createdAt: string
-  gitUrl?: string // Optional: Git repository URL from package.json
+  gitUrl?: string
+  routes?: RouteConfig[]
+  plugins?: PluginConfig[]
+}
+
+export interface RouteConfig {
+  paths?: string[]
+  stripPath?: boolean
+  preserveHost?: boolean
+}
+
+export interface PluginConfig {
+  name: string
+  config?: Record<string, any>
 }
 
 export async function createGitRepository(
@@ -28,40 +41,51 @@ export async function createGitRepository(
 ): Promise<string> {
   const repoPath = join(baseDir, owner, `${name}.git`)
 
-  // Create parent directory if needed
+  // Check if repository already exists
+  try {
+    await access(repoPath, constants.R_OK)
+    throw new Error(`Repository ${owner}/${name}.git already exists`)
+  } catch (error: any) {
+    if (error.code !== "ENOENT") {
+      throw error
+    }
+  }
+
+  // Create namespace directory
   await mkdir(join(baseDir, owner), { recursive: true, mode: 0o755 })
 
   // Initialize bare git repository
   await execAsync(`git init --bare "${repoPath}"`)
 
-  // Set ownership to the repository owner (skip group on macOS/dev)
+  // Set ownership to git user
   try {
-    await execAsync(`chown -R ${owner} "${repoPath}"`)
+    await execAsync(`chown -R git:git "${repoPath}"`)
   } catch (error) {
     console.warn(`Could not set ownership for ${repoPath}:`, error)
   }
 
-  // Copy post-receive hook from swarm-config
+  // Link post-receive hook from swarm-config
   const hookSource = join(getSwarmConfigDir(), "hooks", "post-receive")
   const hookDest = join(repoPath, "hooks", "post-receive")
 
   try {
     await access(hookSource, constants.R_OK)
-    await execAsync(`cp "${hookSource}" "${hookDest}"`)
-    await execAsync(`chmod +x "${hookDest}"`)
+    await execAsync(`ln -sf "${hookSource}" "${hookDest}"`)
+    await execAsync(`chmod +x "${hookSource}"`)
   } catch (error) {
-    console.warn("Could not copy post-receive hook:", error)
+    console.warn("Could not link post-receive hook:", error)
   }
 
-  return repoPath
+  return `${owner}/${name}.git`
 }
 
 export async function createWorkspace(
   name: string,
+  owner: string,
   baseDir: string,
   config: RepoConfig,
 ): Promise<string> {
-  const workspaceDir = join(baseDir, name)
+  const workspaceDir = join(baseDir, owner, name)
 
   // Create workspace directory structure
   await mkdir(workspaceDir, { recursive: true, mode: 0o755 })
@@ -74,23 +98,27 @@ PORT=${config.port}
 `
   await writeFile(join(workspaceDir, ".env"), envContent, { mode: 0o600 })
 
-  // Create kong.yaml template
-  const domain = process.env.DOMAIN || "example.com"
-  const serviceContent = `services:
-  - name: ${name}_${name}
-    url: http://${name}_${name}:${config.port}
-    routes:
-      - name: ${name}_${name}
-        hosts:
-          - ${name}.${domain}
-        paths:
-          - /
-        protocols:
-          - https
-        preserve_host: true
-        strip_path: false
-`
-  await writeFile(join(workspaceDir, "kong.yaml"), serviceContent, { mode: 0o644 })
+  // Create project metadata file
+  const metadata = {
+    name,
+    owner,
+    port: config.port,
+    createdAt: config.createdAt,
+    routes: config.routes || [
+      {
+        paths: ["/"],
+        stripPath: false,
+        preserveHost: true,
+      },
+    ],
+    plugins: config.plugins || [],
+  }
+  
+  await writeFile(
+    join(workspaceDir, "project.json"),
+    JSON.stringify(metadata, null, 2),
+    { mode: 0o644 }
+  )
 
   return workspaceDir
 }
@@ -125,14 +153,23 @@ export async function listRepositories(
   workspaceBaseDir: string,
 ): Promise<RepoConfig[]> {
   try {
-    const entries = await readdir(workspaceBaseDir, { withFileTypes: true })
+    const ownerDir = join(workspaceBaseDir, owner)
+    
+    // Check if owner directory exists
+    try {
+      await access(ownerDir, constants.R_OK)
+    } catch {
+      return []
+    }
+
+    const entries = await readdir(ownerDir, { withFileTypes: true })
 
     const configPromises = entries
       .filter(
         entry => (entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith("."),
       )
       .map(async entry => {
-        const projectDir = join(workspaceBaseDir, entry.name)
+        const projectDir = join(ownerDir, entry.name)
         const kongFile = findKongConfig(projectDir)
 
         if (!kongFile) {
@@ -148,7 +185,7 @@ export async function listRepositories(
             | string
         }
         let packageInfo: PackageInfo = {}
-        const packagePath = join(workspaceBaseDir, entry.name, "package.json")
+        const packagePath = join(projectDir, "package.json")
         try {
           await access(packagePath, constants.R_OK)
           const content = await readFile(packagePath, "utf-8")
@@ -172,7 +209,7 @@ export async function listRepositories(
           port: 3000,
           owner: owner,
           createdAt: new Date().toISOString(),
-          gitUrl, // Optional git repository URL from package.json
+          gitUrl,
         } as RepoConfig
       })
 
@@ -248,5 +285,66 @@ export async function validateRepoName(name: string): Promise<{ valid: boolean; 
     }
   }
 
+  // Check if hostname is already taken by another project
+  const domain = process.env.DOMAIN || "example.com"
+  const hostname = `${name}.${domain}`
+  
+  const workspaceBase = process.env.WORKSPACE_BASE ?? "/var/apps"
+  const isHostnameTaken = await checkHostnameExists(hostname, workspaceBase)
+  
+  if (isHostnameTaken) {
+    return {
+      valid: false,
+      error: `Hostname ${hostname} is already in use by another project`,
+    }
+  }
+
   return { valid: true }
+}
+
+async function checkHostnameExists(hostname: string, workspaceBase: string): Promise<boolean> {
+  try {
+    const entries = await readdir(workspaceBase, { withFileTypes: true })
+    
+    for (const entry of entries) {
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+      
+      const entryPath = join(workspaceBase, entry.name)
+      
+      // Check direct kong.yaml
+      if (await checkKongYamlForHostname(join(entryPath, "kong.yaml"), hostname)) {
+        return true
+      }
+      
+      // Check namespace subdirectories
+      try {
+        const subEntries = await readdir(entryPath, { withFileTypes: true })
+        for (const subEntry of subEntries) {
+          if (!subEntry.isDirectory() && !subEntry.isSymbolicLink()) continue
+          
+          if (await checkKongYamlForHostname(join(entryPath, subEntry.name, "kong.yaml"), hostname)) {
+            return true
+          }
+        }
+      } catch {
+        // Not a directory - skip
+      }
+    }
+    
+    return false
+  } catch {
+    return false
+  }
+}
+
+async function checkKongYamlForHostname(kongYamlPath: string, hostname: string): Promise<boolean> {
+  try {
+    await access(kongYamlPath, constants.R_OK)
+    const content = await readFile(kongYamlPath, "utf-8")
+    
+    // Simple string search - more efficient than full YAML parsing
+    return content.includes(hostname)
+  } catch {
+    return false
+  }
 }

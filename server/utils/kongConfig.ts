@@ -39,6 +39,7 @@ function processPlugins(plugins: any[]) {
 // Load kong.yaml files from project directories
 function loadProjectServices(silent = false) {
   const workspaceBase = process.env.WORKSPACE_BASE ?? "/var/apps"
+  const domain = process.env.DOMAIN || "example.com"
 
   if (!silent) {
     console.log(`  Searching in: ${workspaceBase}`)
@@ -51,43 +52,52 @@ function loadProjectServices(silent = false) {
       console.log(`  Found ${entries.length} entries in ${workspaceBase}`)
     }
 
-    const configs = entries
-      .filter(entry => entry.isDirectory() || entry.isSymbolicLink())
-      .map(entry => {
-        const kongYamlPath = join(workspaceBase, entry.name, "kong.yaml")
-        if (!existsSync(kongYamlPath)) {
-          if (!silent) {
-            console.log(`  ⊘ ${entry.name} - no kong.yaml found`)
-          }
-          return null
-        }
+    const configs: KongConfig[] = []
 
-        try {
-          let content = readFileSync(kongYamlPath, "utf-8")
-          content = content.replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] ?? "")
-          const config = load(content) as KongConfig
+    for (const entry of entries) {
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
 
-          // Check if config is valid and has at least services, routes, plugins, or consumers
-          if (config && (config.services || config.routes || config.plugins || config.consumers)) {
-            if (!silent) console.log(`  ✓ ${entry.name}/kong.yaml`)
-            return config
-          } else {
-            if (!silent) {
-              console.log(
-                `  ⚠ ${entry.name}/kong.yaml - no services, routes, plugins, or consumers found`,
-              )
-            }
-          }
-        } catch (error) {
-          if (!silent) {
-            console.log(
-              `  ✗ ${entry.name}/kong.yaml - ${error instanceof Error ? error.message : "parse error"}`,
-            )
+      const entryPath = join(workspaceBase, entry.name)
+      
+      // Check if this is a project directory (has kong.yaml or project.json)
+      const kongYamlPath = join(entryPath, "kong.yaml")
+      const projectJsonPath = join(entryPath, "project.json")
+      
+      if (existsSync(projectJsonPath)) {
+        const config = loadProjectJson(projectJsonPath, entry.name, entry.name, domain, silent)
+        if (config) configs.push(config)
+        continue
+      } else if (existsSync(kongYamlPath)) {
+        // Legacy: support existing kong.yaml files
+        const config = loadKongYaml(kongYamlPath, entry.name, silent)
+        if (config) configs.push(config)
+        continue
+      }
+
+      // Otherwise, check if it's a namespace directory (contains subdirectories)
+      try {
+        const subEntries = readdirSync(entryPath, { withFileTypes: true })
+        for (const subEntry of subEntries) {
+          if (!subEntry.isDirectory() && !subEntry.isSymbolicLink()) continue
+          
+          const subProjectJsonPath = join(entryPath, subEntry.name, "project.json")
+          const subKongYamlPath = join(entryPath, subEntry.name, "kong.yaml")
+          
+          if (existsSync(subProjectJsonPath)) {
+            const config = loadProjectJson(subProjectJsonPath, subEntry.name, entry.name, domain, silent)
+            if (config) configs.push(config)
+          } else if (existsSync(subKongYamlPath)) {
+            // Legacy: support existing kong.yaml files
+            const config = loadKongYaml(subKongYamlPath, `${entry.name}/${subEntry.name}`, silent)
+            if (config) configs.push(config)
+          } else if (!silent) {
+            console.log(`  ⊘ ${entry.name}/${subEntry.name} - no project.json or kong.yaml found`)
           }
         }
-        return null
-      })
-      .filter((config): config is KongConfig => config !== null)
+      } catch {
+        // Not a directory or can't read - skip
+      }
+    }
 
     if (!silent && configs.length === 0) {
       console.log(`  ℹ Searched in: ${workspaceBase}`)
@@ -103,6 +113,69 @@ function loadProjectServices(silent = false) {
     }
     return []
   }
+}
+
+function loadProjectJson(path: string, projectName: string, owner: string, domain: string, silent: boolean): KongConfig | null {
+  try {
+    const content = readFileSync(path, "utf-8")
+    const metadata = JSON.parse(content)
+    
+    const serviceName = `${owner}_${projectName}_${projectName}`
+    const service = {
+      name: serviceName,
+      url: `http://${projectName}_${projectName}:${metadata.port || 3000}`,
+      routes: (metadata.routes || [{ paths: ["/"], stripPath: false, preserveHost: true }]).map((route: any, idx: number) => ({
+        name: `${serviceName}_${idx}`,
+        hosts: [`${projectName}.${domain}`],
+        paths: route.paths || ["/"],
+        protocols: ["https"],
+        preserve_host: route.preserveHost ?? true,
+        strip_path: route.stripPath ?? false,
+      })),
+      plugins: metadata.plugins || [],
+    }
+    
+    if (!silent) console.log(`  ✓ ${owner}/${projectName}/project.json`)
+    
+    return {
+      services: [service],
+      routes: [],
+      plugins: [],
+    }
+  } catch (error) {
+    if (!silent) {
+      console.log(
+        `  ✗ ${owner}/${projectName}/project.json - ${error instanceof Error ? error.message : "parse error"}`,
+      )
+    }
+    return null
+  }
+}
+
+function loadKongYaml(path: string, name: string, silent: boolean): KongConfig | null {
+  try {
+    let content = readFileSync(path, "utf-8")
+    content = content.replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] ?? "")
+    const config = load(content) as KongConfig
+
+    if (config && (config.services || config.routes || config.plugins || config.consumers)) {
+      if (!silent) console.log(`  ✓ ${name}/kong.yaml`)
+      return config
+    } else {
+      if (!silent) {
+        console.log(
+          `  ⚠ ${name}/kong.yaml - no services, routes, plugins, or consumers found`,
+        )
+      }
+    }
+  } catch (error) {
+    if (!silent) {
+      console.log(
+        `  ✗ ${name}/kong.yaml - ${error instanceof Error ? error.message : "parse error"}`,
+      )
+    }
+  }
+  return null
 }
 
 export async function generateKongConfig(silent = false) {
