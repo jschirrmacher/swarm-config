@@ -181,8 +181,11 @@ export async function listRepositories(
       if (entry.name === owner) continue // Skip namespace directory itself
       
       const projectDir = join(workspaceBaseDir, entry.name)
-      const config = await loadProjectConfig(projectDir, entry.name, owner)
-      if (config) configs.push(config)
+      // Legacy projects belong to "joachim"
+      const config = await loadProjectConfig(projectDir, entry.name, "joachim")
+      if (config && config.owner === owner) {
+        configs.push(config)
+      }
     }
 
     return configs
