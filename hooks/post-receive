@@ -1,5 +1,6 @@
 #!/bin/bash
 APPNAME="${PWD##*/}"
+APPNAME="${APPNAME%.git}"
 REPO_PATH="$PWD"
 VERSION=$(git rev-parse --short HEAD)
 WORK_DIR="/tmp/build-${VERSION}"
@@ -8,6 +9,7 @@ echo "🎯 Git Hook: Post-Receive Deployment"
 echo "====================================="
 echo "Repository: ${APPNAME}"
 echo "Version: ${VERSION}"
+echo "Checkout to: ${WORK_DIR}"
 echo ""
 
 if ! git clone --depth=1 "file://${REPO_PATH}" "$WORK_DIR" 2>&1; then
@@ -16,6 +18,20 @@ if ! git clone --depth=1 "file://${REPO_PATH}" "$WORK_DIR" 2>&1; then
 fi
 
 cd "$WORK_DIR" || exit 1
+
+# Determine APP_DIR from project.json owner or fall back to flat structure
+OWNER=""
+if [ -f "project.json" ]; then
+  OWNER=$(grep -o '"owner"[[:space:]]*:[[:space:]]*"[^"]*"' project.json | head -1 | sed 's/.*"owner"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+fi
+
+if [ -n "$OWNER" ]; then
+  APP_DIR="/var/apps/${OWNER}/${APPNAME}"
+else
+  APP_DIR="/var/apps/${APPNAME}"
+fi
+
+echo "📁 Workspace: ${APP_DIR}"
 
 echo "🔨 Building Docker image..."
 if ! docker build -t "${APPNAME}:${VERSION}" .; then
@@ -33,8 +49,14 @@ if [ ! -f "compose.yaml" ]; then
   exit 1
 fi
 
-# Deploy direkt aus dem Temp-Verzeichnis
+# Copy config files to workspace
+mkdir -p "$APP_DIR"
+cp compose.yaml "$APP_DIR/compose.yaml"
+[ -f project.json ] && cp project.json "$APP_DIR/project.json"
+
+cd "$APP_DIR" || exit 1
 export VERSION
+
 if docker stack deploy -c compose.yaml "$APPNAME"; then
   echo "✅ Deployment completed successfully"
   cd / && rm -rf "$WORK_DIR"
