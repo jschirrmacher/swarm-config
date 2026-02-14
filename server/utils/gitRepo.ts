@@ -153,71 +153,87 @@ export async function listRepositories(
   workspaceBaseDir: string,
 ): Promise<RepoConfig[]> {
   try {
-    const ownerDir = join(workspaceBaseDir, owner)
+    const configs: RepoConfig[] = []
     
-    // Check if owner directory exists
+    // Check owner's namespace directory
+    const ownerDir = join(workspaceBaseDir, owner)
     try {
       await access(ownerDir, constants.R_OK)
+      const entries = await readdir(ownerDir, { withFileTypes: true })
+      
+      for (const entry of entries) {
+        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+        if (entry.name.startsWith(".")) continue
+        
+        const projectDir = join(ownerDir, entry.name)
+        const config = await loadProjectConfig(projectDir, entry.name, owner)
+        if (config) configs.push(config)
+      }
     } catch {
-      return []
+      // Owner directory doesn't exist - skip
     }
 
-    const entries = await readdir(ownerDir, { withFileTypes: true })
+    // Also check root level for legacy projects (no namespace)
+    const rootEntries = await readdir(workspaceBaseDir, { withFileTypes: true })
+    for (const entry of rootEntries) {
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+      if (entry.name.startsWith(".")) continue
+      if (entry.name === owner) continue // Skip namespace directory itself
+      
+      const projectDir = join(workspaceBaseDir, entry.name)
+      const config = await loadProjectConfig(projectDir, entry.name, owner)
+      if (config) configs.push(config)
+    }
 
-    const configPromises = entries
-      .filter(
-        entry => (entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith("."),
-      )
-      .map(async entry => {
-        const projectDir = join(ownerDir, entry.name)
-        const kongFile = findKongConfig(projectDir)
-
-        if (!kongFile) {
-          return null
-        }
-
-        // Try to read package.json for additional metadata
-        interface PackageInfo {
-          repository?:
-            | {
-                url?: string
-              }
-            | string
-        }
-        let packageInfo: PackageInfo = {}
-        const packagePath = join(projectDir, "package.json")
-        try {
-          await access(packagePath, constants.R_OK)
-          const content = await readFile(packagePath, "utf-8")
-          packageInfo = JSON.parse(content)
-        } catch {
-          // No package.json or invalid JSON - use defaults
-        }
-
-        // Extract repository URL from package.json
-        let gitUrl = ""
-        if (packageInfo.repository) {
-          if (typeof packageInfo.repository === "string") {
-            gitUrl = packageInfo.repository
-          } else if (packageInfo.repository.url) {
-            gitUrl = packageInfo.repository.url
-          }
-        }
-
-        return {
-          name: entry.name,
-          port: 3000,
-          owner: owner,
-          createdAt: new Date().toISOString(),
-          gitUrl,
-        } as RepoConfig
-      })
-
-    const configs = await Promise.all(configPromises)
-    return configs.filter((config): config is RepoConfig => config !== null)
+    return configs
   } catch (error) {
     console.warn("Failed to search for repositories:", error)
     return []
+  }
+}
+
+async function loadProjectConfig(projectDir: string, name: string, owner: string): Promise<RepoConfig | null> {
+  const projectJsonPath = join(projectDir, "project.json")
+  const kongYamlPath = join(projectDir, "kong.yaml")
+  
+  // Prefer project.json
+  if (await fileExists(projectJsonPath)) {
+    try {
+      const content = await readFile(projectJsonPath, "utf-8")
+      const metadata = JSON.parse(content)
+      return {
+        name,
+        port: metadata.port || 3000,
+        owner: metadata.owner || owner,
+        createdAt: metadata.createdAt || new Date().toISOString(),
+        gitUrl: metadata.gitUrl,
+        routes: metadata.routes,
+        plugins: metadata.plugins,
+      }
+    } catch {
+      return null
+    }
+  }
+  
+  // Fallback to kong.yaml (legacy)
+  if (await fileExists(kongYamlPath)) {
+    return {
+      name,
+      port: 3000,
+      owner,
+      createdAt: new Date().toISOString(),
+    }
+  }
+  
+  return null
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path, constants.R_OK)
+    return true
+  } catch {
+    return false
   }
 }
 
