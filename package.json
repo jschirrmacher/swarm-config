@@ -5,12 +5,11 @@
   "scripts": {
     "kong:generate": "tsx src/generate-kong-config.ts",
     "kong:reload": "docker exec $(docker ps --format '{{.Names}}' | grep _kong.1) kong reload",
-    "install-hooks": "tsx src/install-hooks.ts",
+    "postinstall": "nuxt prepare",
     "dev": "nuxt dev",
     "build": "nuxt build",
     "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "npm run install-hooks && nuxt prepare",
+    "preview": "nuxt preview"
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
