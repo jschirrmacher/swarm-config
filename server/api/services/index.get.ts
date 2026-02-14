@@ -15,8 +15,8 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
     const swarmActive = isSwarmActive()
 
     return repos.map(repo => {
-      const workspaceDir = `${config.workspaceBase}/${owner}/${repo.name}`
-      const projectDir = join(config.workspaceBase, owner, repo.name)
+      const workspaceDir = `${config.workspaceBase}/${repo.owner}/${repo.name}`
+      const projectDir = join(config.workspaceBase, repo.owner, repo.name)
       
       const hasStack = findComposeConfig(projectDir) !== undefined
       const dockerStack = hasStack
@@ -33,9 +33,9 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
 
       return {
         name: repo.name,
-        path: `${config.gitRepoBase}/${owner}/${repo.name}.git`,
+        path: `${config.gitRepoBase}/${repo.owner}/${repo.name}.git`,
         workspaceDir,
-        gitUrl: `git@${config.domain}:${owner}/${repo.name}`,
+        gitUrl: `git@${config.domain}:${repo.owner}/${repo.name}`,
         kongRoute,
         createdAt: repo.createdAt,
         owner: repo.owner,
