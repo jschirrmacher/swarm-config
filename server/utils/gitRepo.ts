@@ -19,6 +19,7 @@ export interface RepoConfig {
   owner: string
   createdAt: string
   gitUrl?: string
+  hostname?: string
   routes?: RouteConfig[]
   plugins?: PluginConfig[]
 }
@@ -215,6 +216,7 @@ async function loadProjectConfig(projectDir: string, name: string, owner: string
         owner: metadata.owner || owner,
         createdAt: metadata.createdAt || new Date().toISOString(),
         gitUrl: metadata.gitUrl,
+        hostname: metadata.hostname,
         routes: metadata.routes,
         plugins: metadata.plugins,
       }

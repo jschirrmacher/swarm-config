@@ -25,7 +25,7 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
 
       let kongRoute: string
       if (swarmActive) {
-        kongRoute = `https://${repo.name}.${config.domain}`
+        kongRoute = `https://${repo.hostname || `${repo.name}.${config.domain}`}`
       } else {
         const port = getServicePort(projectDir, repo.name)
         kongRoute = `http://localhost:${port}`

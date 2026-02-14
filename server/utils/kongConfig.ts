@@ -120,13 +120,14 @@ function loadProjectJson(path: string, projectName: string, owner: string, domai
     const content = readFileSync(path, "utf-8")
     const metadata = JSON.parse(content)
     
+    const hostname = metadata.hostname || `${projectName}.${domain}`
     const serviceName = `${owner}_${projectName}_${projectName}`
     const service = {
       name: serviceName,
       url: `http://${projectName}_${projectName}:${metadata.port || 3000}`,
       routes: (metadata.routes || [{ paths: ["/"], stripPath: false, preserveHost: true }]).map((route: any, idx: number) => ({
         name: `${serviceName}_${idx}`,
-        hosts: [`${projectName}.${domain}`],
+        hosts: [hostname],
         paths: route.paths || ["/"],
         protocols: ["https"],
         preserve_host: route.preserveHost ?? true,
