@@ -19,8 +19,11 @@ export function gitRepoExists(repoPath: string): boolean {
 }
 
 function getSwarmConfigDir(): string {
-  // The Nuxt server runs from the swarm-config project directory
-  return process.cwd()
+  // In production, swarm-config is in /var/apps/swarm-config
+  // In development, use current working directory
+  return process.env.NODE_ENV === 'production' 
+    ? '/var/apps/swarm-config'
+    : process.cwd()
 }
 
 export interface RepoConfig {
