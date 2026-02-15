@@ -65,25 +65,57 @@ export async function createGitRepository(
   // Create namespace directory with team group permissions
   await mkdir(join(baseDir, owner), { recursive: true, mode: 0o775 })
 
-  // Initialize bare git repository
-  await execAsync(`git init --bare "${repoPath}"`)
-  
-  // Set group permissions
-  await execAsync(`chmod -R g+rwX "${repoPath}"`)
-
-  // Link post-receive hook from swarm-config
-  const hookSource = join(getSwarmConfigDir(), "hooks", "post-receive")
-  const hookDest = join(repoPath, "hooks", "post-receive")
+  // Create temporary directory for initial commit
+  const tmpDir = join("/tmp", `${name}-${Date.now()}`)
+  await mkdir(tmpDir, { recursive: true })
 
   try {
-    await access(hookSource, constants.R_OK)
+    // Initialize regular git repository in temp dir
+    await execAsync(`git init "${tmpDir}"`)
+    await execAsync(`git -C "${tmpDir}" config user.name "Swarm Config"`)
+    await execAsync(`git -C "${tmpDir}" config user.email "swarm-config@${process.env.DOMAIN || 'localhost'}"`)
+
+    // Create initial files
+    const readmeContent = `# ${name}
+
+Created by Swarm Config on ${new Date().toISOString()}
+
+## Getting Started
+
+1. Clone this repository
+2. Edit \`compose.yaml\` and \`project.json\` as needed
+3. Push changes to deploy
+
+## Files
+
+- \`compose.yaml\` - Docker Compose configuration
+- \`project.json\` - Project metadata for Swarm Config
+- \`.env\` - Environment variables (not in git)
+`
+    await writeFile(join(tmpDir, "README.md"), readmeContent)
+    await writeFile(join(tmpDir, ".gitignore"), "data/\n.env\n")
+
+    // Commit initial files
+    await execAsync(`git -C "${tmpDir}" add .`)
+    await execAsync(`git -C "${tmpDir}" commit -m "Initial commit"`)
+
+    // Clone as bare repository
+    await execAsync(`git clone --bare "${tmpDir}" "${repoPath}"`)
+
+    // Set group permissions
+    await execAsync(`chmod -R g+rwX "${repoPath}"`)
+
+    // Link post-receive hook
+    const hookSource = join(getSwarmConfigDir(), "hooks", "post-receive")
+    const hookDest = join(repoPath, "hooks", "post-receive")
     await execAsync(`ln -sf "${hookSource}" "${hookDest}"`)
     await execAsync(`chmod +x "${hookSource}"`)
-  } catch (error) {
-    console.warn("Could not link post-receive hook:", error)
-  }
 
-  return `${owner}/${name}.git`
+    return `${owner}/${name}.git`
+  } finally {
+    // Cleanup temp directory
+    await execAsync(`rm -rf "${tmpDir}"`).catch(() => {})
+  }
 }
 
 export async function createWorkspace(
@@ -104,6 +136,30 @@ NODE_ENV=production
 PORT=${config.port}
 `
   await writeFile(join(workspaceDir, ".env"), envContent, { mode: 0o600 })
+
+  // Create compose.yaml template
+  const composeContent = `services:
+  ${name}:
+    image: ${name}:\${VERSION:-latest}
+    environment:
+      - NODE_ENV=production
+      - PORT=${config.port}
+    volumes:
+      - ./data:/app/data
+    networks:
+      - kong-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+networks:
+  kong-net:
+    external: true
+`
+  await writeFile(join(workspaceDir, "compose.yaml"), composeContent, { mode: 0o644 })
 
   // Create project metadata file
   const metadata = {
@@ -126,6 +182,17 @@ PORT=${config.port}
     JSON.stringify(metadata, null, 2),
     { mode: 0o644 }
   )
+
+  // Set ownership to owner user and team group
+  try {
+    await execAsync(`chown -R ${owner}:team "${workspaceDir}"`)
+    await execAsync(`chmod -R u+rwX,g+rwX "${workspaceDir}"`)
+  } catch (error) {
+    console.warn(`Could not set ownership for ${workspaceDir}:`, error)
+    // Fallback: at least set group permissions
+    await execAsync(`chgrp -R team "${workspaceDir}"`)
+    await execAsync(`chmod -R g+rwX "${workspaceDir}"`)
+  }
 
   return workspaceDir
 }
