@@ -32,6 +32,9 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
       }
 
       const gitRepoPath = `${config.gitRepoBase}/${repo.owner}/${repo.name}.git`
+      const repoExists = gitRepoExists(gitRepoPath)
+      
+      console.log(`Checking repo: ${gitRepoPath} -> ${repoExists}`)
 
       return {
         name: repo.name,
@@ -41,7 +44,7 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
         kongRoute,
         createdAt: repo.createdAt,
         owner: repo.owner,
-        gitRepoExists: gitRepoExists(gitRepoPath),
+        gitRepoExists: repoExists,
         hasStack,
         dockerStack,
       }
