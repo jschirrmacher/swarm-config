@@ -10,6 +10,7 @@ const emit = defineEmits<{
 }>()
 
 const creatingRepo = ref(false)
+const { authFetch } = useAuthFetch()
 
 function handleCopy() {
   emit('copyUrl', props.repository.gitUrl)
@@ -18,7 +19,7 @@ function handleCopy() {
 async function createGitRepo() {
   creatingRepo.value = true
   try {
-    await $fetch(`/api/services/${props.repository.name}/git-repo`, { method: 'POST' })
+    await authFetch('POST', `/api/services/${props.repository.name}/git-repo`)
     window.location.reload()
   } catch (error) {
     console.error('Failed to create git repository:', error)

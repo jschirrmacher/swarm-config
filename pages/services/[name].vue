@@ -23,20 +23,14 @@ onMounted(async () => {
   await loadService()
 })
 
+const { authFetch } = useAuthFetch()
+
 async function loadService() {
   try {
     loading.value = true
     error.value = ''
 
-    const response = await fetch(`/api/services/${serviceName.value}`, {
-      headers: getAuthHeaders()
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to load service: ${response.statusText}`)
-    }
-
-    const data = await response.json()
+    const data = await authFetch('GET', `/api/services/${serviceName.value}`)
     service.value = data
     domain.value = data.domain || ''
   } catch (err: any) {
@@ -55,11 +49,6 @@ async function saveService() {
     error.value = ''
     saveSuccess.value = false
 
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...getAuthHeaders()
-    }
-
     const payload: any = {}
 
     // Only send the content that has changed
@@ -69,15 +58,7 @@ async function saveService() {
       payload.compose = service.value.compose.content
     }
 
-    const response = await fetch(`/api/services/${serviceName.value}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(payload)
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to save service: ${response.statusText}`)
-    }
+    await authFetch('PUT', `/api/services/${serviceName.value}`, payload)
 
     saveSuccess.value = true
     setTimeout(() => {

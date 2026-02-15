@@ -20,15 +20,14 @@ function logout() {
   router.push('/login')
 }
 
+const { authFetch } = useAuthFetch()
+
 async function loadCurrentUser() {
   try {
-    const response = await fetch('/api/user', {
-      headers: getAuthHeaders()
-    })
-    if (response.ok) {
-      const data = await response.json() as { username: string }
-      currentUser.value = data.username
-    } else if (response.status === 401 && !import.meta.dev) {
+    const data = await authFetch('GET', '/api/user') as { username: string }
+    currentUser.value = data.username
+  } catch (err: any) {
+    if (err?.statusCode === 401 && !import.meta.dev) {
       // Unauthorized - redirect to login (except in dev mode)
       logout()
     }
