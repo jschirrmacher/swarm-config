@@ -10,6 +10,7 @@
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

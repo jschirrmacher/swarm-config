@@ -30,9 +30,9 @@ async function loadCurrentUser() {
     if (err?.statusCode === 401 && !import.meta.dev) {
       // Unauthorized - redirect to login (except in dev mode)
       logout()
+    } else {
+      console.error('Failed to load current user:', err)
     }
-  } catch (err) {
-    console.error('Failed to load current user:', err)
   }
 }
 
