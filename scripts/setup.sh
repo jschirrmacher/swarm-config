@@ -34,6 +34,11 @@ clone_or_update_repo() {
     cd swarm-config
     [ -n "$BRANCH" ] && [ "$BRANCH" != "main" ] && git checkout -b "$BRANCH" --track "origin/$BRANCH"
   fi
+  
+  # Set team group permissions
+  chgrp -R team /var/apps/swarm-config
+  chmod -R g+rwX /var/apps/swarm-config
+  
   echo "✅ Repository ready"
 }
 
@@ -80,7 +85,7 @@ create_users() {
       [[ -z "$USERNAME" ]] && continue
       if ! id "$USERNAME" &>/dev/null; then
         adduser --disabled-password --gecos "" "$USERNAME" 2>/dev/null || true
-        usermod -aG docker,sudo "$USERNAME"
+        usermod -aG docker,sudo,team "$USERNAME"
         echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$USERNAME"
         mkdir -p "/home/$USERNAME/.ssh"
         echo "$line" >> "/home/$USERNAME/.ssh/authorized_keys"
@@ -88,6 +93,10 @@ create_users() {
         chmod 700 "/home/$USERNAME/.ssh"
         chmod 600 "/home/$USERNAME/.ssh/authorized_keys"
         echo "  Created user: $USERNAME"
+      else
+        # Add existing users to team group
+        usermod -aG team "$USERNAME"
+      fi
       fi
     done < /root/.ssh/authorized_keys
   fi
@@ -230,12 +239,14 @@ cd /var/apps/swarm-config
 BRANCH="${BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)}"
 GIT_UID=$(id -u git)
 TEAM_GID=$(getent group team | cut -d: -f3)
+DOCKER_GID=$(getent group docker | cut -d: -f3)
 cat > .env <<EOF
 DOMAIN=${DOMAIN}
 BRANCH=${BRANCH}
 TECH_EMAIL=${TECH_EMAIL}
 GIT_UID=${GIT_UID}
 TEAM_GID=${TEAM_GID}
+DOCKER_GID=${DOCKER_GID}
 EOF
 
 # Install Node.js if needed

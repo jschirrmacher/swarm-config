@@ -55,6 +55,8 @@ services:
   ui:
     image: swarm-config-ui:${IMAGE_TAG:-latest}
     user: "${GIT_UID:-1000}:${TEAM_GID:-1000}"
+    group_add:
+      - "${DOCKER_GID:-999}"
     environment:
       - NODE_ENV=production
       - GIT_REPO_BASE=/home/git/repos
