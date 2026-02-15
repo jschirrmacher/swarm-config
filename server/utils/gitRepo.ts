@@ -1,8 +1,8 @@
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
-import { access, mkdir, writeFile, readFile, readdir, accessSync } from "node:fs/promises"
+import { access, mkdir, writeFile, readFile, readdir } from "node:fs/promises"
+import { accessSync, constants } from "node:fs"
 import { join } from "node:path"
-import { constants } from "node:fs"
 import { getCookie, getHeader } from "h3"
 import { findKongConfig } from "./findConfigFiles"
 
