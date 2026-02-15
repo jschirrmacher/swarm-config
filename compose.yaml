@@ -57,11 +57,9 @@ services:
     user: "1000:1001"
     environment:
       - NODE_ENV=production
-      - GIT_REPO_BASE=/home
+      - GIT_REPO_BASE=/home/git/repos
       - WORKSPACE_BASE=/var/apps
-      - NUXT_DOMAIN=${DOMAIN}
-      - NUXT_GIT_REPO_BASE=/home
-      - NUXT_WORKSPACE_BASE=/var/apps
+      - DOMAIN=${DOMAIN}
     volumes:
       - /home:/home
       - /var/apps:/var/apps
