@@ -1,12 +1,22 @@
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
-import { access, mkdir, writeFile, readFile, readdir } from "node:fs/promises"
+import { access, mkdir, writeFile, readFile, readdir, accessSync } from "node:fs/promises"
 import { join } from "node:path"
 import { constants } from "node:fs"
 import { getCookie, getHeader } from "h3"
 import { findKongConfig } from "./findConfigFiles"
 
 const execAsync = promisify(exec)
+
+export function gitRepoExists(repoPath: string): boolean {
+  try {
+    const headPath = join(repoPath, "HEAD")
+    accessSync(headPath, constants.R_OK)
+    return true
+  } catch {
+    return false
+  }
+}
 
 function getSwarmConfigDir(): string {
   // The Nuxt server runs from the swarm-config project directory
@@ -52,18 +62,14 @@ export async function createGitRepository(
     }
   }
 
-  // Create namespace directory
-  await mkdir(join(baseDir, owner), { recursive: true, mode: 0o755 })
+  // Create namespace directory with team group permissions
+  await mkdir(join(baseDir, owner), { recursive: true, mode: 0o775 })
 
   // Initialize bare git repository
   await execAsync(`git init --bare "${repoPath}"`)
-
-  // Set ownership to git user
-  try {
-    await execAsync(`chown -R git:git "${repoPath}"`)
-  } catch (error) {
-    console.warn(`Could not set ownership for ${repoPath}:`, error)
-  }
+  
+  // Set group permissions
+  await execAsync(`chmod -R g+rwX "${repoPath}"`)
 
   // Link post-receive hook from swarm-config
   const hookSource = join(getSwarmConfigDir(), "hooks", "post-receive")

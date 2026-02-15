@@ -1,5 +1,5 @@
 import type { Repository } from "~/types"
-import { listRepositories } from "~/server/utils/gitRepo"
+import { listRepositories, gitRepoExists } from "~/server/utils/gitRepo"
 import { requireAuth } from "~/server/utils/auth"
 import { join } from "path"
 import { getDockerStatus, isSwarmActive } from "~/server/utils/dockerStatus"
@@ -31,14 +31,17 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
         kongRoute = `http://localhost:${port}`
       }
 
+      const gitRepoPath = `${config.gitRepoBase}/${repo.owner}/${repo.name}.git`
+
       return {
         name: repo.name,
-        path: `${config.gitRepoBase}/${repo.owner}/${repo.name}.git`,
+        path: gitRepoPath,
         workspaceDir,
         gitUrl: `git@${config.domain}:${repo.owner}/${repo.name}`,
         kongRoute,
         createdAt: repo.createdAt,
         owner: repo.owner,
+        gitRepoExists: gitRepoExists(gitRepoPath),
         hasStack,
         dockerStack,
       }

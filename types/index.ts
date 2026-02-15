@@ -6,6 +6,7 @@ export interface Repository {
   kongRoute: string
   createdAt: string
   owner: string
+  gitRepoExists: boolean
   hasStack?: boolean
   dockerStack?: {
     exists: boolean

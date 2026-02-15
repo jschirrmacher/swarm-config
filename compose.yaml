@@ -54,6 +54,7 @@ services:
 
   ui:
     image: swarm-config-ui:${IMAGE_TAG:-latest}
+    user: "1000:1001"
     environment:
       - NODE_ENV=production
       - GIT_REPO_BASE=/home

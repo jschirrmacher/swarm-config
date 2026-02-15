@@ -9,8 +9,23 @@ const emit = defineEmits<{
   copyUrl: [url: string]
 }>()
 
+const creatingRepo = ref(false)
+
 function handleCopy() {
   emit('copyUrl', props.repository.gitUrl)
+}
+
+async function createGitRepo() {
+  creatingRepo.value = true
+  try {
+    await $fetch(`/api/services/${props.repository.name}/git-repo`, { method: 'POST' })
+    window.location.reload()
+  } catch (error) {
+    console.error('Failed to create git repository:', error)
+    alert('Failed to create git repository')
+  } finally {
+    creatingRepo.value = false
+  }
 }
 </script>
 
@@ -53,12 +68,19 @@ function handleCopy() {
         </div>
       </div>
       <div class="url-with-copy">
-        <code>{{ repository.gitUrl }}</code>
-        <button @click="handleCopy" class="btn-icon" title="Copy Git URL">
+        <code v-if="repository.gitRepoExists">{{ repository.gitUrl }}</code>
+        <div v-else class="no-repo-warning">
+          <span class="warning-icon">⚠</span>
+          <span>Git repository not found</span>
+        </div>
+        <button v-if="repository.gitRepoExists" @click="handleCopy" class="btn-icon" title="Copy Git URL">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
             <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
           </svg>
+        </button>
+        <button v-else @click="createGitRepo" :disabled="creatingRepo" class="btn-create" title="Create Git repository">
+          {{ creatingRepo ? 'Creating...' : 'Create Repo' }}
         </button>
       </div>
     </div>
@@ -225,6 +247,55 @@ function handleCopy() {
 }
 
 .btn-icon:active {
+  transform: scale(0.95);
+}
+
+.no-repo-warning {
+  flex: 1;
+  background: rgba(255, 193, 7, 0.15);
+  padding: 0.5rem;
+  border-radius: 3px;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #856404;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.dark .no-repo-warning {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+  border-color: rgba(255, 193, 7, 0.4);
+}
+
+.warning-icon {
+  font-size: 1rem;
+}
+
+.btn-create {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-create:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-create:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-create:active:not(:disabled) {
   transform: scale(0.95);
 }
 </style>
