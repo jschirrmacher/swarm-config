@@ -95,9 +95,17 @@ create_users() {
 }
 
 create_git_user() {
-  echo "🔧 Creating git user..."
+  echo "🔧 Creating git user and team group..."
+  
+  # Create team group if it doesn't exist
+  if ! getent group team &>/dev/null; then
+    groupadd --gid 1000 team
+    echo "  Created team group (GID 1000)"
+  fi
+  
   if ! id "git" &>/dev/null; then
     adduser --system --group --shell /bin/bash --home /home/git git
+    usermod -aG team git
     mkdir -p ~git/repos
     mkdir -p ~git/.ssh
     chmod 700 ~git/.ssh
@@ -108,14 +116,18 @@ create_git_user() {
       chmod 600 ~git/.ssh/authorized_keys
     fi
     
+    chown -R git:team ~git/repos
+    chmod -R g+rwX ~git/repos
     chown -R git:git ~git
     echo "  Created git user with repos at: ~git/repos"
   else
     echo "  Git user already exists"
+    usermod -aG team git
     mkdir -p ~git/repos
-    chown -R git:git ~git/repos
+    chown -R git:team ~git/repos
+    chmod -R g+rwX ~git/repos
   fi
-  echo "✅ Git user ready"
+  echo "✅ Git user and team group ready"
 }
 
 configure_ssh() {
@@ -216,10 +228,14 @@ setup_kong_network
 # Write .env
 cd /var/apps/swarm-config
 BRANCH="${BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)}"
+GIT_UID=$(id -u git)
+TEAM_GID=$(getent group team | cut -d: -f3)
 cat > .env <<EOF
 DOMAIN=${DOMAIN}
 BRANCH=${BRANCH}
 TECH_EMAIL=${TECH_EMAIL}
+GIT_UID=${GIT_UID}
+TEAM_GID=${TEAM_GID}
 EOF
 
 # Install Node.js if needed
