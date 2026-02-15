@@ -12,10 +12,8 @@ export function gitRepoExists(repoPath: string): boolean {
   try {
     const headPath = join(repoPath, "HEAD")
     accessSync(headPath, constants.R_OK)
-    console.log(`✓ Git repo exists: ${repoPath}`)
     return true
-  } catch (error) {
-    console.log(`✗ Git repo not found: ${repoPath}`, error instanceof Error ? error.message : '')
+  } catch {
     return false
   }
 }

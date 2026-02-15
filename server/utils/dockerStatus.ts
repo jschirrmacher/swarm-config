@@ -22,22 +22,25 @@ export function getDockerStatus(stackName: string): {
 } {
   try {
     const swarmActive = isSwarmActive()
+    console.log(`Checking Docker status for: ${stackName}, Swarm active: ${swarmActive}`)
 
     if (swarmActive) {
       // Get all services matching the pattern: stackName_*
-      const services = execSync(
+      const output = execSync(
         `docker service ls --filter "name=${stackName}_" --format "{{.Name}}\t{{.Replicas}}"`,
         {
           encoding: "utf-8",
           timeout: 5000,
           stdio: ["pipe", "pipe", "ignore"],
         },
-      )
-        .trim()
-        .split("\n")
-        .filter(Boolean)
+      ).trim()
+      
+      console.log(`Docker service ls output for ${stackName}:`, output)
+      
+      const services = output.split("\n").filter(Boolean)
 
       if (services.length === 0) {
+        console.log(`No services found for ${stackName}`)
         return { exists: false, running: 0, total: 0 }
       }
 
@@ -56,6 +59,7 @@ export function getDockerStatus(stackName: string): {
         }
       }
 
+      console.log(`${stackName}: ${totalRunning}/${totalReplicas} replicas`)
       return { exists: true, running: totalRunning, total: totalReplicas }
     } else {
       // Local without Swarm: check running containers
@@ -80,6 +84,7 @@ export function getDockerStatus(stackName: string): {
       return { exists: true, running: runningCount, total: containers.length }
     }
   } catch (error) {
+    console.error(`Error checking Docker status for ${stackName}:`, error)
     return { exists: false, running: 0, total: 0 }
   }
 }

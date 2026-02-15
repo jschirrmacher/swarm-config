@@ -33,8 +33,6 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
 
       const gitRepoPath = `${config.gitRepoBase}/${repo.owner}/${repo.name}.git`
       const repoExists = gitRepoExists(gitRepoPath)
-      
-      console.log(`Checking repo: ${gitRepoPath} -> ${repoExists}`)
 
       return {
         name: repo.name,
