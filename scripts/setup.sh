@@ -114,7 +114,7 @@ create_git_user() {
   
   if ! id "git" &>/dev/null; then
     adduser --system --group --shell /bin/bash --home /home/git git
-    usermod -aG team git
+    usermod -aG team,docker git
     mkdir -p ~git/repos
     mkdir -p ~git/.ssh
     chmod 700 ~git/.ssh
@@ -131,7 +131,7 @@ create_git_user() {
     echo "  Created git user with repos at: ~git/repos"
   else
     echo "  Git user already exists"
-    usermod -aG team git
+    usermod -aG team,docker git
     mkdir -p ~git/repos
     chown -R git:team ~git/repos
     chmod -R g+rwX ~git/repos
