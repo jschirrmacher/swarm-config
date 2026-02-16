@@ -55,11 +55,12 @@ services:
   ui:
     image: swarm-config-ui:${IMAGE_TAG:-latest}
     user: "${GIT_UID:-1000}:${DOCKER_GID:-999}"
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=production
-      - GIT_REPO_BASE=/home/git/repos
-      - WORKSPACE_BASE=/var/apps
-      - DOMAIN=${DOMAIN}
+      - NUXT_GIT_REPO_BASE=${GIT_REPO_BASE}
+      - NUXT_WORKSPACE_BASE=${WORKSPACE_BASE}
+      - NUXT_DOMAIN=${DOMAIN}
     volumes:
       - /home:/home
       - /var/apps:/var/apps

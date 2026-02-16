@@ -28,13 +28,13 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     // Server-side environment variables
-    gitRepoBase: process.env.GIT_REPO_BASE || "/home/git/repos",
-    workspaceBase: process.env.WORKSPACE_BASE || "/var/apps",
-    domain: process.env.DOMAIN || "example.com",
+    gitRepoBase: "/home/git/repos",
+    workspaceBase: "/var/apps",
+    domain: "example.com",
 
     public: {
       // Client-side environment variables
-      apiBase: process.env.API_BASE || "/api",
+      apiBase: "/api",
     },
   },
 

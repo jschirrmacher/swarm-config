@@ -79,25 +79,25 @@ Use `.env.example` in your repository as documentation.
 
 ### Nuxt3 Apps: NUXT_ Prefix
 
-Nuxt3 runtimeConfig can only be overridden at runtime with `NUXT_`-prefixed variables.
+Nuxt3 runtimeConfig can be overridden at runtime with `NUXT_`-prefixed environment variables.
 
 If your `nuxt.config.ts` defines:
 ```ts
 runtimeConfig: {
-  myApiKey: process.env.MY_API_KEY,
+  myApiKey: "default-key",  // Default value
   public: {
-    authServerUrl: process.env.AUTH_SERVER_URL,
+    authServerUrl: "https://auth.example.com",
   }
 }
 ```
 
-Then your `.env` must use:
+Then your `.env` can override at runtime:
 ```bash
 NUXT_MY_API_KEY=secret-key
-NUXT_PUBLIC_AUTH_SERVER_URL=https://auth.example.com
+NUXT_PUBLIC_AUTH_SERVER_URL=https://auth.production.com
 ```
 
-The `NUXT_` prefix maps to `runtimeConfig` keys:
+The `NUXT_` prefix maps to `runtimeConfig` keys (underscore → camelCase):
 - `NUXT_MY_API_KEY` → `runtimeConfig.myApiKey`
 - `NUXT_PUBLIC_AUTH_SERVER_URL` → `runtimeConfig.public.authServerUrl`
 

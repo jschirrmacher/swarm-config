@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "fs"
 import { resolve, join } from "path"
 import { dump, load } from "js-yaml"
-import { getDomains } from "../../src/DomainRegister.js"
+import { getDomains } from "./DomainRegister.js"
 
 type KongConfig = {
   services: unknown[]
@@ -190,7 +190,7 @@ export async function generateKongConfig(silent = false) {
   const allServices = loadProjectServices(silent)
 
   // Import registerDomain and getDomains
-  const { registerDomain, getDomains, clearDomains } = await import("../../src/DomainRegister.js")
+  const { registerDomain, getDomains, clearDomains } = await import("./DomainRegister.js")
 
   // Clear any previously registered domains
   clearDomains()

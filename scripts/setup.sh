@@ -240,13 +240,18 @@ BRANCH="${BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)}"
 GIT_UID=$(id -u git)
 TEAM_GID=$(getent group team | cut -d: -f3)
 DOCKER_GID=$(getent group docker | cut -d: -f3)
+GIT_REPO_BASE="/home/git/repos"
+WORKSPACE_BASE="/var/apps"
 cat > .env <<EOF
 DOMAIN=${DOMAIN}
 BRANCH=${BRANCH}
 TECH_EMAIL=${TECH_EMAIL}
+NODE_ENV=production
 GIT_UID=${GIT_UID}
 TEAM_GID=${TEAM_GID}
 DOCKER_GID=${DOCKER_GID}
+GIT_REPO_BASE=${GIT_REPO_BASE}
+WORKSPACE_BASE=${WORKSPACE_BASE}
 EOF
 
 # Install Node.js if needed
