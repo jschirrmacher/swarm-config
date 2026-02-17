@@ -60,5 +60,5 @@ export async function requireAuth(event: H3Event) {
     })
   }
 
-  return username
+  return { username }
 }

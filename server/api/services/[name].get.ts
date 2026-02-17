@@ -1,9 +1,11 @@
-import { readFileSync } from "fs"
+import { readFileSync, existsSync } from "fs"
+import { join } from "path"
 import { findKongConfigByName, findComposeConfigByName } from "../../utils/findConfigFiles"
 import { requireAuth } from "~/server/utils/auth"
+import { execSync } from "child_process"
 
 export default defineEventHandler(async event => {
-  await requireAuth(event)
+  const auth = await requireAuth(event)
 
   const name = getRouterParam(event, "name")
 
@@ -12,34 +14,53 @@ export default defineEventHandler(async event => {
   }
 
   try {
-    const config = useRuntimeConfig()
-    const kongPath = findKongConfigByName(name)
-
-    if (!kongPath) {
-      throw createError({ statusCode: 404, message: `Service '${name}' not found` })
+    // Get project.json for metadata
+    const workspaceDir = `/var/apps/${auth.username}/${name}`
+    const projectJsonPath = join(workspaceDir, 'project.json')
+    
+    let projectData: any = {}
+    if (existsSync(projectJsonPath)) {
+      projectData = JSON.parse(readFileSync(projectJsonPath, 'utf-8'))
     }
 
-    const kongContent = readFileSync(kongPath, "utf-8")
-    const composePath = findComposeConfigByName(name)
-    const composeContent = composePath ? readFileSync(composePath, "utf-8") : ""
+    // Get Docker service status
+    let status = 'unknown'
+    let replicas = 'N/A'
+    let version = projectData.version || 'N/A'
+    
+    try {
+      const serviceInfo = execSync(`docker service inspect ${name} --format '{{.Spec.Mode.Replicated.Replicas}}'`, { encoding: 'utf-8' }).trim()
+      replicas = serviceInfo || '0'
+      status = parseInt(replicas) > 0 ? 'running' : 'stopped'
+    } catch {
+      status = 'not deployed'
+    }
+
+    // Get environment variables (only for owner)
+    let env: Record<string, string> = {}
+    if (projectData.owner === auth.username && projectData.env) {
+      env = projectData.env
+    }
+
+    // Get Git URL
+    const config = useRuntimeConfig()
+    const gitUrl = `git@${config.domain}:${auth.username}/${name}`
 
     return {
       name,
-      domain: config.domain,
-      kong: {
-        content: kongContent,
-        path: kongPath,
-      },
-      compose: {
-        content: composeContent,
-        path: composePath || "",
-      },
+      owner: projectData.owner || auth.username,
+      status,
+      replicas,
+      version,
+      createdAt: projectData.createdAt,
+      gitUrl,
+      env: projectData.owner === auth.username ? env : undefined
     }
   } catch (error) {
     if (error instanceof Error && "statusCode" in error) {
       throw error
     }
     console.error("Error reading service:", error)
-    throw createError({ statusCode: 500, message: "Failed to read service configuration" })
+    throw createError({ statusCode: 500, message: "Failed to read service" })
   }
 })

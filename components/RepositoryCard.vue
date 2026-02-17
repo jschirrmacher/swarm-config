@@ -5,29 +5,20 @@ const props = defineProps<{
   repository: Repository
 }>()
 
-const emit = defineEmits<{
-  copyUrl: [url: string]
-}>()
+const copySuccess = ref(false)
 
-const creatingRepo = ref(false)
-const { authFetch } = useAuthFetch()
-
-function handleCopy() {
-  emit('copyUrl', props.repository.gitUrl)
-}
-
-async function createGitRepo() {
-  creatingRepo.value = true
+async function copyGitUrl() {
   try {
-    await authFetch('POST', `/api/services/${props.repository.name}/git-repo`)
-    window.location.reload()
-  } catch (error) {
-    console.error('Failed to create git repository:', error)
-    alert('Failed to create git repository')
-  } finally {
-    creatingRepo.value = false
+    await navigator.clipboard.writeText(props.repository.gitUrl)
+    copySuccess.value = true
+    setTimeout(() => {
+      copySuccess.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy:', err)
   }
 }
+
 </script>
 
 <template>
@@ -37,12 +28,6 @@ async function createGitRepo() {
         <h3 class="repo-title">
           <NuxtLink :to="`/services/${repository.name}`" class="config-link">
             {{ repository.name }}
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" class="config-icon">
-              <path
-                d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z" />
-              <path
-                d="M6.854 4.646a.5.5 0 0 1 0 .708L4.207 8l2.647 2.646a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708 0zm2.292 0a.5.5 0 0 0 0 .708L11.793 8l-2.647 2.646a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708 0z" />
-            </svg>
           </NuxtLink>
         </h3>
         <div class="repo-actions">
@@ -66,22 +51,31 @@ async function createGitRepo() {
                 d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z" />
             </svg>
           </a>
+          <span v-if="repository.gitRepoExists" class="repo-status" title="Git repository exists">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+          </span>
+          <span v-else class="repo-status repo-missing" title="Git repository not found">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+              <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+            </svg>
+          </span>
         </div>
       </div>
-      <div class="url-with-copy">
-        <code v-if="repository.gitRepoExists">{{ repository.gitUrl }}</code>
-        <div v-else class="no-repo-warning">
-          <span class="warning-icon">⚠</span>
-          <span>Git repository not found</span>
-        </div>
-        <button v-if="repository.gitRepoExists" @click="handleCopy" class="btn-icon" title="Copy Git URL">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <div class="repo-meta">
+        <span class="repo-date" :title="`Created: ${new Date(repository.createdAt).toLocaleString()}`">
+          {{ new Date(repository.createdAt).toLocaleDateString() }}
+        </span>
+        <button v-if="repository.gitRepoExists" @click="copyGitUrl" class="btn-copy-git" :title="copySuccess ? 'Copied!' : 'Copy Git URL'">
+          <svg v-if="!copySuccess" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
             <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
           </svg>
-        </button>
-        <button v-else @click="createGitRepo" :disabled="creatingRepo" class="btn-create" title="Create Git repository">
-          {{ creatingRepo ? 'Creating...' : 'Create Repo' }}
+          <svg v-else width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+          </svg>
         </button>
       </div>
     </div>
@@ -91,14 +85,18 @@ async function createGitRepo() {
 <style scoped>
 .repo-card {
   background: var(--bg-secondary);
-  border-radius: 4px;
-  padding: 0.75rem 1rem;
-  box-shadow: 0 1px 3px var(--shadow);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px var(--shadow);
   transition: all 0.3s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .repo-card:hover {
-  box-shadow: 0 2px 6px var(--shadow);
+  box-shadow: 0 4px 12px var(--shadow);
+  transform: translateY(-2px);
 }
 
 .repo-content {
@@ -124,23 +122,11 @@ async function createGitRepo() {
 .config-link {
   color: inherit;
   text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
   transition: all 0.2s;
 }
 
 .config-link:hover {
   color: var(--accent-hover);
-}
-
-.config-icon {
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-
-.config-link:hover .config-icon {
-  opacity: 1;
 }
 
 .repo-actions {
@@ -149,9 +135,56 @@ async function createGitRepo() {
   gap: 0.75rem;
 }
 
+.repo-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.repo-date {
+  opacity: 0.7;
+}
+
+.btn-copy-git {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.35rem;
+  cursor: pointer;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-copy-git:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.btn-copy-git:active {
+  transform: scale(0.95);
+}
+
 .docker-status {
   display: flex;
   align-items: center;
+}
+
+.repo-status {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--accent);
+  padding: 0.25rem;
+}
+
+.repo-status.repo-missing {
+  color: #f59e0b;
 }
 
 .status-badge {
@@ -248,55 +281,6 @@ async function createGitRepo() {
 }
 
 .btn-icon:active {
-  transform: scale(0.95);
-}
-
-.no-repo-warning {
-  flex: 1;
-  background: rgba(255, 193, 7, 0.15);
-  padding: 0.5rem;
-  border-radius: 3px;
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #856404;
-  border: 1px solid rgba(255, 193, 7, 0.3);
-}
-
-.dark .no-repo-warning {
-  background: rgba(255, 193, 7, 0.2);
-  color: #ffc107;
-  border-color: rgba(255, 193, 7, 0.4);
-}
-
-.warning-icon {
-  font-size: 1rem;
-}
-
-.btn-create {
-  background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.btn-create:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.btn-create:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-create:active:not(:disabled) {
   transform: scale(0.95);
 }
 </style>

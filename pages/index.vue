@@ -10,7 +10,6 @@ const creating = ref(false)
 const repositories = ref<Repository[]>([])
 const error = ref('')
 const successMessage = ref('')
-const copySuccess = ref('')
 
 const { authFetch } = useAuthFetch()
 
@@ -63,18 +62,6 @@ async function createRepository(data: CreateRepoRequest) {
   }
 }
 
-async function copyGitUrl(url: string) {
-  try {
-    await navigator.clipboard.writeText(url)
-    copySuccess.value = 'Git URL copied to clipboard!'
-    setTimeout(() => {
-      copySuccess.value = ''
-    }, 2000)
-  } catch (err) {
-    console.error('Failed to copy:', err)
-  }
-}
-
 onMounted(() => {
   loadRepositories()
 })
@@ -94,10 +81,8 @@ onMounted(() => {
       <EmptyRepositories v-else-if="repositories.length === 0" />
 
       <div v-else class="repos-grid">
-        <RepositoryCard v-for="repo in repositories" :key="repo.name" :repository="repo" @copy-url="copyGitUrl" />
+        <RepositoryCard v-for="repo in repositories" :key="repo.name" :repository="repo" />
       </div>
-
-      <AppAlert type="success" :message="copySuccess" />
     </section>
 
     <CreateRepositoryForm :creating="creating" @submit="createRepository" />
@@ -135,8 +120,14 @@ onMounted(() => {
 }
 
 .repos-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .repos-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -29,21 +29,21 @@ export default defineEventHandler(async (event): Promise<CreateRepoResponse> => 
   }
 
   try {
-    const owner = await requireAuth(event)
+    const auth = await requireAuth(event)
     const port = body.port || 3000
 
     const repoConfig: RepoConfig = {
       name: body.name,
       port,
-      owner,
+      owner: auth.username,
       createdAt: new Date().toISOString(),
     }
 
     // Create Git repository
-    const repoPath = await createGitRepository(body.name, owner, config.gitRepoBase)
+    const repoPath = await createGitRepository(body.name, auth.username, config.gitRepoBase)
 
     // Create workspace
-    const workspaceDir = await createWorkspace(body.name, owner, config.workspaceBase, repoConfig)
+    const workspaceDir = await createWorkspace(body.name, auth.username, config.workspaceBase, repoConfig)
 
     // Create Kong service (always enabled)
     await createKongService(body.name, port, config.domain)
@@ -57,7 +57,8 @@ export default defineEventHandler(async (event): Promise<CreateRepoResponse> => 
         gitUrl: `git@${config.domain}:${repoPath}`,
         kongRoute: `https://${body.name}.${config.domain}`,
         createdAt: repoConfig.createdAt,
-        owner,
+        owner: auth.username,
+        gitRepoExists: true,
       },
     }
   } catch (error) {

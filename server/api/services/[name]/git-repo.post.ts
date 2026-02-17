@@ -10,13 +10,13 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const owner = await requireAuth(event)
-    const repoPath = await createGitRepository(name, owner, config.gitRepoBase)
+    const auth = await requireAuth(event)
+    const repoPath = await createGitRepository(name, auth.username, config.gitRepoBase)
 
     return {
       success: true,
       path: repoPath,
-      gitUrl: `git@${config.domain}:${owner}/${name}`,
+      gitUrl: `git@${config.domain}:${auth.username}/${name}`,
     }
   } catch (error) {
     console.error("Failed to create git repository:", error)

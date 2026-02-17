@@ -10,8 +10,8 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
   const config = useRuntimeConfig()
 
   try {
-    const owner = await requireAuth(event)
-    const repos = await listRepositories(owner, config.workspaceBase)
+    const auth = await requireAuth(event)
+    const repos = await listRepositories(auth.username, config.workspaceBase)
     const swarmActive = isSwarmActive()
 
     return repos.map(repo => {
