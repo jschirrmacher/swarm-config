@@ -78,28 +78,37 @@ export function getDockerStatus(stackName: string): {
     } else {
       // Production: Docker Swarm
       const swarmActive = isSwarmActive()
-      console.log(`Swarm active: ${swarmActive}`)
+      if (!swarmActive) {
+        return { exists: false, running: 0, total: 0 }
+      }
 
-      if (swarmActive) {
-      // Get all services matching the pattern: stackName_*
-      const output = execSync(
-        `docker service ls --filter "name=${stackName}_" --format "{{.Name}}\t{{.Replicas}}"`,
+      // Check if stack exists
+      const stacks = execSync('docker stack ls --format "{{.Name}}"', {
+        encoding: "utf-8",
+        timeout: 5000,
+        stdio: ["pipe", "pipe", "ignore"],
+      }).trim().split('\n').filter(Boolean)
+
+      if (!stacks.includes(stackName)) {
+        console.log(`Stack ${stackName} not found`)
+        return { exists: false, running: 0, total: 0 }
+      }
+
+      // Get services in the stack
+      const servicesOutput = execSync(
+        `docker stack services ${stackName} --format "{{.Name}}\t{{.Replicas}}"`,
         {
           encoding: "utf-8",
           timeout: 5000,
           stdio: ["pipe", "pipe", "ignore"],
         },
       ).trim()
-      
-      console.log(`Docker service ls output for ${stackName}:`, output)
-      
-      const services = output.split("\n").filter(Boolean)
 
-      if (services.length === 0) {
-        console.log(`No services found for ${stackName}`)
-        return { exists: false, running: 0, total: 0 }
+      if (!servicesOutput) {
+        return { exists: true, running: 0, total: 0 }
       }
 
+      const services = servicesOutput.split("\n").filter(Boolean)
       let totalRunning = 0
       let totalReplicas = 0
 
@@ -117,9 +126,6 @@ export function getDockerStatus(stackName: string): {
 
       console.log(`${stackName}: ${totalRunning}/${totalReplicas} replicas`)
       return { exists: true, running: totalRunning, total: totalReplicas }
-      } else {
-        return { exists: false, running: 0, total: 0 }
-      }
     }
   } catch (error) {
     console.error(`Error checking Docker status for ${stackName}:`, error)

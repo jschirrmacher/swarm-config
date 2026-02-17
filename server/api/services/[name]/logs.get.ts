@@ -11,10 +11,39 @@ export default defineEventHandler(async event => {
   }
 
   try {
-    const logs = execSync(`docker service logs ${name} --tail 500`, { 
-      encoding: 'utf-8',
-      maxBuffer: 1024 * 1024 * 10 // 10MB
-    })
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    let logs = ''
+
+    if (isDevelopment) {
+      // Development: Docker Compose
+      logs = execSync(`docker compose -p ${name} logs --tail 500`, { 
+        encoding: 'utf-8',
+        maxBuffer: 1024 * 1024 * 10 // 10MB
+      })
+    } else {
+      // Production: Docker Swarm - get logs from all services in the stack
+      const services = execSync(`docker stack services ${name} --format "{{.Name}}"`, {
+        encoding: 'utf-8'
+      }).trim().split('\n').filter(Boolean)
+
+      if (services.length === 0) {
+        throw new Error(`No services found in stack ${name}`)
+      }
+
+      // Get logs from all services in the stack
+      const allLogs = services.map(service => {
+        try {
+          return `=== ${service} ===\n` + execSync(`docker service logs ${service} --tail 200`, {
+            encoding: 'utf-8',
+            maxBuffer: 1024 * 1024 * 10
+          })
+        } catch (err) {
+          return `=== ${service} ===\nError: ${err}\n`
+        }
+      })
+
+      logs = allLogs.join('\n\n')
+    }
 
     return {
       logs
