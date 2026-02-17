@@ -20,11 +20,67 @@ export function getDockerStatus(stackName: string): {
   running: number
   total: number
 } {
-  try {
-    const swarmActive = isSwarmActive()
-    console.log(`Checking Docker status for: ${stackName}, Swarm active: ${swarmActive}`)
+  // Skip hidden directories
+  if (stackName.startsWith('.')) {
+    return { exists: false, running: 0, total: 0 }
+  }
 
-    if (swarmActive) {
+  try {
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    console.log(`Checking Docker status for: ${stackName}, Mode: ${isDevelopment ? 'development' : 'production'}`)
+
+    if (isDevelopment) {
+      // Development: Docker Compose
+      // Check for running compose project
+      const lsOutput = execSync(
+        `docker compose ls --filter "name=${stackName}" --format json`,
+        {
+          encoding: "utf-8",
+          timeout: 5000,
+          stdio: ["pipe", "pipe", "ignore"],
+        },
+      ).trim()
+
+      if (!lsOutput) {
+        return { exists: false, running: 0, total: 0 }
+      }
+
+      try {
+        const projects = JSON.parse(lsOutput)
+        const project = Array.isArray(projects) ? projects[0] : projects
+        
+        if (!project) {
+          return { exists: false, running: 0, total: 0 }
+        }
+
+        // Get container status for this project
+        const psOutput = execSync(
+          `docker compose -p ${stackName} ps --format json`,
+          {
+            encoding: "utf-8",
+            timeout: 5000,
+            stdio: ["pipe", "pipe", "ignore"],
+          },
+        ).trim()
+
+        if (!psOutput) {
+          return { exists: false, running: 0, total: 0 }
+        }
+
+        const containerLines = psOutput.split('\n').filter(Boolean)
+        const containerList = containerLines.map(line => JSON.parse(line))
+        const running = containerList.filter(c => c.State === 'running').length
+
+        return { exists: true, running, total: containerList.length }
+      } catch {
+        return { exists: false, running: 0, total: 0 }
+      }
+    } else {
+      // Production: Docker Swarm
+      const swarmActive = isSwarmActive()
+      console.log(`Swarm active: ${swarmActive}`)
+
+      if (swarmActive) {
       // Get all services matching the pattern: stackName_*
       const output = execSync(
         `docker service ls --filter "name=${stackName}_" --format "{{.Name}}\t{{.Replicas}}"`,
@@ -61,27 +117,9 @@ export function getDockerStatus(stackName: string): {
 
       console.log(`${stackName}: ${totalRunning}/${totalReplicas} replicas`)
       return { exists: true, running: totalRunning, total: totalReplicas }
-    } else {
-      // Local without Swarm: check running containers
-      const containers = execSync(
-        `docker ps -a --filter "name=${stackName}_" --format "{{.Names}}\t{{.State}}"`,
-        {
-          encoding: "utf-8",
-          timeout: 5000,
-          stdio: ["pipe", "pipe", "ignore"],
-        },
-      )
-        .trim()
-        .split("\n")
-        .filter(Boolean)
-
-      if (containers.length === 0) {
+      } else {
         return { exists: false, running: 0, total: 0 }
       }
-
-      const runningCount = containers.filter(line => line.includes("running")).length
-
-      return { exists: true, running: runningCount, total: containers.length }
     }
   } catch (error) {
     console.error(`Error checking Docker status for ${stackName}:`, error)

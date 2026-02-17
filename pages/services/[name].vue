@@ -14,6 +14,7 @@ const error = ref('')
 const saving = ref(false)
 const saveSuccess = ref(false)
 const copySuccess = ref(false)
+const creatingRepo = ref(false)
 const activeTab = ref<'status' | 'logs' | 'env'>('status')
 const logs = ref('')
 const envVars = ref<Record<string, string>>({})
@@ -46,6 +47,18 @@ async function loadService() {
     console.error('Error loading service:', err)
   } finally {
     loading.value = false
+  }
+}
+
+async function createGitRepo() {
+  creatingRepo.value = true
+  try {
+    await authFetch('POST', `/api/services/${serviceName.value}/git-repo`)
+    await loadService()
+  } catch (err: any) {
+    error.value = err.message || 'Failed to create git repository'
+  } finally {
+    creatingRepo.value = false
   }
 }
 
@@ -145,6 +158,16 @@ watch(activeTab, (newTab) => {
           </button>
         </div>
         <span v-if="copySuccess" class="copy-success">✓ Copied!</span>
+      </div>
+      
+      <div v-else class="git-section">
+        <label>Git Repository</label>
+        <div class="no-git-warning">
+          <span>No Git repository found</span>
+          <button @click="createGitRepo" :disabled="creatingRepo" class="btn-create-git">
+            {{ creatingRepo ? 'Creating...' : 'Create Git Repository' }}
+          </button>
+        </div>
       </div>
 
       <div class="tabs">
@@ -326,6 +349,46 @@ watch(activeTab, (newTab) => {
   color: #4caf50;
   font-size: 0.85rem;
   animation: fadeIn 0.3s;
+}
+
+.no-git-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(255, 193, 7, 0.15);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 6px;
+  padding: 0.75rem;
+  color: #856404;
+}
+
+.dark .no-git-warning {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+  border-color: rgba(255, 193, 7, 0.4);
+}
+
+.btn-create-git {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-create-git:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-create-git:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .status-badge {

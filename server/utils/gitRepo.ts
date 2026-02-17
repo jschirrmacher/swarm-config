@@ -230,49 +230,98 @@ export async function listRepositories(
   workspaceBaseDir: string,
 ): Promise<RepoConfig[]> {
   try {
-    const configs: RepoConfig[] = []
+    const projectMap = new Map<string, RepoConfig>()
     
-    // Scan all namespace directories
-    const rootEntries = await readdir(workspaceBaseDir, { withFileTypes: true })
-    
-    for (const entry of rootEntries) {
-      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-      if (entry.name.startsWith(".")) continue
+    // 1. Scan workspace directories
+    const ownerWorkspaceDir = join(workspaceBaseDir, owner)
+    try {
+      const workspaceEntries = await readdir(ownerWorkspaceDir, { withFileTypes: true })
       
-      const entryPath = join(workspaceBaseDir, entry.name)
-      
-      // Check if this is a namespace directory (contains subdirectories with project.json)
-      try {
-        const subEntries = await readdir(entryPath, { withFileTypes: true })
-        let hasProjects = false
+      for (const entry of workspaceEntries) {
+        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+        if (entry.name.startsWith(".")) continue
         
-        for (const subEntry of subEntries) {
-          if (!subEntry.isDirectory() && !subEntry.isSymbolicLink()) continue
-          if (subEntry.name.startsWith(".")) continue
-          
-          const projectDir = join(entryPath, subEntry.name)
-          const config = await loadProjectConfig(projectDir, subEntry.name, entry.name)
-          if (config) {
-            configs.push(config)
-            hasProjects = true
-          }
+        const projectDir = join(ownerWorkspaceDir, entry.name)
+        const config = await loadProjectConfig(projectDir, entry.name, owner)
+        if (config) {
+          projectMap.set(entry.name, config)
         }
-        
-        // If no projects found in subdirectories, check if entry itself is a legacy project
-        if (!hasProjects) {
-          const config = await loadProjectConfig(entryPath, entry.name, owner)
-          if (config && config.owner === owner) {
-            configs.push(config)
-          }
-        }
-      } catch {
-        // Not a directory or access denied - skip
       }
+    } catch {
+      // Owner workspace directory doesn't exist yet
     }
 
-    return configs
+    return Array.from(projectMap.values())
   } catch (error) {
     console.warn("Failed to search for repositories:", error)
+    return []
+  }
+}
+
+export async function listAllProjects(
+  owner: string,
+  workspaceBaseDir: string,
+  gitRepoBaseDir: string,
+): Promise<RepoConfig[]> {
+  try {
+    const projectMap = new Map<string, RepoConfig>()
+    
+    // Determine if we're in single-user mode (local dev) or multi-user mode (production)
+    // In single-user mode, projects are directly under baseDir
+    // In multi-user mode, projects are under baseDir/username/
+    const isSingleUserMode = process.env.NODE_ENV === 'development'
+    
+    // 1. Scan workspace directories
+    const workspaceScanDir = isSingleUserMode ? workspaceBaseDir : join(workspaceBaseDir, owner)
+    try {
+      const workspaceEntries = await readdir(workspaceScanDir, { withFileTypes: true })
+      
+      for (const entry of workspaceEntries) {
+        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+        if (entry.name.startsWith(".")) continue
+        
+        const projectDir = join(workspaceScanDir, entry.name)
+        const config = await loadProjectConfig(projectDir, entry.name, owner)
+        if (config) {
+          projectMap.set(entry.name, config)
+        }
+      }
+    } catch {
+      // Workspace directory doesn't exist yet
+    }
+
+    // 2. Scan git repositories
+    const gitScanDir = isSingleUserMode ? gitRepoBaseDir : join(gitRepoBaseDir, owner)
+    try {
+      const gitEntries = await readdir(gitScanDir, { withFileTypes: true })
+      
+      for (const entry of gitEntries) {
+        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+        if (!entry.name.endsWith('.git')) continue
+        
+        const projectName = entry.name.replace(/\.git$/, '')
+        
+        // Skip hidden directories
+        if (projectName.startsWith('.')) continue
+        
+        // If project already exists from workspace, skip
+        if (projectMap.has(projectName)) continue
+        
+        // Create minimal config for git-only projects
+        projectMap.set(projectName, {
+          name: projectName,
+          port: 3000,
+          owner,
+          createdAt: new Date().toISOString(),
+        })
+      }
+    } catch {
+      // Git directory doesn't exist yet
+    }
+
+    return Array.from(projectMap.values())
+  } catch (error) {
+    console.warn("Failed to search for projects:", error)
     return []
   }
 }

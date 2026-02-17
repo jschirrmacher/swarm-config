@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from "fs"
 import { join } from "path"
 import { findKongConfigByName, findComposeConfigByName } from "../../utils/findConfigFiles"
 import { requireAuth } from "~/server/utils/auth"
+import { gitRepoExists } from "~/server/utils/gitRepo"
 import { execSync } from "child_process"
 
 export default defineEventHandler(async event => {
@@ -14,8 +15,13 @@ export default defineEventHandler(async event => {
   }
 
   try {
+    const config = useRuntimeConfig()
+    const isSingleUserMode = process.env.NODE_ENV === 'development'
+    
     // Get project.json for metadata
-    const workspaceDir = `/var/apps/${auth.username}/${name}`
+    const workspaceDir = isSingleUserMode
+      ? join(config.workspaceBase, name)
+      : join(config.workspaceBase, auth.username, name)
     const projectJsonPath = join(workspaceDir, 'project.json')
     
     let projectData: any = {}
@@ -42,9 +48,15 @@ export default defineEventHandler(async event => {
       env = projectData.env
     }
 
-    // Get Git URL
-    const config = useRuntimeConfig()
-    const gitUrl = `git@${config.domain}:${auth.username}/${name}`
+    // Check Git repository
+    const gitRepoPath = isSingleUserMode
+      ? join(config.gitRepoBase, `${name}.git`)
+      : join(config.gitRepoBase, auth.username, `${name}.git`)
+    const hasGitRepo = gitRepoExists(gitRepoPath)
+    
+    const gitUrl = isSingleUserMode
+      ? `git@${config.domain}:${name}`
+      : `git@${config.domain}:${auth.username}/${name}`
 
     return {
       name,
@@ -53,7 +65,7 @@ export default defineEventHandler(async event => {
       replicas,
       version,
       createdAt: projectData.createdAt,
-      gitUrl,
+      gitUrl: hasGitRepo ? gitUrl : null,
       env: projectData.owner === auth.username ? env : undefined
     }
   } catch (error) {

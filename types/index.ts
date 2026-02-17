@@ -7,6 +7,7 @@ export interface Repository {
   createdAt: string
   owner: string
   gitRepoExists: boolean
+  hasWorkspace?: boolean
   hasStack?: boolean
   dockerStack?: {
     exists: boolean
