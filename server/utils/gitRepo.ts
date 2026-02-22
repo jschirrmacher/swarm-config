@@ -150,8 +150,10 @@ Created by Swarm Config on ${new Date().toISOString()}
     // Clone as bare repository
     await execAsync(`git clone --bare "${tmpDir}" "${repoPath}"`)
 
-    // Set ownership and permissions
-    await execAsync(`chown -R git:git "${repoPath}"`)
+    // Set ownership and permissions (use GIT_UID from environment)
+    const gitUid = process.env.GIT_UID || "1000"
+    const dockerGid = process.env.DOCKER_GID || "999"
+    await execAsync(`chown -R ${gitUid}:${dockerGid} "${repoPath}"`)
     await execAsync(`chmod -R g+rwX "${repoPath}"`)
 
     // Link post-receive hook (hook is in swarm-config workspace)
