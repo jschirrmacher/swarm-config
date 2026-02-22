@@ -15,39 +15,30 @@ export function generateChallenge(): string {
  * Get authorized keys for a user
  */
 export function getUserAuthorizedKeys(username: string): string[] {
-  // Try multiple possible locations
   const possiblePaths = [
-    `/home/${username}/.ssh/authorized_keys`, // Linux standard
-    `/Users/${username}/.ssh/authorized_keys`, // macOS
-    `/root/.ssh/authorized_keys`, // Development fallback
+    `/home/${username}/.ssh/authorized_keys`,
+    `/Users/${username}/.ssh/authorized_keys`,
   ]
 
+  console.log(`[SSH Auth] Looking for authorized_keys for user: ${username}`)
+  
   for (const path of possiblePaths) {
+    console.log(`[SSH Auth] Checking path: ${path}`)
+    console.log(`[SSH Auth] Path exists: ${existsSync(path)}`)
+    
     if (existsSync(path)) {
       console.log(`[SSH Auth] Found authorized_keys at: ${path}`)
-      const content = readFileSync(path, "utf-8")
-      const keys = content
-        .split("\n")
-        .map(line => line.trim())
-        .filter(line => line && !line.startsWith("#"))
+      try {
+        const content = readFileSync(path, "utf-8")
+        const keys = content
+          .split("\n")
+          .map(line => line.trim())
+          .filter(line => line && !line.startsWith("#"))
 
-      // Filter keys that match the username (if not using fallback)
-      if (path.includes(username)) {
+        console.log(`[SSH Auth] Found ${keys.length} keys for ${username} in ${path}`)
         return keys
-      } else {
-        // For fallback (root's keys), try to match by username in key comment
-        const matchingKeys = keys.filter(
-          line =>
-            line.toLowerCase().includes(`@${username}`) ||
-            line.toLowerCase().includes(` ${username}@`) ||
-            line.toLowerCase().endsWith(` ${username}`),
-        )
-        if (matchingKeys.length > 0) {
-          console.log(
-            `[SSH Auth] Found ${matchingKeys.length} matching keys for ${username} in ${path}`,
-          )
-          return matchingKeys
-        }
+      } catch (error) {
+        console.error(`[SSH Auth] Error reading ${path}:`, error)
       }
     }
   }
