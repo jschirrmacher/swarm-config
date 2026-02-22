@@ -9,7 +9,7 @@ RUN npm ci && npm run build
 # Production stage
 FROM node:24-alpine
 
-RUN apk add --no-cache git docker-cli
+RUN apk add --no-cache git docker-cli openssh-keygen
 
 WORKDIR /app
 COPY --from=builder /app/.output /app/.output
