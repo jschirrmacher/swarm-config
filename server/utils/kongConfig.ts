@@ -21,6 +21,11 @@ function processPlugins(plugins: any[]) {
 
     if (plugin.name === "acme") {
       const techEmail = process.env.NUXT_TECH_EMAIL || process.env.TECH_EMAIL || "tech@example.com"
+      console.log(`[Kong Config] ACME plugin - NUXT_TECH_EMAIL: ${process.env.NUXT_TECH_EMAIL}`)
+      console.log(`[Kong Config] ACME plugin - TECH_EMAIL: ${process.env.TECH_EMAIL}`)
+      console.log(`[Kong Config] ACME plugin - Using email: ${techEmail}`)
+      console.log(`[Kong Config] ACME plugin - Original config.account_email: ${config.account_email}`)
+      
       config = {
         ...config,
         domains: getDomains(),
@@ -28,6 +33,8 @@ function processPlugins(plugins: any[]) {
           ? techEmail
           : (config.account_email || techEmail),
       }
+      
+      console.log(`[Kong Config] ACME plugin - Final config.account_email: ${config.account_email}`)
     }
 
     return {
