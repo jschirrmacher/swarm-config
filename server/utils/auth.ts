@@ -20,6 +20,38 @@ function verifyToken(token: string) {
   }
 }
 
+export async function getCurrentUser(event?: H3Event) {
+  if (event) {
+    try {
+      const username = getHeader(event, "x-consumer-username")
+      if (username) {
+        return username
+      }
+    } catch (error) {
+      console.warn("Failed to get username from Kong header:", error)
+    }
+
+    try {
+      const cookie = getCookie(event, "argus-token")
+      if (cookie) {
+        const payload = verifyToken(cookie)
+        if (payload?.username) {
+          return payload.username
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to parse JWT token:", error)
+    }
+  }
+
+  try {
+    const { stdout } = await execAsync("whoami")
+    return stdout.trim()
+  } catch (error) {
+    return "unknown"
+  }
+}
+
 async function getUserFromEvent(event: H3Event) {
   const authHeader = getHeader(event, "authorization")
 

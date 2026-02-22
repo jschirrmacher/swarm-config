@@ -1,134 +1,122 @@
-import { execSync } from "child_process"
+import { exec, execSplit } from "./exec"
 
-// Check if Docker Swarm is active
-export function isSwarmActive(): boolean {
-  try {
-    const output = execSync('docker info --format "{{.Swarm.LocalNodeState}}"', {
-      encoding: "utf-8",
-      timeout: 3000,
-      stdio: ["pipe", "pipe", "ignore"],
-    }).trim()
-    return output === "active"
-  } catch {
-    return false
-  }
-}
+let swarmActiveCache: boolean | null = null
+let servicesCache: Record<string, StackStatus> = {}
 
-// Get running stacks/containers and their status
-export function getDockerStatus(stackName: string): {
+type StackStatus = {
   exists: boolean
   running: number
   total: number
-} {
-  // Skip hidden directories
-  if (stackName.startsWith('.')) {
-    return { exists: false, running: 0, total: 0 }
-  }
+  status: "running" | "partial" | "stopped" | "not deployed"
+  replicas: string
+}
 
-  try {
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    console.log(`Checking Docker status for: ${stackName}, Mode: ${isDevelopment ? 'development' : 'production'}`)
+type Service = {
+  ID: string
+  Image: string
+  Name: string
+  running: number
+  total: number
+}
 
-    if (isDevelopment) {
-      // Development: Docker Compose
-      // Check for running compose project
-      const lsOutput = execSync(
-        `docker compose ls --filter "name=${stackName}" --format json`,
-        {
-          encoding: "utf-8",
-          timeout: 5000,
-          stdio: ["pipe", "pipe", "ignore"],
-        },
-      ).trim()
-
-      if (!lsOutput) {
-        return { exists: false, running: 0, total: 0 }
-      }
-
-      try {
-        const projects = JSON.parse(lsOutput)
-        const project = Array.isArray(projects) ? projects[0] : projects
-        
-        if (!project) {
-          return { exists: false, running: 0, total: 0 }
-        }
-
-        // Get container status for this project
-        const psOutput = execSync(
-          `docker compose -p ${stackName} ps --format json`,
-          {
-            encoding: "utf-8",
-            timeout: 5000,
-            stdio: ["pipe", "pipe", "ignore"],
-          },
-        ).trim()
-
-        if (!psOutput) {
-          return { exists: false, running: 0, total: 0 }
-        }
-
-        const containerLines = psOutput.split('\n').filter(Boolean)
-        const containerList = containerLines.map(line => JSON.parse(line))
-        const running = containerList.filter(c => c.State === 'running').length
-
-        return { exists: true, running, total: containerList.length }
-      } catch {
-        return { exists: false, running: 0, total: 0 }
-      }
-    } else {
-      // Production: Docker Swarm
-      const swarmActive = isSwarmActive()
-      if (!swarmActive) {
-        return { exists: false, running: 0, total: 0 }
-      }
-
-      // Check if stack exists
-      const stacks = execSync('docker stack ls --format "{{.Name}}"', {
-        encoding: "utf-8",
-        timeout: 5000,
-        stdio: ["pipe", "pipe", "ignore"],
-      }).trim().split('\n').filter(Boolean)
-
-      if (!stacks.includes(stackName)) {
-        console.log(`Stack ${stackName} not found`)
-        return { exists: false, running: 0, total: 0 }
-      }
-
-      // Get services in the stack
-      const servicesOutput = execSync(
-        `docker stack services ${stackName} --format "{{.Name}}\t{{.Replicas}}"`,
-        {
-          encoding: "utf-8",
-          timeout: 5000,
-          stdio: ["pipe", "pipe", "ignore"],
-        },
-      ).trim()
-
-      if (!servicesOutput) {
-        return { exists: true, running: 0, total: 0 }
-      }
-
-      const services = servicesOutput.split("\n").filter(Boolean)
-      let totalRunning = 0
-      let totalReplicas = 0
-
-      for (const service of services) {
-        const parts = service.split("\t")
-        const replica = parts[1]
-        if (replica) {
-          const match = replica.match(/(\d+)\/(\d+)/)
-          if (match) {
-            totalRunning += parseInt(match[1]!, 10)
-            totalReplicas += parseInt(match[2]!, 10)
-          }
-        }
-      }
-
-      console.log(`${stackName}: ${totalRunning}/${totalReplicas} replicas`)
-      return { exists: true, running: totalRunning, total: totalReplicas }
+export function isSwarmActive() {
+  if (swarmActiveCache === null) {
+    try {
+      const output = exec('docker info --format "{{.Swarm.LocalNodeState}}"', { timeout: 3000 })
+      swarmActiveCache = output === "active"
+    } catch {
+      swarmActiveCache = false
     }
-  } catch (error) {
-    console.error(`Error checking Docker status for ${stackName}:`, error)
-    return { exists: false, running: 0, total: 0 }
   }
+  return swarmActiveCache
+}
+
+function parseSwarmService(line: string): Service {
+  const service = JSON.parse(line)
+  const match = service.Replicas?.match(/(\d+)\/(\d+)/)
+  return {
+    ID: service.ID,
+    Image: service.Image,
+    Name: service.Name,
+    running: match ? parseInt(match[1]!, 10) : 0,
+    total: match ? parseInt(match[2]!, 10) : 0,
+  }
+}
+
+function parseComposeService(line: string): Service {
+  const service = JSON.parse(line)
+  return {
+    ID: service.ID,
+    Image: service.Image,
+    Name: service.Name,
+    running: service.State === "running" ? 1 : 0,
+    total: 1,
+  }
+}
+
+function getSwarmStacks() {
+  return execSplit('docker stack ls --format "{{.Name}}"').map(stackName => ({
+    name: stackName,
+    services: execSplit(`docker stack services ${stackName} --format json`).map(parseSwarmService),
+  }))
+}
+
+function getComposeStacks() {
+  const stacks = JSON.parse(exec("docker compose ls --format json")) as { Name: string }[]
+  return stacks.map(stack => ({
+    name: stack.Name,
+    services: execSplit(`docker compose -p ${stack.Name} ps --format json`).map(
+      parseComposeService,
+    ),
+  }))
+}
+
+function calculateStackStatus(services: Service[]): StackStatus {
+  const totalRunning = services.reduce((sum, s) => sum + s.running, 0)
+  const totalReplicas = services.reduce((sum, s) => sum + s.total, 0)
+  const status =
+    totalRunning === totalReplicas ? "running" : totalRunning > 0 ? "partial" : "stopped"
+
+  return {
+    exists: true,
+    running: totalRunning,
+    total: totalReplicas,
+    status,
+    replicas: `${totalRunning}/${totalReplicas}`,
+  }
+}
+
+export function getServices() {
+  try {
+    const stacks = isSwarmActive() ? getSwarmStacks() : getComposeStacks()
+    return Object.fromEntries(
+      stacks.map(({ name, services }) => [name, calculateStackStatus(services)]),
+    ) as Record<string, StackStatus>
+  } catch (error) {
+    console.error("Error fetching service info:", error)
+    return {}
+  }
+}
+
+function updateServicesCache() {
+  try {
+    servicesCache = getServices()
+  } catch (error) {
+    console.error("Error updating services cache:", error)
+  }
+  setTimeout(updateServicesCache, 5000)
+}
+
+updateServicesCache()
+
+export function getDockerStatus(stackName: string) {
+  return (
+    servicesCache[stackName] ?? {
+      exists: false,
+      running: 0,
+      total: 0,
+      status: "not deployed",
+      replicas: "0/0",
+    }
+  )
 }

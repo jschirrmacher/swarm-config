@@ -2,7 +2,7 @@ export interface Repository {
   name: string
   path: string
   workspaceDir: string
-  gitUrl: string
+  gitUrl: string | null
   kongRoute: string
   createdAt: string
   owner: string
@@ -13,6 +13,31 @@ export interface Repository {
     exists: boolean
     running: number
     total: number
+  }
+}
+
+export interface SwarmConfig {
+  workspaceBase: string
+  gitRepoBase: string
+  domain: string
+}
+
+export interface ProjectConfig {
+  owner: string
+  port: number
+  createdAt: string
+  gitUrl?: string
+  hostname?: string
+  routes?: Array<{
+    paths: string[]
+    stripPath?: boolean
+    preserveHost?: boolean
+  }>
+  plugins?: any[]
+  env?: Record<string, string>
+  metadata?: {
+    hostname?: string
+    [key: string]: any
   }
 }
 

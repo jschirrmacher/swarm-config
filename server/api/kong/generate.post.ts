@@ -6,7 +6,7 @@ export default defineEventHandler(async event => {
   await requireAuth(event)
 
   try {
-    const config = await generateKongConfig(true) // silent mode
+    const config = await generateKongConfig()
 
     return {
       success: true,

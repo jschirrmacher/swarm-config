@@ -1,14 +1,30 @@
-import { exec } from "node:child_process"
+import { exec as nodeExec, execSync } from "node:child_process"
 import { promisify } from "node:util"
 import { access, mkdir, writeFile, readFile, readdir } from "node:fs/promises"
-import { accessSync, constants } from "node:fs"
+import { accessSync, constants, existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { getCookie, getHeader } from "h3"
-import { findKongConfig } from "./findConfigFiles"
+import type { SwarmConfig } from "~/types"
+import { exec } from "./exec"
+import { isDevMode, getWorkspaceDir, getProjectConfig, getSwarmConfig } from "./workspace"
+import { setGitOwnership } from "./permissions"
 
-const execAsync = promisify(exec)
+const execAsync = promisify(nodeExec)
 
-export function gitRepoExists(repoPath: string): boolean {
+function getGitRepoPath(projectName: string, owner: string) {
+  const config = getSwarmConfig()
+  return isDevMode()
+    ? join(config.gitRepoBase, `${projectName}.git`)
+    : join(config.gitRepoBase, owner, `${projectName}.git`)
+}
+
+function getGitUrl(projectName: string, owner: string) {
+  const config = getSwarmConfig()
+  return isDevMode()
+    ? `git@${config.domain}:${projectName}`
+    : `git@${config.domain}:${owner}/${projectName}`
+}
+
+export function gitRepoExists(repoPath: string) {
   try {
     const headPath = join(repoPath, "HEAD")
     accessSync(headPath, constants.R_OK)
@@ -18,12 +34,43 @@ export function gitRepoExists(repoPath: string): boolean {
   }
 }
 
-function getSwarmConfigDir(): string {
-  // In production, swarm-config is in /var/apps/swarm-config
-  // In development, use current working directory
-  return process.env.NODE_ENV === 'production' 
-    ? '/var/apps/swarm-config'
-    : process.cwd()
+export function getGitRemoteFromWorkspace(workspacePath: string) {
+  try {
+    const gitDir = join(workspacePath, ".git")
+    accessSync(gitDir, constants.R_OK)
+
+    const remoteUrl = exec("git remote get-url origin", { cwd: workspacePath })
+    return remoteUrl || null
+  } catch {
+    return null
+  }
+}
+
+export function getRepoStatus(projectName: string, owner: string) {
+  const workspaceDir = getWorkspaceDir(projectName, owner)
+
+  const gitRepoPath = getGitRepoPath(projectName, owner)
+
+  let hasGitRepo = gitRepoExists(gitRepoPath)
+  let gitUrl: string | null = getGitUrl(projectName, owner)
+
+  if (existsSync(workspaceDir)) {
+    const remoteUrl = getGitRemoteFromWorkspace(workspaceDir)
+    if (remoteUrl) {
+      gitUrl = remoteUrl
+      hasGitRepo = true
+    }
+  }
+
+  if (!hasGitRepo) {
+    gitUrl = null
+  }
+
+  return {
+    hasGitRepo,
+    gitUrl,
+    gitRepoPath,
+  }
 }
 
 export interface RepoConfig {
@@ -48,12 +95,9 @@ export interface PluginConfig {
   config?: Record<string, any>
 }
 
-export async function createGitRepository(
-  name: string,
-  owner: string,
-  baseDir: string,
-): Promise<string> {
-  const repoPath = join(baseDir, owner, `${name}.git`)
+export async function createGitRepository(name: string, owner: string) {
+  const config = getSwarmConfig()
+  const repoPath = getGitRepoPath(name, owner)
 
   // Check if repository already exists
   try {
@@ -66,7 +110,8 @@ export async function createGitRepository(
   }
 
   // Create namespace directory with team group permissions
-  await mkdir(join(baseDir, owner), { recursive: true, mode: 0o775 })
+  const namespaceDir = isDevMode() ? config.gitRepoBase : join(config.gitRepoBase, owner)
+  await mkdir(namespaceDir, { recursive: true, mode: 0o775 })
 
   // Create temporary directory for initial commit
   const tmpDir = join("/tmp", `${name}-${Date.now()}`)
@@ -76,7 +121,7 @@ export async function createGitRepository(
     // Initialize regular git repository in temp dir
     await execAsync(`git init "${tmpDir}"`)
     await execAsync(`git -C "${tmpDir}" config user.name "Swarm Config"`)
-    await execAsync(`git -C "${tmpDir}" config user.email "swarm-config@${process.env.DOMAIN || 'localhost'}"`)
+    await execAsync(`git -C "${tmpDir}" config user.email "swarm-config@${config.domain}"`)
 
     // Create initial files
     const readmeContent = `# ${name}
@@ -105,11 +150,16 @@ Created by Swarm Config on ${new Date().toISOString()}
     // Clone as bare repository
     await execAsync(`git clone --bare "${tmpDir}" "${repoPath}"`)
 
-    // Set group permissions
+    // Set ownership and permissions
+    await execAsync(`chown -R git:git "${repoPath}"`)
     await execAsync(`chmod -R g+rwX "${repoPath}"`)
 
-    // Link post-receive hook
-    const hookSource = join(getSwarmConfigDir(), "hooks", "post-receive")
+    // Link post-receive hook (hook is in swarm-config workspace)
+    const swarmConfigDir = isDevMode()
+      ? config.workspaceBase
+      : join(config.workspaceBase, "swarm-config")
+
+    const hookSource = join(swarmConfigDir, "hooks", "post-receive")
     const hookDest = join(repoPath, "hooks", "post-receive")
     await execAsync(`ln -sf "${hookSource}" "${hookDest}"`)
     await execAsync(`chmod +x "${hookSource}"`)
@@ -124,10 +174,9 @@ Created by Swarm Config on ${new Date().toISOString()}
 export async function createWorkspace(
   name: string,
   owner: string,
-  baseDir: string,
-  config: RepoConfig,
-): Promise<string> {
-  const workspaceDir = join(baseDir, owner, name)
+  repoConfig: RepoConfig,
+) {
+  const workspaceDir = getWorkspaceDir(name, owner)
 
   // Create workspace directory structure
   await mkdir(workspaceDir, { recursive: true, mode: 0o755 })
@@ -136,7 +185,7 @@ export async function createWorkspace(
   // Create .env file
   const envContent = `# Environment variables for ${name}
 NODE_ENV=production
-PORT=${config.port}
+PORT=${repoConfig.port}
 `
   await writeFile(join(workspaceDir, ".env"), envContent, { mode: 0o600 })
 
@@ -146,7 +195,7 @@ PORT=${config.port}
     image: ${name}:\${VERSION:-latest}
     environment:
       - NODE_ENV=production
-      - PORT=${config.port}
+      - PORT=${repoConfig.port}
     volumes:
       - ./data:/app/data
     networks:
@@ -168,23 +217,21 @@ networks:
   const metadata = {
     name,
     owner,
-    port: config.port,
-    createdAt: config.createdAt,
-    routes: config.routes || [
+    port: repoConfig.port,
+    createdAt: repoConfig.createdAt,
+    routes: repoConfig.routes || [
       {
         paths: ["/"],
         stripPath: false,
         preserveHost: true,
       },
     ],
-    plugins: config.plugins || [],
+    plugins: repoConfig.plugins || [],
   }
-  
-  await writeFile(
-    join(workspaceDir, "project.json"),
-    JSON.stringify(metadata, null, 2),
-    { mode: 0o644 }
-  )
+
+  await writeFile(join(workspaceDir, "project.json"), JSON.stringify(metadata, null, 2), {
+    mode: 0o644,
+  })
 
   // Set ownership to owner user and team group
   try {
@@ -200,113 +247,47 @@ networks:
   return workspaceDir
 }
 
-export async function createKongService(name: string, port: number, domain: string): Promise<void> {
-  try {
-    const baseUrl = "http://localhost:3000"
-
-    // Generate new Kong config
-    const generateResponse = await fetch(`${baseUrl}/api/kong/generate`, {
-      method: "POST",
-    })
-    if (!generateResponse.ok) {
-      throw new Error(`Generate failed: ${await generateResponse.text()}`)
-    }
-
-    // Reload Kong
-    const reloadResponse = await fetch(`${baseUrl}/api/kong/reload`, {
-      method: "POST",
-    })
-    if (!reloadResponse.ok) {
-      throw new Error(`Reload failed: ${await reloadResponse.text()}`)
-    }
-  } catch (error) {
-    console.error("Failed to regenerate Kong config:", error)
-    throw error
-  }
-}
-
-export async function listRepositories(
-  owner: string,
-  workspaceBaseDir: string,
-): Promise<RepoConfig[]> {
+export async function listAllProjects(owner: string) {
+  const config = getSwarmConfig()
   try {
     const projectMap = new Map<string, RepoConfig>()
-    
-    // 1. Scan workspace directories
-    const ownerWorkspaceDir = join(workspaceBaseDir, owner)
-    try {
-      const workspaceEntries = await readdir(ownerWorkspaceDir, { withFileTypes: true })
-      
-      for (const entry of workspaceEntries) {
-        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-        if (entry.name.startsWith(".")) continue
-        
-        const projectDir = join(ownerWorkspaceDir, entry.name)
-        const config = await loadProjectConfig(projectDir, entry.name, owner)
-        if (config) {
-          projectMap.set(entry.name, config)
-        }
-      }
-    } catch {
-      // Owner workspace directory doesn't exist yet
-    }
 
-    return Array.from(projectMap.values())
-  } catch (error) {
-    console.warn("Failed to search for repositories:", error)
-    return []
-  }
-}
-
-export async function listAllProjects(
-  owner: string,
-  workspaceBaseDir: string,
-  gitRepoBaseDir: string,
-): Promise<RepoConfig[]> {
-  try {
-    const projectMap = new Map<string, RepoConfig>()
-    
-    // Determine if we're in single-user mode (local dev) or multi-user mode (production)
-    // In single-user mode, projects are directly under baseDir
-    // In multi-user mode, projects are under baseDir/username/
-    const isSingleUserMode = process.env.NODE_ENV === 'development'
-    
     // 1. Scan workspace directories
-    const workspaceScanDir = isSingleUserMode ? workspaceBaseDir : join(workspaceBaseDir, owner)
+    const workspaceScanDir = isDevMode()
+      ? config.workspaceBase
+      : join(config.workspaceBase, owner)
     try {
       const workspaceEntries = await readdir(workspaceScanDir, { withFileTypes: true })
-      
+
       for (const entry of workspaceEntries) {
         if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
         if (entry.name.startsWith(".")) continue
-        
+
         const projectDir = join(workspaceScanDir, entry.name)
         const config = await loadProjectConfig(projectDir, entry.name, owner)
-        if (config) {
-          projectMap.set(entry.name, config)
-        }
+        projectMap.set(entry.name, config)
       }
     } catch {
       // Workspace directory doesn't exist yet
     }
 
     // 2. Scan git repositories
-    const gitScanDir = isSingleUserMode ? gitRepoBaseDir : join(gitRepoBaseDir, owner)
+    const gitScanDir = isDevMode() ? config.gitRepoBase : join(config.gitRepoBase, owner)
     try {
       const gitEntries = await readdir(gitScanDir, { withFileTypes: true })
-      
+
       for (const entry of gitEntries) {
         if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-        if (!entry.name.endsWith('.git')) continue
-        
-        const projectName = entry.name.replace(/\.git$/, '')
-        
+        if (!entry.name.endsWith(".git")) continue
+
+        const projectName = entry.name.replace(/\.git$/, "")
+
         // Skip hidden directories
-        if (projectName.startsWith('.')) continue
-        
+        if (projectName.startsWith(".")) continue
+
         // If project already exists from workspace, skip
         if (projectMap.has(projectName)) continue
-        
+
         // Create minimal config for git-only projects
         projectMap.set(projectName, {
           name: projectName,
@@ -326,44 +307,31 @@ export async function listAllProjects(
   }
 }
 
-async function loadProjectConfig(projectDir: string, name: string, owner: string): Promise<RepoConfig | null> {
-  const projectJsonPath = join(projectDir, "project.json")
-  const kongYamlPath = join(projectDir, "kong.yaml")
-  
-  // Prefer project.json
-  if (await fileExists(projectJsonPath)) {
-    try {
-      const content = await readFile(projectJsonPath, "utf-8")
-      const metadata = JSON.parse(content)
-      return {
-        name,
-        port: metadata.port || 3000,
-        owner: metadata.owner || owner,
-        createdAt: metadata.createdAt || new Date().toISOString(),
-        gitUrl: metadata.gitUrl,
-        hostname: metadata.hostname,
-        routes: metadata.routes,
-        plugins: metadata.plugins,
-      }
-    } catch {
-      return null
-    }
-  }
-  
-  // Fallback to kong.yaml (legacy)
-  if (await fileExists(kongYamlPath)) {
+async function loadProjectConfig(projectDir: string, name: string, owner: string) {
+  const metadata = getProjectConfig(projectDir)
+
+  if (metadata) {
     return {
       name,
-      port: 3000,
-      owner,
-      createdAt: new Date().toISOString(),
+      port: metadata.port || 3000,
+      owner: metadata.owner || owner,
+      createdAt: metadata.createdAt || new Date().toISOString(),
+      gitUrl: metadata.gitUrl,
+      hostname: metadata.hostname,
+      routes: metadata.routes,
+      plugins: metadata.plugins,
     }
   }
-  
-  return null
+
+  return {
+    name,
+    port: 3000,
+    owner,
+    createdAt: new Date().toISOString(),
+  }
 }
 
-async function fileExists(path: string): Promise<boolean> {
+async function fileExists(path: string) {
   try {
     await access(path, constants.R_OK)
     return true
@@ -372,55 +340,7 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
-export async function getCurrentUser(event?: any): Promise<string> {
-  // Try to get user from Basic Auth header (Kong authentication)
-  if (event) {
-    try {
-      // Kong passes the authenticated username via X-Consumer-Username header
-      const username = getHeader(event, "x-consumer-username")
-      if (username) {
-        return username
-      }
-    } catch (error) {
-      console.warn("Failed to get username from Kong header:", error)
-    }
-
-    // Try to get user from JWT token (Argus authentication) as fallback
-    try {
-      const cookie = getCookie(event, "argus-token")
-      if (cookie) {
-        const payload = await verifyJWT(cookie)
-        if (payload && payload.username) {
-          return payload.username
-        }
-      }
-    } catch (error) {
-      console.warn("Failed to parse JWT token:", error)
-    }
-  }
-
-  // Fallback to whoami for development
-  try {
-    const { stdout } = await execAsync("whoami")
-    return stdout.trim()
-  } catch (error) {
-    return "unknown"
-  }
-}
-
-async function verifyJWT(token: string): Promise<{ username: string } | null> {
-  // Import jwt verification - requires jsonwebtoken package
-  try {
-    const jwt = await import("jsonwebtoken")
-    const secret = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production"
-    const decoded = jwt.verify(token, secret) as any
-    return { username: decoded.username }
-  } catch (error) {
-    return null
-  }
-}
-
-export async function validateRepoName(name: string): Promise<{ valid: boolean; error?: string }> {
+export async function validateRepoName(name: string) {
   // Repository name validation
   if (!/^[a-z0-9-]+$/.test(name)) {
     return {
@@ -439,10 +359,10 @@ export async function validateRepoName(name: string): Promise<{ valid: boolean; 
   // Check if hostname is already taken by another project
   const domain = process.env.DOMAIN || "example.com"
   const hostname = `${name}.${domain}`
-  
+
   const workspaceBase = process.env.WORKSPACE_BASE ?? "/var/apps"
   const isHostnameTaken = await checkHostnameExists(hostname, workspaceBase)
-  
+
   if (isHostnameTaken) {
     return {
       valid: false,
@@ -453,27 +373,29 @@ export async function validateRepoName(name: string): Promise<{ valid: boolean; 
   return { valid: true }
 }
 
-async function checkHostnameExists(hostname: string, workspaceBase: string): Promise<boolean> {
+async function checkHostnameExists(hostname: string, workspaceBase: string) {
   try {
     const entries = await readdir(workspaceBase, { withFileTypes: true })
-    
+
     for (const entry of entries) {
       if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-      
+
       const entryPath = join(workspaceBase, entry.name)
-      
-      // Check direct kong.yaml
-      if (await checkKongYamlForHostname(join(entryPath, "kong.yaml"), hostname)) {
+
+      // Check direct project.json
+      if (await checkProjectJsonForHostname(join(entryPath, "project.json"), hostname)) {
         return true
       }
-      
+
       // Check namespace subdirectories
       try {
         const subEntries = await readdir(entryPath, { withFileTypes: true })
         for (const subEntry of subEntries) {
           if (!subEntry.isDirectory() && !subEntry.isSymbolicLink()) continue
-          
-          if (await checkKongYamlForHostname(join(entryPath, subEntry.name, "kong.yaml"), hostname)) {
+
+          if (
+            await checkProjectJsonForHostname(join(entryPath, subEntry.name, "project.json"), hostname)
+          ) {
             return true
           }
         }
@@ -481,20 +403,19 @@ async function checkHostnameExists(hostname: string, workspaceBase: string): Pro
         // Not a directory - skip
       }
     }
-    
+
     return false
   } catch {
     return false
   }
 }
 
-async function checkKongYamlForHostname(kongYamlPath: string, hostname: string): Promise<boolean> {
+async function checkProjectJsonForHostname(projectJsonPath: string, hostname: string) {
   try {
-    await access(kongYamlPath, constants.R_OK)
-    const content = await readFile(kongYamlPath, "utf-8")
-    
-    // Simple string search - more efficient than full YAML parsing
-    return content.includes(hostname)
+    await access(projectJsonPath, constants.R_OK)
+    const content = await readFile(projectJsonPath, "utf-8")
+    const metadata = JSON.parse(content)
+    return metadata.hostname === hostname
   } catch {
     return false
   }

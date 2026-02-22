@@ -1,5 +1,6 @@
 import { execSync } from "child_process"
 import { requireAuth } from "~/server/utils/auth"
+import { isDevMode } from "~/server/utils/workspace"
 
 export default defineEventHandler(async event => {
   await requireAuth(event)
@@ -11,12 +12,11 @@ export default defineEventHandler(async event => {
   }
 
   try {
-    const isDevelopment = process.env.NODE_ENV === 'development'
     let logs = ''
 
-    if (isDevelopment) {
+    if (isDevMode()) {
       // Development: Docker Compose
-      logs = execSync(`docker compose -p ${name} logs --tail 500`, { 
+      logs = execSync(`docker compose -p ${name} logs --tail 500`, {
         encoding: 'utf-8',
         maxBuffer: 1024 * 1024 * 10 // 10MB
       })

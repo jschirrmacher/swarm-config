@@ -2,14 +2,14 @@ import type { CreateRepoRequest, CreateRepoResponse } from "~/types"
 import {
   createGitRepository,
   createWorkspace,
-  createKongService,
   validateRepoName,
   type RepoConfig,
 } from "~/server/utils/gitRepo"
+import { reloadKongConfig } from "~/server/utils/kongConfig"
 import { requireAuth } from "~/server/utils/auth"
+import { getSwarmConfig } from "~/server/utils/workspace"
 
 export default defineEventHandler(async (event): Promise<CreateRepoResponse> => {
-  const config = useRuntimeConfig()
   const body = await readBody<CreateRepoRequest>(event)
 
   // Validate input
@@ -30,6 +30,7 @@ export default defineEventHandler(async (event): Promise<CreateRepoResponse> => 
 
   try {
     const auth = await requireAuth(event)
+    const config = getSwarmConfig()
     const port = body.port || 3000
 
     const repoConfig: RepoConfig = {
@@ -39,14 +40,12 @@ export default defineEventHandler(async (event): Promise<CreateRepoResponse> => 
       createdAt: new Date().toISOString(),
     }
 
-    // Create Git repository
-    const repoPath = await createGitRepository(body.name, auth.username, config.gitRepoBase)
+    const repoPath = await createGitRepository(body.name, auth.username)
 
-    // Create workspace
-    const workspaceDir = await createWorkspace(body.name, auth.username, config.workspaceBase, repoConfig)
+    const workspaceDir = await createWorkspace(body.name, auth.username, repoConfig)
 
-    // Create Kong service (always enabled)
-    await createKongService(body.name, port, config.domain)
+    // Reload Kong configuration
+    await reloadKongConfig()
 
     return {
       success: true,

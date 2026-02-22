@@ -1,8 +1,8 @@
 import { createGitRepository } from "~/server/utils/gitRepo"
 import { requireAuth } from "~/server/utils/auth"
+import { getSwarmConfig } from "~/server/utils/workspace"
 
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
   const name = getRouterParam(event, "name")
 
   if (!name) {
@@ -11,7 +11,8 @@ export default defineEventHandler(async (event) => {
 
   try {
     const auth = await requireAuth(event)
-    const repoPath = await createGitRepository(name, auth.username, config.gitRepoBase)
+    const config = getSwarmConfig()
+    const repoPath = await createGitRepository(name, auth.username)
 
     return {
       success: true,

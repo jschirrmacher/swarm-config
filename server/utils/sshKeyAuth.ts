@@ -24,7 +24,6 @@ export function getUserAuthorizedKeys(username: string): string[] {
   
   for (const path of possiblePaths) {
     console.log(`[SSH Auth] Checking path: ${path}`)
-    console.log(`[SSH Auth] Path exists: ${existsSync(path)}`)
     
     if (existsSync(path)) {
       console.log(`[SSH Auth] Found authorized_keys at: ${path}`)

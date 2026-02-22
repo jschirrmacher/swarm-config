@@ -1,36 +1,27 @@
 import type { Repository } from "~/types"
-import { listAllProjects, gitRepoExists } from "~/server/utils/gitRepo"
+import { listAllProjects, getRepoStatus } from "~/server/utils/gitRepo"
 import { requireAuth } from "~/server/utils/auth"
-import { join } from "path"
-import { existsSync } from "fs"
+import { join } from "node:path"
+import { existsSync } from "node:fs"
 import { getDockerStatus, isSwarmActive } from "~/server/utils/dockerStatus"
 import { findComposeConfig } from "~/server/utils/findConfigFiles"
 import { getServicePort } from "~/server/utils/getServicePort"
+import { getWorkspaceDir, getSwarmConfig } from "~/server/utils/workspace"
 
 export default defineEventHandler(async (event): Promise<Repository[]> => {
-  const config = useRuntimeConfig()
-
   try {
     const auth = await requireAuth(event)
-    const repos = await listAllProjects(auth.username, config.workspaceBase, config.gitRepoBase)
+    const repos = await listAllProjects(auth.username)
     const swarmActive = isSwarmActive()
-    const isSingleUserMode = process.env.NODE_ENV === 'development'
+    const config = getSwarmConfig()
 
     return repos.map(repo => {
-      // Build paths based on mode
-      const workspaceDir = isSingleUserMode 
-        ? `${config.workspaceBase}/${repo.name}`
-        : `${config.workspaceBase}/${repo.owner}/${repo.name}`
-      const projectDir = isSingleUserMode
-        ? join(config.workspaceBase, repo.name)
-        : join(config.workspaceBase, repo.owner, repo.name)
-      const gitRepoPath = isSingleUserMode
-        ? `${config.gitRepoBase}/${repo.name}.git`
-        : `${config.gitRepoBase}/${repo.owner}/${repo.name}.git`
+      const workspaceDir = getWorkspaceDir(repo.name, repo.owner)
+      const projectDir = getWorkspaceDir(repo.name, repo.owner)
       
-      // Check what exists
+      const repoStatus = getRepoStatus(repo.name, repo.owner)
+      
       const hasWorkspace = existsSync(projectDir)
-      const hasGitRepo = gitRepoExists(gitRepoPath)
       const hasStack = hasWorkspace && findComposeConfig(projectDir) !== undefined
       
       // Check Docker status
@@ -44,19 +35,15 @@ export default defineEventHandler(async (event): Promise<Repository[]> => {
         kongRoute = `http://localhost:${port}`
       }
 
-      const gitUrl = isSingleUserMode
-        ? `git@${config.domain}:${repo.name}`
-        : `git@${config.domain}:${repo.owner}/${repo.name}`
-
       return {
         name: repo.name,
-        path: gitRepoPath,
+        path: repoStatus.gitRepoPath,
         workspaceDir,
-        gitUrl,
+        gitUrl: repoStatus.gitUrl,
         kongRoute,
         createdAt: repo.createdAt,
         owner: repo.owner,
-        gitRepoExists: hasGitRepo,
+        gitRepoExists: repoStatus.hasGitRepo,
         hasWorkspace,
         hasStack,
         dockerStack,
