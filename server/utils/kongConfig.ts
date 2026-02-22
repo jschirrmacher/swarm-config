@@ -16,40 +16,26 @@ type KongConfig = {
 }
 
 function processPlugins(plugins: any[]) {
-  console.log(`[Kong Config] Processing ${plugins.length} plugins`)
-  
-  const processed = plugins.map((plugin, index) => {
+  return plugins.map(plugin => {
     let config = plugin.config ?? {}
 
     if (plugin.name === "acme") {
       const techEmail = process.env.NUXT_TECH_EMAIL || process.env.TECH_EMAIL || "tech@example.com"
-      console.log(`[Kong Config] ACME plugin #${index} - TECH_EMAIL: ${process.env.TECH_EMAIL}`)
-      console.log(`[Kong Config] ACME plugin #${index} - Using email: ${techEmail}`)
-      console.log(`[Kong Config] ACME plugin #${index} - Original config.account_email: ${config.account_email}`)
       
       config = {
         ...config,
         domains: getDomains(),
-        account_email: config.account_email === "${TECH_EMAIL}" 
-          ? techEmail
-          : (config.account_email || techEmail),
+        account_email: (config.account_email && config.account_email !== "${TECH_EMAIL}" && config.account_email !== "null")
+          ? config.account_email
+          : techEmail,
       }
-      
-      console.log(`[Kong Config] ACME plugin #${index} - Final config.account_email: ${config.account_email}`)
     }
 
-    const result = {
+    return {
       name: plugin.name,
       ...(Object.keys(config).length > 0 && { config }),
     }
-    
-    console.log(`[Kong Config] Plugin #${index}: ${plugin.name}, has config: ${!!result.config}`)
-    
-    return result
   })
-  
-  console.log(`[Kong Config] Processed plugins:`, JSON.stringify(processed, null, 2))
-  return processed
 }
 
 function loadProjectServices() {
@@ -229,12 +215,14 @@ export async function generateKongConfig() {
     return services
   })
 
+  const allPlugins = allServices.flatMap(s => s.plugins ?? [])
+
   const config = {
     _format_version: "3.0",
     _transform: true,
 
     services: [...extractedServices, acmeDummyService],
-    plugins: [...processPlugins(allServices.flatMap(s => s.plugins ?? []))],
+    plugins: [...processPlugins(allPlugins)],
     consumers: [...allServices.flatMap(s => s.consumers ?? [])],
   }
 

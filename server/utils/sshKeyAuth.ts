@@ -20,13 +20,8 @@ export function getUserAuthorizedKeys(username: string): string[] {
     `/Users/${username}/.ssh/authorized_keys`,
   ]
 
-  console.log(`[SSH Auth] Looking for authorized_keys for user: ${username}`)
-  
   for (const path of possiblePaths) {
-    console.log(`[SSH Auth] Checking path: ${path}`)
-    
     if (existsSync(path)) {
-      console.log(`[SSH Auth] Found authorized_keys at: ${path}`)
       try {
         const content = readFileSync(path, "utf-8")
         const keys = content
@@ -34,7 +29,7 @@ export function getUserAuthorizedKeys(username: string): string[] {
           .map(line => line.trim())
           .filter(line => line && !line.startsWith("#"))
 
-        console.log(`[SSH Auth] Found ${keys.length} keys for ${username} in ${path}`)
+        console.log(`[SSH Auth] Found ${keys.length} keys for ${username}`)
         return keys
       } catch (error) {
         console.error(`[SSH Auth] Error reading ${path}:`, error)
