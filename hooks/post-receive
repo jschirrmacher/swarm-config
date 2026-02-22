@@ -69,6 +69,28 @@ mkdir -p "$APP_DIR"
 cp compose.yaml "$APP_DIR/compose.yaml"
 [ -f project.json ] && cp project.json "$APP_DIR/project.json"
 
+# Regenerate Kong config if project.json changed
+if [ -f project.json ]; then
+  echo "🔄 Regenerating Kong configuration..."
+  SWARM_CONFIG_DIR="/var/apps/swarm-config"
+  if [ -d "$SWARM_CONFIG_DIR" ]; then
+    cd "$SWARM_CONFIG_DIR" || exit 1
+    if npm run kong:generate 2>&1; then
+      echo "✅ Kong config regenerated"
+      if npm run kong:reload 2>&1; then
+        echo "✅ Kong reloaded"
+      else
+        echo "⚠️  Kong reload failed (config may be invalid)"
+      fi
+    else
+      echo "⚠️  Kong config generation failed"
+    fi
+    cd "$APP_DIR" || exit 1
+  else
+    echo "⚠️  Swarm config directory not found, skipping Kong update"
+  fi
+fi
+
 cd "$APP_DIR" || exit 1
 export VERSION
 
