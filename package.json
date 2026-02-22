@@ -3,7 +3,7 @@
   "version": "3.0.0",
   "description": "Complete Docker Swarm infrastructure with Kong API Gateway and Git-based CI/CD deployment platform.",
   "scripts": {
-    "kong:generate": "tsx --eval \"import('./server/utils/kongConfig.js').then(m => m.generateKongConfig())\"",
+    "kong:generate": "dotenv -e .env -- tsx --eval \"import('./server/utils/kongConfig.js').then(m => m.generateKongConfig())\"",
     "kong:reload": "docker exec $(docker ps --format '{{.Names}}' | grep _kong.1) kong reload",
     "postinstall": "nuxt prepare",
     "dev": "nuxt dev",
@@ -22,6 +22,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "9.0.10",
     "@types/node": "^22.0.0",
+    "dotenv-cli": "11.0.0",
     "prettier": "^3.1.1",
     "tsx": "^4.7.0",
     "typescript": "^5.6.0"

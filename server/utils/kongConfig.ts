@@ -39,8 +39,13 @@ function processPlugins(plugins: any[]) {
 }
 
 function loadProjectServices() {
-  const workspaceBase = process.env.WORKSPACE_BASE ?? "/var/apps"
-  const domain = process.env.DOMAIN || "example.com"
+  const workspaceBase = process.env.WORKSPACE_BASE ?? process.env.NUXT_WORKSPACE_BASE ?? "/var/apps"
+  const domain = process.env.NUXT_DOMAIN ?? process.env.DOMAIN ?? "example.com"
+
+  if (!existsSync(workspaceBase)) {
+    console.warn(`[Kong Config] Workspace base not found: ${workspaceBase}`)
+    return []
+  }
 
   try {
     const entries = readdirSync(workspaceBase, { withFileTypes: true })
