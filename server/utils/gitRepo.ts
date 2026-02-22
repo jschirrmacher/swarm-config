@@ -117,7 +117,7 @@ export async function createGitRepository(name: string, owner: string) {
 
   try {
     // Initialize regular git repository in temp dir
-    await execAsync(`git init "${tmpDir}"`)
+    await execAsync(`git init -b main "${tmpDir}"`)
     await execAsync(`git -C "${tmpDir}" config user.name "Swarm Config"`)
     await execAsync(`git -C "${tmpDir}" config user.email "swarm-config@${config.domain}"`)
 

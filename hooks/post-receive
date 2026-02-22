@@ -33,8 +33,23 @@ fi
 
 echo "📁 Workspace: ${APP_DIR}"
 
+# Debug: Show current directory and files
+echo "📋 Current directory: $(pwd)"
+echo "📋 Files in directory:"
+ls -la
+
+# Check if Dockerfile exists
+if [ ! -f "Dockerfile" ]; then
+  echo "⚠️  No Dockerfile found - skipping build"
+  echo "   Add a Dockerfile to enable automatic builds"
+  cd / && rm -rf "$WORK_DIR"
+  exit 0
+fi
+
 echo "🔨 Building Docker image..."
-if ! docker build -t "${APPNAME}:${VERSION}" .; then
+# Disable BuildKit git detection for cloned repos
+export DOCKER_BUILDKIT=1
+if ! docker build --no-cache -t "${APPNAME}:${VERSION}" . 2>&1; then
   cd / && rm -rf "$WORK_DIR"
   echo "❌ Build failed"
   exit 1

@@ -20,13 +20,13 @@ function processPlugins(plugins: any[]) {
     let config = plugin.config ?? {}
 
     if (plugin.name === "acme") {
+      const techEmail = process.env.NUXT_TECH_EMAIL || process.env.TECH_EMAIL || "tech@example.com"
       config = {
         ...config,
         domains: getDomains(),
-      }
-
-      if (config.account_email === "${TECH_EMAIL}") {
-        config.account_email = process.env.TECH_EMAIL || "tech@example.com"
+        account_email: config.account_email === "${TECH_EMAIL}" 
+          ? techEmail
+          : (config.account_email || techEmail),
       }
     }
 

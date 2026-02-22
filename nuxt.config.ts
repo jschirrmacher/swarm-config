@@ -31,6 +31,7 @@ export default defineNuxtConfig({
     gitRepoBase: "/home/git/repos",
     workspaceBase: "/var/apps",
     domain: "example.com",
+    techEmail: "tech@example.com",
 
     public: {
       // Client-side environment variables

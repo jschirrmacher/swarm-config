@@ -37,6 +37,8 @@ async function createRepository(data: CreateRepoRequest) {
       success: boolean
       repository?: {
         name: string
+        gitUrl: string
+        kongRoute: string
       }
       error?: string
     }
@@ -44,13 +46,20 @@ async function createRepository(data: CreateRepoRequest) {
     const response = await authFetch<CreateServiceResponse>('POST', '/api/services', data)
 
     if (response.success && response.repository) {
-      successMessage.value = `Project "${response.repository.name}" created successfully!`
-      await loadRepositories()
+      const { name, gitUrl, kongRoute } = response.repository
+      successMessage.value = `Project "${name}" created successfully!
 
-      // Clear success message after 5 seconds
-      setTimeout(() => {
-        successMessage.value = ''
-      }, 5000)
+Git Repository: ${gitUrl}
+Service URL: ${kongRoute}
+
+To clone:
+  git clone ${gitUrl}
+
+To connect existing repo:
+  git remote add origin ${gitUrl}
+  git push -u origin main`
+      
+      await loadRepositories()
     } else {
       error.value = response.error || 'Failed to create project'
     }
