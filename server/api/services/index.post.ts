@@ -40,7 +40,7 @@ export default defineEventHandler(async (event): Promise<CreateRepoResponse> => 
       createdAt: new Date().toISOString(),
     }
 
-    const repoPath = await createGitRepository(body.name, auth.username)
+    const repoPath = await createGitRepository(body.name, auth.username, port)
 
     const workspaceDir = await createWorkspace(body.name, auth.username, repoConfig)
 

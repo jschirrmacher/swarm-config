@@ -93,7 +93,7 @@ export interface PluginConfig {
   config?: Record<string, any>
 }
 
-export async function createGitRepository(name: string, owner: string) {
+export async function createGitRepository(name: string, owner: string, port: number = 3000) {
   const config = getSwarmConfig()
   const repoPath = getGitRepoPath(name, owner)
 
@@ -129,17 +129,73 @@ Created by Swarm Config on ${new Date().toISOString()}
 ## Getting Started
 
 1. Clone this repository
-2. Edit \`compose.yaml\` and \`project.json\` as needed
-3. Push changes to deploy
+2. Edit \`compose.yaml\`, \`Dockerfile\`, and \`project.json\` as needed
+3. Push changes to deploy automatically
 
 ## Files
 
-- \`compose.yaml\` - Docker Compose configuration
+- \`Dockerfile\` - Docker image build instructions
+- \`compose.yaml\` - Docker Compose/Swarm configuration
 - \`project.json\` - Project metadata for Swarm Config
 - \`.env\` - Environment variables (not in git)
 `
+
+    const dockerfileContent = `FROM node:24-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy application files
+COPY . .
+
+# Expose port
+EXPOSE ${port}
+
+# Start application
+CMD ["node", "index.js"]
+`
+
+    const composeContent = `services:
+  ${name}:
+    image: ${name}:\${VERSION:-latest}
+    environment:
+      - NODE_ENV=production
+      - PORT=${port}
+    volumes:
+      - ./data:/app/data
+    networks:
+      - kong-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+networks:
+  kong-net:
+    external: true
+`
+
+    const dockerignoreContent = `node_modules
+npm-debug.log
+.git
+.env
+data
+*.md
+.DS_Store
+`
+
     await writeFile(join(tmpDir, "README.md"), readmeContent)
-    await writeFile(join(tmpDir, ".gitignore"), "data/\n.env\n")
+    await writeFile(join(tmpDir, "Dockerfile"), dockerfileContent)
+    await writeFile(join(tmpDir, "compose.yaml"), composeContent)
+    await writeFile(join(tmpDir, ".dockerignore"), dockerignoreContent)
+    await writeFile(join(tmpDir, ".gitignore"), "data/\n.env\nnode_modules/\n")
 
     // Commit initial files
     await execAsync(`git -C "${tmpDir}" add .`)
@@ -171,11 +227,7 @@ Created by Swarm Config on ${new Date().toISOString()}
   }
 }
 
-export async function createWorkspace(
-  name: string,
-  owner: string,
-  repoConfig: RepoConfig,
-) {
+export async function createWorkspace(name: string, owner: string, repoConfig: RepoConfig) {
   const workspaceDir = getWorkspaceDir(name, owner)
 
   // Create workspace directory structure
@@ -244,7 +296,7 @@ networks:
     } catch {
       // Use default if user doesn't exist
     }
-    
+
     await execAsync(`chown -R ${uid}:${dockerGid} "${workspaceDir}"`)
     await execAsync(`chmod -R u+rwX,g+rwX "${workspaceDir}"`)
   } catch (error) {
@@ -263,9 +315,7 @@ export async function listAllProjects(owner: string) {
     const projectMap = new Map<string, RepoConfig>()
 
     // 1. Scan workspace directories
-    const workspaceScanDir = isDevMode()
-      ? config.workspaceBase
-      : join(config.workspaceBase, owner)
+    const workspaceScanDir = isDevMode() ? config.workspaceBase : join(config.workspaceBase, owner)
     try {
       const workspaceEntries = await readdir(workspaceScanDir, { withFileTypes: true })
 
@@ -404,7 +454,10 @@ async function checkHostnameExists(hostname: string, workspaceBase: string) {
           if (!subEntry.isDirectory() && !subEntry.isSymbolicLink()) continue
 
           if (
-            await checkProjectJsonForHostname(join(entryPath, subEntry.name, "project.json"), hostname)
+            await checkProjectJsonForHostname(
+              join(entryPath, subEntry.name, "project.json"),
+              hostname,
+            )
           ) {
             return true
           }
