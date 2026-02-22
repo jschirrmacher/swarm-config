@@ -136,7 +136,7 @@ Created by Swarm Config on ${new Date().toISOString()}
 
 - \`Dockerfile\` - Docker image build instructions
 - \`compose.yaml\` - Docker Compose/Swarm configuration
-- \`project.json\` - Project metadata for Swarm Config
+- \`project.json\` - Project metadata and Kong routing configuration
 - \`.env\` - Environment variables (not in git)
 `
 
@@ -191,10 +191,26 @@ data
 .DS_Store
 `
 
+    const projectJsonContent = JSON.stringify({
+      owner,
+      port,
+      createdAt: new Date().toISOString(),
+      hostname: `${name}.${config.domain}`,
+      routes: [
+        {
+          paths: ["/"],
+          protocols: ["https"],
+          preserve_host: true,
+          strip_path: false
+        }
+      ]
+    }, null, 2)
+
     await writeFile(join(tmpDir, "README.md"), readmeContent)
     await writeFile(join(tmpDir, "Dockerfile"), dockerfileContent)
     await writeFile(join(tmpDir, "compose.yaml"), composeContent)
     await writeFile(join(tmpDir, ".dockerignore"), dockerignoreContent)
+    await writeFile(join(tmpDir, "project.json"), projectJsonContent)
     await writeFile(join(tmpDir, ".gitignore"), "data/\n.env\nnode_modules/\n")
 
     // Commit initial files
