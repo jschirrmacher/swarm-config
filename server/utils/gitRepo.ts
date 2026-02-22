@@ -3,10 +3,8 @@ import { promisify } from "node:util"
 import { access, mkdir, writeFile, readFile, readdir } from "node:fs/promises"
 import { accessSync, constants, existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import type { SwarmConfig } from "~/types"
 import { exec } from "./exec"
 import { isDevMode, getWorkspaceDir, getProjectConfig, getSwarmConfig } from "./workspace"
-import { setGitOwnership } from "./permissions"
 
 const execAsync = promisify(nodeExec)
 
@@ -235,14 +233,24 @@ networks:
     mode: 0o644,
   })
 
-  // Set ownership to owner user and team group
+  // Set ownership using numeric IDs
+  const dockerGid = process.env.DOCKER_GID || "999"
   try {
-    await execAsync(`chown -R ${owner}:team "${workspaceDir}"`)
+    // Try to get user's UID from the system
+    let uid = process.env.GIT_UID || "1000"
+    try {
+      const result = await execAsync(`id -u ${owner}`)
+      uid = result.stdout.trim()
+    } catch {
+      // Use default if user doesn't exist
+    }
+    
+    await execAsync(`chown -R ${uid}:${dockerGid} "${workspaceDir}"`)
     await execAsync(`chmod -R u+rwX,g+rwX "${workspaceDir}"`)
   } catch (error) {
     console.warn(`Could not set ownership for ${workspaceDir}:`, error)
     // Fallback: at least set group permissions
-    await execAsync(`chgrp -R team "${workspaceDir}"`)
+    await execAsync(`chgrp -R ${dockerGid} "${workspaceDir}"`)
     await execAsync(`chmod -R g+rwX "${workspaceDir}"`)
   }
 
