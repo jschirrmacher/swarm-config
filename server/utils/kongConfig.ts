@@ -113,9 +113,10 @@ function generateKongConfigFromProjectJson(
   try {
     const hostname = metadata.hostname || `${projectName}.${domain}`
     const serviceName = `${owner}_${projectName}_${projectName}`
+    const containerName = metadata.serviceName || `${projectName}_${projectName}`
     const service = {
       name: serviceName,
-      url: `http://${projectName}_${projectName}:${metadata.port || 3000}`,
+      url: `http://${containerName}:${metadata.port || 3000}`,
       routes: (metadata.routes || [{ paths: ["/"], stripPath: false, preserveHost: true }]).map(
         (route: any, idx: number) => ({
           name: `${serviceName}_${idx}`,

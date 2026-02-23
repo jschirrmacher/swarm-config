@@ -28,6 +28,7 @@ export interface ProjectConfig {
   createdAt: string
   gitUrl?: string
   hostname?: string
+  serviceName?: string
   routes?: Array<{
     paths: string[]
     stripPath?: boolean
