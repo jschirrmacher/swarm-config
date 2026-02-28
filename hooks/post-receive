@@ -43,10 +43,10 @@ if [ -f "Dockerfile" ]; then
   echo "🔨 Building Docker image..."
   # Disable BuildKit git detection for cloned repos
   export DOCKER_BUILDKIT=1
-  if ! docker build --no-cache -t "${APPNAME}:${VERSION}" . 2>&1; then
-    cd / && rm -rf "$WORK_DIR"
-    echo "❌ Build failed"
-    exit 1
+  if docker build --no-cache -t "${APPNAME}:${VERSION}" . 2>&1; then
+    echo "✅ Build successful"
+  else
+    echo "⚠️  Build failed - will use existing or pre-built images"
   fi
   echo ""
 else
