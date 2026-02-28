@@ -20,23 +20,49 @@ Your app is live at `https://myapp.justso.de`.
 
 ```
 myapp/
-├── Dockerfile           # REQUIRED
 ├── compose.yaml         # REQUIRED
+├── Dockerfile           # Optional (for custom builds)
 ├── project.json         # Project metadata (auto-generated)
-├── .dockerignore        # Recommended
+├── .dockerignore        # Recommended (if using Dockerfile)
 └── src/
 ```
 
-### compose.yaml
+## Deployment Options
+
+### Option 1: Custom Build (with Dockerfile)
+
+If you have a `Dockerfile`, the hook will automatically build your image on push:
 
 ```yaml
 services:
   myapp:
-    image: myapp:${VERSION:-latest}
+    image: myapp:${VERSION:-latest} # Built from Dockerfile
     env_file:
       - .env
     volumes:
       - ./data:/app/data
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - kong-net
+
+networks:
+  kong-net:
+    external: true
+```
+
+### Option 2: Pre-built Images (without Dockerfile)
+
+If you don't need custom builds, just use pre-built images in compose.yaml:
+
+```yaml
+services:
+  myapp:
+    image: nginx:alpine # Pre-built image from Docker Hub
+    volumes:
+      - ./config:/etc/nginx/conf.d
     deploy:
       replicas: 1
       restart_policy:
@@ -77,11 +103,12 @@ nano /var/apps/joachim/myapp/.env
 
 Use `.env.example` in your repository as documentation.
 
-### Nuxt3 Apps: NUXT_ Prefix
+### Nuxt3 Apps: NUXT\_ Prefix
 
 Nuxt3 runtimeConfig can be overridden at runtime with `NUXT_`-prefixed environment variables.
 
 If your `nuxt.config.ts` defines:
+
 ```ts
 runtimeConfig: {
   myApiKey: "default-key",  // Default value
@@ -92,12 +119,14 @@ runtimeConfig: {
 ```
 
 Then your `.env` can override at runtime:
+
 ```bash
 NUXT_MY_API_KEY=secret-key
 NUXT_PUBLIC_AUTH_SERVER_URL=https://auth.production.com
 ```
 
 The `NUXT_` prefix maps to `runtimeConfig` keys (underscore → camelCase):
+
 - `NUXT_MY_API_KEY` → `runtimeConfig.myApiKey`
 - `NUXT_PUBLIC_AUTH_SERVER_URL` → `runtimeConfig.public.authServerUrl`
 
@@ -147,10 +176,10 @@ ssh justso.de 'docker exec -it $(docker ps -q -f name=myapp_myapp) sh'
 
 ## Troubleshooting
 
-| Problem | Check |
-|---------|-------|
-| App won't start | `docker service logs myapp_myapp` |
-| 401 Unauthorized | Check `NUXT_` prefix in `.env` |
-| Name resolution failed | Verify `kong-net` network in compose.yaml |
-| SSL missing | Wait ~2 min for Let's Encrypt |
-| Not reachable | DNS (`nslookup myapp.justso.de`), firewall (`sudo ufw status`) |
+| Problem                | Check                                                          |
+| ---------------------- | -------------------------------------------------------------- |
+| App won't start        | `docker service logs myapp_myapp`                              |
+| 401 Unauthorized       | Check `NUXT_` prefix in `.env`                                 |
+| Name resolution failed | Verify `kong-net` network in compose.yaml                      |
+| SSL missing            | Wait ~2 min for Let's Encrypt                                  |
+| Not reachable          | DNS (`nslookup myapp.justso.de`), firewall (`sudo ufw status`) |
