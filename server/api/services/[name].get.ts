@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from "node:fs"
 import { join } from "node:path"
 import { requireAuth } from "~/server/utils/auth"
 import { getRepoStatus } from "~/server/utils/gitRepo"
-import { getProjectConfig, getWorkspaceDir } from "~/server/utils/workspace"
+import { getProjectConfig, getWorkspaceDir, getSwarmConfig } from "~/server/utils/workspace"
 import { getDockerStatus } from "~/server/utils/dockerStatus"
 
 export default defineEventHandler(async event => {
@@ -16,13 +16,14 @@ export default defineEventHandler(async event => {
 
   try {
     const workspaceDir = getWorkspaceDir(name, auth.username)
-    
+    const config = getSwarmConfig()
+
     let projectData: any = getProjectConfig(workspaceDir) ?? {}
 
     const dockerStatus = getDockerStatus(name)
-    const status = dockerStatus.status || 'unknown'
-    const replicas = dockerStatus.replicas || 'N/A'
-    const version = projectData.version || 'N/A'
+    const status = dockerStatus.status || "unknown"
+    const replicas = dockerStatus.replicas || "N/A"
+    const version = projectData.version || "N/A"
 
     let env: Record<string, string> = {}
     if (projectData.owner === auth.username && projectData.env) {
@@ -39,7 +40,8 @@ export default defineEventHandler(async event => {
       version,
       createdAt: projectData.createdAt,
       gitUrl: repoStatus.gitUrl,
-      env: projectData.owner === auth.username ? env : undefined
+      kongRoute: `https://${name}.${config.domain}`,
+      env: projectData.owner === auth.username ? env : undefined,
     }
   } catch (error) {
     if (error instanceof Error && "statusCode" in error) {

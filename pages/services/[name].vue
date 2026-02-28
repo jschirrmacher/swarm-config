@@ -14,6 +14,7 @@ const error = ref('')
 const saving = ref(false)
 const saveSuccess = ref(false)
 const copySuccess = ref(false)
+const copiedCommand = ref<string | null>(null)
 const creatingRepo = ref(false)
 const activeTab = ref<'status' | 'logs' | 'env'>('status')
 const logs = ref('')
@@ -38,7 +39,7 @@ async function loadService() {
 
     const data = await authFetch('GET', `/api/services/${serviceName.value}`)
     service.value = data
-    
+
     if (isOwner.value && data.env) {
       envVars.value = { ...data.env }
     }
@@ -64,7 +65,7 @@ async function createGitRepo() {
 
 async function copyGitUrl() {
   if (!service.value?.gitUrl) return
-  
+
   try {
     await navigator.clipboard.writeText(service.value.gitUrl)
     copySuccess.value = true
@@ -76,9 +77,21 @@ async function copyGitUrl() {
   }
 }
 
+async function copyCommand(command: string) {
+  try {
+    await navigator.clipboard.writeText(command)
+    copiedCommand.value = command
+    setTimeout(() => {
+      copiedCommand.value = null
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy:', err)
+  }
+}
+
 async function loadLogs() {
   if (!service.value) return
-  
+
   try {
     const data = await authFetch('GET', `/api/services/${serviceName.value}/logs`)
     logs.value = data.logs || 'No logs available'
@@ -159,7 +172,69 @@ watch(activeTab, (newTab) => {
         </div>
         <span v-if="copySuccess" class="copy-success">✓ Copied!</span>
       </div>
-      
+
+      <div v-if="service.gitUrl && service.kongRoute" class="setup-commands">
+        <h3>Setup Commands</h3>
+        <p class="setup-description">Use these commands to get started with your project:</p>
+
+        <div class="command-group">
+          <label>Service URL</label>
+          <div class="command-box">
+            <code>{{ service.kongRoute }}</code>
+            <button @click="copyCommand(service.kongRoute)" class="btn-copy" title="Copy URL">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
+                <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
+              </svg>
+            </button>
+          </div>
+          <span v-if="copiedCommand === service.kongRoute" class="copy-success">✓ Copied!</span>
+        </div>
+
+        <div class="command-group">
+          <label>Clone Repository</label>
+          <div class="command-box">
+            <code>git clone {{ service.gitUrl }}</code>
+            <button @click="copyCommand(`git clone ${service.gitUrl}`)" class="btn-copy" title="Copy Command">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
+                <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
+              </svg>
+            </button>
+          </div>
+          <span v-if="copiedCommand === `git clone ${service.gitUrl}`" class="copy-success">✓ Copied!</span>
+        </div>
+
+        <div class="command-group">
+          <label>Connect Existing Repository</label>
+          <div class="command-box">
+            <code>git remote add origin {{ service.gitUrl }}</code>
+            <button @click="copyCommand(`git remote add origin ${service.gitUrl}`)" class="btn-copy"
+              title="Copy Command">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
+                <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
+              </svg>
+            </button>
+          </div>
+          <span v-if="copiedCommand === `git remote add origin ${service.gitUrl}`" class="copy-success">✓ Copied!</span>
+        </div>
+
+        <div class="command-group">
+          <label>Push to Repository</label>
+          <div class="command-box">
+            <code>git push -u origin main</code>
+            <button @click="copyCommand(`git push -u origin main`)" class="btn-copy" title="Copy Command">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
+                <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
+              </svg>
+            </button>
+          </div>
+          <span v-if="copiedCommand === `git push -u origin main`" class="copy-success">✓ Copied!</span>
+        </div>
+      </div>
+
       <div v-else class="git-section">
         <label>Git Repository</label>
         <div class="no-git-warning">
@@ -216,11 +291,11 @@ watch(activeTab, (newTab) => {
             <h3>Environment Variables</h3>
             <button @click="addEnvVar" class="btn-add">+ Add Variable</button>
           </div>
-          
+
           <div v-if="Object.keys(envVars).length === 0" class="empty-state">
             No environment variables configured
           </div>
-          
+
           <div v-else class="env-list">
             <div v-for="(value, key) in envVars" :key="key" class="env-item">
               <label>{{ key }}</label>
@@ -349,6 +424,60 @@ watch(activeTab, (newTab) => {
   color: #4caf50;
   font-size: 0.85rem;
   animation: fadeIn 0.3s;
+}
+
+.setup-commands {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+}
+
+.setup-commands h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.setup-description {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.command-group {
+  margin-bottom: 1.25rem;
+}
+
+.command-group:last-child {
+  margin-bottom: 0;
+}
+
+.command-group label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.command-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.command-box code {
+  flex: 1;
+  color: var(--text-primary);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+  word-break: break-all;
 }
 
 .no-git-warning {
@@ -603,6 +732,7 @@ watch(activeTab, (newTab) => {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }

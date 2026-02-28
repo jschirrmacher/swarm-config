@@ -5,11 +5,11 @@ definePageMeta({
   layout: 'default'
 })
 
+const router = useRouter()
 const loading = ref(true)
 const creating = ref(false)
 const repositories = ref<Repository[]>([])
 const error = ref('')
-const successMessage = ref('')
 
 const { authFetch } = useAuthFetch()
 
@@ -30,7 +30,6 @@ async function loadRepositories() {
 async function createRepository(data: CreateRepoRequest) {
   creating.value = true
   error.value = ''
-  successMessage.value = ''
 
   try {
     interface CreateServiceResponse {
@@ -46,20 +45,7 @@ async function createRepository(data: CreateRepoRequest) {
     const response = await authFetch<CreateServiceResponse>('POST', '/api/services', data)
 
     if (response.success && response.repository) {
-      const { name, gitUrl, kongRoute } = response.repository
-      successMessage.value = `Project "${name}" created successfully!
-
-Git Repository: ${gitUrl}
-Service URL: ${kongRoute}
-
-To clone:
-  git clone ${gitUrl}
-
-To connect existing repo:
-  git remote add origin ${gitUrl}
-  git push -u origin main`
-      
-      await loadRepositories()
+      await router.push(`/services/${response.repository.name}`)
     } else {
       error.value = response.error || 'Failed to create project'
     }
@@ -97,7 +83,6 @@ onMounted(() => {
     <CreateRepositoryForm :creating="creating" @submit="createRepository" />
 
     <AppAlert type="error" :message="error" />
-    <AppAlert type="success" :message="successMessage" />
   </div>
 </template>
 
