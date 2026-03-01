@@ -37,8 +37,9 @@ If you have a `Dockerfile`, the hook will automatically build your image on push
 services:
   myapp:
     image: myapp:${VERSION:-latest} # Built from Dockerfile
-    env_file:
-      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      API_KEY: ${API_KEY}
     volumes:
       - ./data:/app/data
     deploy:
@@ -61,6 +62,8 @@ If you don't need custom builds, just use pre-built images in compose.yaml:
 services:
   myapp:
     image: nginx:alpine # Pre-built image from Docker Hub
+    environment:
+      NGINX_HOST: ${NGINX_HOST:-localhost}
     volumes:
       - ./config:/etc/nginx/conf.d
     deploy:
@@ -118,16 +121,70 @@ Kong routes are generated automatically from this file. No manual `kong.yaml` ne
 
 ## Environment Variables
 
-### .env on the server
+### Important: Docker Swarm Limitation
 
-Place your `.env` file at `/var/apps/<owner>/<appname>/.env` (never committed to Git):
+**Docker Swarm ignores `env_file:` directives!** You must use `environment:` with variable substitution instead.
+
+❌ **This does NOT work in Docker Swarm:**
+
+```yaml
+services:
+  myapp:
+    image: myapp:${VERSION}
+    env_file:
+      - .env # IGNORED by docker stack deploy!
+```
+
+✅ **Use this instead:**
+
+```yaml
+services:
+  myapp:
+    image: myapp:${VERSION}
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      API_KEY: ${API_KEY}
+```
+
+### Setting Environment Variables
+
+1. **Create/edit `.env` on the server** at `/var/apps/<owner>/<appname>/.env`:
 
 ```bash
 ssh justso.de
 nano /var/apps/joachim/myapp/.env
 ```
 
-Use `.env.example` in your repository as documentation.
+Example `.env` file:
+
+```bash
+DATABASE_URL=postgres://user:pass@db:5432/mydb
+REDIS_URL=redis://redis:6379
+API_KEY=your-secret-key-here
+NODE_ENV=production
+```
+
+2. **Reference them in compose.yaml** using `${VAR}` syntax:
+
+```yaml
+services:
+  myapp:
+    image: myapp:${VERSION}
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      API_KEY: ${API_KEY}
+      NODE_ENV: ${NODE_ENV:-production} # with default value
+```
+
+3. **Push to deploy** - the hook automatically loads variables from `.env` before deployment.
+
+**Best practices:**
+
+- Keep a `.env.example` in your repository (committed) documenting all required variables
+- Never commit the actual `.env` file with secrets
+- Use `${VAR:-default}` syntax to provide fallback values
 
 ### Nuxt3 Apps: NUXT\_ Prefix
 

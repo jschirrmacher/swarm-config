@@ -99,6 +99,14 @@ if [ ! -f ".env" ]; then
   echo "📝 Created empty .env file"
 fi
 
+# Load and export all variables from .env for Docker Swarm variable substitution
+if [ -f ".env" ]; then
+  echo "📝 Loading environment variables from .env"
+  set -a  # automatically export all variables
+  source .env
+  set +a
+fi
+
 if docker stack deploy -c compose.yaml "$APPNAME"; then
   echo "✅ Deployment completed successfully"
   cd / && rm -rf "$WORK_DIR"
