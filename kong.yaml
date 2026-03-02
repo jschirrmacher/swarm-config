@@ -42,10 +42,3 @@ plugins:
 
   # Bot Detection to identify and reject bot traffic
   - name: bot-detection
-
-  # Request Size Limiting to prevent large payload attacks
-  - name: request-size-limiting
-    config:
-      allowed_payload_size: 10
-      size_unit: megabytes
-      require_content_length: false

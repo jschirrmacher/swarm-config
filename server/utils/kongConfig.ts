@@ -116,6 +116,20 @@ function generateKongConfigFromProjectJson(
     const hostname = metadata.hostname || `${projectName}.${domain}`
     const serviceName = `${owner}_${projectName}_${projectName}`
     const containerName = metadata.serviceName || `${projectName}_${projectName}`
+    
+    const plugins = [...(metadata.plugins || [])]
+    
+    // Add request-size-limiting plugin
+    // Default: 100MB, 0 = unlimited, or custom value in MB
+    const uploadSize = metadata.maxUploadSize ?? 100
+    
+    plugins.push({
+      name: "request-size-limiting",
+      config: {
+        allowed_payload_size: uploadSize
+      }
+    })
+    
     const service = {
       name: serviceName,
       url: `http://${containerName}:${metadata.port || 3000}`,
@@ -129,7 +143,7 @@ function generateKongConfigFromProjectJson(
           strip_path: route.stripPath ?? false,
         }),
       ),
-      plugins: metadata.plugins || [],
+      plugins,
     }
 
     return {

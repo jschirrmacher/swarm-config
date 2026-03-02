@@ -30,6 +30,7 @@ export interface ProjectConfig {
   gitUrl?: string
   hostname?: string
   serviceName?: string
+  maxUploadSize?: number
   routes?: Array<{
     paths: string[]
     stripPath?: boolean
