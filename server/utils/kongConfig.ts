@@ -16,7 +16,7 @@ type KongConfig = {
 }
 
 function processPlugins(plugins: any[]) {
-  const runtimeConfig = useRuntimeConfig()
+  const { techEmail } = getSwarmConfig()
 
   return plugins.map(plugin => {
     let config = plugin.config ?? {}
@@ -30,7 +30,7 @@ function processPlugins(plugins: any[]) {
           config.account_email !== "${TECH_EMAIL}" &&
           config.account_email !== "null"
             ? config.account_email
-            : runtimeConfig.techEmail,
+            : techEmail,
       }
     }
 

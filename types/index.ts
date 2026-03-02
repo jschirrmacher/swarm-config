@@ -20,6 +20,7 @@ export interface SwarmConfig {
   workspaceBase: string
   gitRepoBase: string
   domain: string
+  techEmail: string
 }
 
 export interface ProjectConfig {

@@ -6,12 +6,28 @@ export function isDevMode() {
   return process.env.NODE_ENV === "development"
 }
 
+function getRuntimeConfigSafe() {
+  // Check if we're in a Nuxt context
+  try {
+    return useRuntimeConfig()
+  } catch {
+    // CLI context - use environment variables
+    return {
+      workspaceBase: process.env.NUXT_WORKSPACE_BASE ?? "/var/apps",
+      gitRepoBase: process.env.NUXT_GIT_REPO_BASE ?? "/home/git/repos",
+      domain: process.env.NUXT_DOMAIN ?? "example.com",
+      techEmail: process.env.NUXT_TECH_EMAIL ?? "tech@example.com",
+    }
+  }
+}
+
 export function getSwarmConfig(): SwarmConfig {
-  const config = useRuntimeConfig()
+  const config = getRuntimeConfigSafe()
   return {
     workspaceBase: config.workspaceBase,
     gitRepoBase: config.gitRepoBase,
     domain: config.domain,
+    techEmail: config.techEmail,
   }
 }
 
@@ -24,11 +40,11 @@ export function getWorkspaceDir(projectName: string, owner: string) {
 
 export function getProjectConfig(projectDir: string) {
   const projectJsonPath = join(projectDir, "project.json")
-  
+
   if (!existsSync(projectJsonPath)) {
     return null
   }
-  
+
   try {
     return JSON.parse(readFileSync(projectJsonPath, "utf-8")) as ProjectConfig
   } catch {
@@ -73,7 +89,7 @@ export function writeProjectJson(projectName: string, data: ProjectConfig) {
   if (!validateProjectData(data)) {
     throw new Error("Invalid project data")
   }
-  
+
   const projectDir = getWorkspaceDir(projectName, data.owner)
   const projectJsonPath = join(projectDir, "project.json")
   writeFileSync(projectJsonPath, JSON.stringify(sanitizeProjectData(data), null, 2))

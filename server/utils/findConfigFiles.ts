@@ -1,5 +1,6 @@
 import { existsSync } from "fs"
 import { join } from "path"
+import { getSwarmConfig } from "./workspace"
 
 /**
  * Finds kong.yaml or project.json in project root
@@ -7,7 +8,7 @@ import { join } from "path"
 export function findKongConfig(projectDir: string): string | undefined {
   const projectJsonPath = join(projectDir, "project.json")
   if (existsSync(projectJsonPath)) return projectJsonPath
-  
+
   const kongYamlPath = join(projectDir, "kong.yaml")
   return existsSync(kongYamlPath) ? kongYamlPath : undefined
 }
@@ -24,8 +25,8 @@ export function findComposeConfig(projectDir: string): string | undefined {
  * Finds kong.yaml for a project by name (uses runtime config for workspace base)
  */
 export function findKongConfigByName(projectName: string): string | undefined {
-  const config = useRuntimeConfig()
-  const projectDir = join(config.workspaceBase, projectName)
+  const { workspaceBase } = getSwarmConfig()
+  const projectDir = join(workspaceBase, projectName)
   return findKongConfig(projectDir)
 }
 
@@ -33,8 +34,8 @@ export function findKongConfigByName(projectName: string): string | undefined {
  * Finds docker-compose.yaml for a project by name (uses runtime config for workspace base)
  */
 export function findComposeConfigByName(projectName: string): string | undefined {
-  const config = useRuntimeConfig()
-  const projectDir = join(config.workspaceBase, projectName)
+  const { workspaceBase } = getSwarmConfig()
+  const projectDir = join(workspaceBase, projectName)
   return findComposeConfig(projectDir)
 }
 
@@ -42,6 +43,6 @@ export function findComposeConfigByName(projectName: string): string | undefined
  * Gets the project directory path from project name using runtime config
  */
 export function getProjectDir(projectName: string): string {
-  const config = useRuntimeConfig()
-  return join(config.workspaceBase, projectName)
+  const { workspaceBase } = getSwarmConfig()
+  return join(workspaceBase, projectName)
 }
