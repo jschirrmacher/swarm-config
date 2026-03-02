@@ -109,6 +109,24 @@ fi
 
 if docker stack deploy -c compose.yaml "$APPNAME"; then
   echo "✅ Deployment completed successfully"
+  
+  # Execute post-deploy hook if it exists
+  if [ -f "post-deploy.sh" ]; then
+    echo ""
+    echo "🎬 Executing post-deploy hook..."
+    
+    # Ensure script is executable
+    chmod +x post-deploy.sh
+    
+    # Copy to APP_DIR so it can find other scripts
+    cp post-deploy.sh "$APP_DIR/post-deploy.sh" 2>/dev/null || true
+    
+    # Run in background so deployment doesn't block
+    cd "$APP_DIR" && nohup ./post-deploy.sh > post-deploy.log 2>&1 &
+    
+    echo "✅ Post-deploy hook started (check $APP_DIR/post-deploy.log for output)"
+  fi
+  
   cd / && rm -rf "$WORK_DIR"
   exit 0
 else

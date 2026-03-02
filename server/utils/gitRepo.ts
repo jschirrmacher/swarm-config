@@ -191,20 +191,24 @@ data
 .DS_Store
 `
 
-    const projectJsonContent = JSON.stringify({
-      owner,
-      port,
-      createdAt: new Date().toISOString(),
-      hostname: `${name}.${config.domain}`,
-      routes: [
-        {
-          paths: ["/"],
-          protocols: ["https"],
-          preserve_host: true,
-          strip_path: false
-        }
-      ]
-    }, null, 2)
+    const projectJsonContent = JSON.stringify(
+      {
+        owner,
+        port,
+        createdAt: new Date().toISOString(),
+        hostname: `${name}.${config.domain}`,
+        routes: [
+          {
+            paths: ["/"],
+            protocols: ["https"],
+            preserve_host: true,
+            strip_path: false,
+          },
+        ],
+      },
+      null,
+      2,
+    )
 
     await writeFile(join(tmpDir, "README.md"), readmeContent)
     await writeFile(join(tmpDir, "Dockerfile"), dockerfileContent)
@@ -433,11 +437,10 @@ export async function validateRepoName(name: string) {
   }
 
   // Check if hostname is already taken by another project
-  const domain = process.env.DOMAIN || "example.com"
-  const hostname = `${name}.${domain}`
+  const config = getSwarmConfig()
+  const hostname = `${name}.${config.domain}`
 
-  const workspaceBase = process.env.WORKSPACE_BASE ?? "/var/apps"
-  const isHostnameTaken = await checkHostnameExists(hostname, workspaceBase)
+  const isHostnameTaken = await checkHostnameExists(hostname, config.workspaceBase)
 
   if (isHostnameTaken) {
     return {

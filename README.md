@@ -7,6 +7,7 @@ Docker Swarm infrastructure with Kong API Gateway and Git-based CI/CD.
 - 🐳 **Docker Swarm** - Single- or multi-node cluster orchestration
 - 🦍 **Kong Gateway** - API Gateway with automatic SSL/TLS via Let's Encrypt
 - 🚀 **Git-based CI/CD** - Deploy apps with `git push production main`
+- 🎬 **Post-Deploy Hooks** - Automatic post-deployment tasks (migrations, cache, etc.)
 - 🔧 **Automated Setup** - One-command installation
 
 ## Quick Start
@@ -32,7 +33,8 @@ Sets up Docker Swarm, firewall, Node.js, users, SSH security, Kong Gateway, and 
 ## Architecture
 
 ```
-Developer → git push → Git Hook → Docker Build → Swarm Deploy → Kong Gateway → HTTPS
+Developer → git push → Git Hook → [Docker Build] → Swarm Deploy → Kong Gateway → HTTPS
+                                     (optional)
 ```
 
 ### Repository Structure
@@ -47,9 +49,15 @@ swarm-config/
 ├── composables/            # Shared composables (useAuthFetch)
 ├── middleware/             # Auth middleware
 ├── types/                  # TypeScript type definitions
+├── docs/                   # Documentation
+│   ├── ADMIN-SETUP.md     # Administrator guide
+│   └── APP-DEVELOPER.md   # App developer guide
 ├── scripts/                # Setup and maintenance scripts
-│   └── setup.sh           # Automated server setup
-├── hooks/post-receive      # Git deployment hook
+│   ├── setup.sh           # Automated server setup
+│   └── ...                # Utility scripts
+├── hooks/                  # Git deployment hooks
+│   ├── post-receive       # Main deployment hook
+│   └── post-receive-swarm-config  # swarm-config update hook
 ├── stacks/                 # Docker Stack definitions (Kong, monitoring)
 ├── compose.yaml            # swarm-config deployment config
 ├── Dockerfile              # Container image definition
@@ -63,7 +71,7 @@ swarm-config uses Nuxt 3 runtime configuration. Override defaults via environmen
 
 ### Environment Variables
 
-Set in `/var/apps/swarm-config/.env`:
+**Production** - Set in `/var/apps/swarm-config/.env`:
 
 ```bash
 # Domain for Kong Gateway and Git URLs
@@ -84,18 +92,35 @@ TEAM_GID=1000
 DOCKER_GID=999
 ```
 
-**Note**: In production, `compose.yaml` automatically maps these to `NUXT_*` variables for the container. For local development, add `NUXT_DOMAIN`, `NUXT_GIT_REPO_BASE`, and `NUXT_WORKSPACE_BASE` to your `.env`. See [Nuxt 3 Runtime Config](https://nuxt.com/docs/guide/going-further/runtime-config).
+The `compose.yaml` automatically maps these to `NUXT_*` variables for the container.
+
+**Local Development** - Add to your `.env`:
+
+```bash
+NUXT_DOMAIN=localhost
+NUXT_GIT_REPO_BASE=/path/to/your/repos
+NUXT_WORKSPACE_BASE=/path/to/your/workspace
+NUXT_TECH_EMAIL=your@email.com
+```
+
+See [Nuxt 3 Runtime Config](https://nuxt.com/docs/guide/going-further/runtime-config) for details.
 
 ### App Repository Structure
 
 ```
 myapp/
-├── Dockerfile              # Required
-├── compose.yaml            # Required
-├── kong.yaml               # Optional (Kong routing)
-├── compose.override.yaml   # Optional (local dev)
+├── compose.yaml            # Required - Docker Stack definition
+├── Dockerfile              # Optional - Custom build (or use pre-built images)
+├── project.json            # Optional - Kong routing and metadata
+├── post-deploy.sh          # Optional - Post-deployment tasks
+├── .env                    # Auto-created - Environment variables
 └── src/
 ```
+
+**Workspace Structure:**
+
+- With owner (from `project.json`): `/var/apps/<owner>/<app>/`
+- Without owner: `/var/apps/<app>/`
 
 ## License
 

@@ -4,7 +4,7 @@ import { dump, load } from "js-yaml"
 import { getDomains } from "./DomainRegister.js"
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
-import { isDevMode, getProjectConfig } from "./workspace"
+import { isDevMode, getProjectConfig, getSwarmConfig } from "./workspace"
 
 const execAsync = promisify(exec)
 
@@ -16,18 +16,21 @@ type KongConfig = {
 }
 
 function processPlugins(plugins: any[]) {
+  const runtimeConfig = useRuntimeConfig()
+
   return plugins.map(plugin => {
     let config = plugin.config ?? {}
 
     if (plugin.name === "acme") {
-      const techEmail = process.env.NUXT_TECH_EMAIL || process.env.TECH_EMAIL || "tech@example.com"
-      
       config = {
         ...config,
         domains: getDomains(),
-        account_email: (config.account_email && config.account_email !== "${TECH_EMAIL}" && config.account_email !== "null")
-          ? config.account_email
-          : techEmail,
+        account_email:
+          config.account_email &&
+          config.account_email !== "${TECH_EMAIL}" &&
+          config.account_email !== "null"
+            ? config.account_email
+            : runtimeConfig.techEmail,
       }
     }
 
@@ -39,8 +42,7 @@ function processPlugins(plugins: any[]) {
 }
 
 function loadProjectServices() {
-  const workspaceBase = process.env.WORKSPACE_BASE ?? process.env.NUXT_WORKSPACE_BASE ?? "/var/apps"
-  const domain = process.env.NUXT_DOMAIN ?? process.env.DOMAIN ?? "example.com"
+  const { workspaceBase, domain } = getSwarmConfig()
 
   if (!existsSync(workspaceBase)) {
     console.warn(`[Kong Config] Workspace base not found: ${workspaceBase}`)

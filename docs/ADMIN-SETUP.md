@@ -32,6 +32,55 @@ curl -o- https://raw.githubusercontent.com/jschirrmacher/swarm-config/main/scrip
 
 Available at `https://config.your-domain.com` after setup. Developers can create repositories self-service.
 
+## Git Hooks
+
+Git hooks enable automatic deployment via `git push`. They are automatically set up by `setup-hooks.sh` during installation.
+
+### How It Works
+
+When developers push to a repository:
+
+1. **Clone**: Checkout pushed commit to `/tmp/build-<version>`
+2. **Build**: Build Docker image with tag `<appname>:<version>`
+3. **Deploy**: Deploy stack via `docker stack deploy`
+4. **Post-Deploy**: Execute `post-deploy.sh` if present (optional)
+5. **Cleanup**: Remove temp directory
+
+### Repository Requirements
+
+Each app repository needs:
+
+- `compose.yaml` in root (required)
+- `Dockerfile` in root (optional, for custom builds)
+- `post-deploy.sh` in root (optional, for post-deployment tasks)
+
+### Manual Hook Setup
+
+If you need to manually add hooks to a new repository:
+
+```bash
+cd /var/apps/swarm-config
+./setup-hooks.sh /home/git/repos
+```
+
+Or link manually:
+
+```bash
+ln -s /var/apps/swarm-config/hooks/post-receive /home/git/repos/<repo>.git/hooks/post-receive
+```
+
+### Updating Hooks
+
+To update hooks after swarm-config changes:
+
+```bash
+cd /var/apps/swarm-config
+git pull
+./setup-hooks.sh
+```
+
+This updates all repositories automatically.
+
 ## SMTP Configuration (Optional)
 
 ```bash
@@ -63,6 +112,7 @@ docker stack ps swarm-config                 # All services
 ### Setup
 
 1. Initialize Swarm on the first node:
+
    ```bash
    docker swarm init --advertise-addr <IP>
    ```

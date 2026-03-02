@@ -257,6 +257,129 @@ ssh justso.de 'docker exec $(docker ps --format "{{.Names}}" | grep myapp) env'
 ssh justso.de 'docker exec -it $(docker ps -q -f name=myapp_myapp) sh'
 ```
 
+## Post-Deploy Hooks
+
+Automate tasks after successful deployment. If your repository contains a `post-deploy.sh` file, it will be executed automatically in the background after `docker stack deploy` completes.
+
+### Quick Start
+
+Create `post-deploy.sh` in your repository root:
+
+```bash
+#!/bin/bash
+# Wait for containers to be ready
+sleep 20
+
+# Your post-deployment tasks
+CONTAINER=$(docker ps --format '{{.Names}}' | grep myapp_web | head -n 1)
+docker exec "$CONTAINER" python manage.py migrate
+echo "✅ Migrations completed"
+```
+
+Make it executable and commit:
+
+```bash
+chmod +x post-deploy.sh
+git add post-deploy.sh
+git commit -m "Add post-deploy hook"
+git push production main
+```
+
+**Check logs:**
+
+```bash
+ssh justso.de 'tail -f /var/apps/<owner>/<app>/post-deploy.log'
+```
+
+### Common Examples
+
+**Nextcloud Upgrades:**
+
+```bash
+#!/bin/bash
+sleep 20
+CONTAINER=$(docker ps --format '{{.Names}}' | grep nextcloud_app | head -n 1)
+NEEDS_UPGRADE=$(docker exec -u www-data "$CONTAINER" php occ status --output=json | grep '"needsDbUpgrade":true')
+if [ -n "$NEEDS_UPGRADE" ]; then
+    docker exec -u www-data "$CONTAINER" php occ upgrade
+    docker exec -u www-data "$CONTAINER" php occ db:add-missing-indices
+fi
+```
+
+**Django Migrations:**
+
+```bash
+#!/bin/bash
+sleep 15
+CONTAINER=$(docker ps --format '{{.Names}}' | grep myapp_web | head -n 1)
+docker exec "$CONTAINER" python manage.py migrate --no-input
+docker exec "$CONTAINER" python manage.py collectstatic --no-input
+```
+
+**Node.js Cache Warming:**
+
+```bash
+#!/bin/bash
+sleep 10
+CONTAINER=$(docker ps --format '{{.Names}}' | grep myapp_app | head -n 1)
+docker exec "$CONTAINER" node scripts/warm-cache.js
+```
+
+**Health Check:**
+
+```bash
+#!/bin/bash
+sleep 30
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://myapp.justso.de/health)
+if [ "$STATUS" = "200" ]; then
+    echo "✅ Health check passed"
+else
+    echo "❌ Health check failed: HTTP $STATUS"
+fi
+```
+
+### Best Practices
+
+**✅ Do:**
+
+- Always wait for containers: `sleep 20` or more before running commands
+- Check if operations are needed before executing (e.g., check upgrade status)
+- Use timeouts for long operations: `timeout 300 ./script.sh`
+- Make scripts idempotent (safe to run multiple times)
+- Log clear messages for debugging
+
+**❌ Don't:**
+
+- Don't use `sudo` (not available in hook context)
+- Don't run indefinitely or start daemon processes
+- Don't assume services are immediately ready after deployment
+- Don't expose secrets in log output
+
+### Troubleshooting
+
+**Script not running?**
+
+- Verify executable: `git ls-files --stage post-deploy.sh` should show `100755`
+- Fix: `chmod +x post-deploy.sh && git add post-deploy.sh && git commit --amend`
+
+**Container not found?**
+
+- Increase wait time: `sleep 30` instead of `sleep 20`
+- Verify service name: `docker service ls | grep myapp`
+- Wait for service: `until docker ps | grep myapp_web; do sleep 5; done`
+
+**Operations fail?**
+
+- Check logs: `tail -50 /var/apps/<owner>/<app>/post-deploy.log`
+- Test locally: `docker-compose up -d && ./post-deploy.sh`
+- Add debug mode: `set -x` at start of script
+
+**Security Notes:**
+
+- Scripts run with git user permissions (no sudo access)
+- Keep scripts idempotent and fast (< 5 minutes recommended)
+- Don't expose credentials in logs
+
 ## Troubleshooting
 
 | Problem                | Check                                                          |
