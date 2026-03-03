@@ -11,12 +11,12 @@ function getRuntimeConfigSafe() {
   try {
     return useRuntimeConfig()
   } catch {
-    // CLI context - use environment variables
+    // CLI context - use environment variables with fallbacks
     return {
-      workspaceBase: process.env.NUXT_WORKSPACE_BASE ?? "/var/apps",
-      gitRepoBase: process.env.NUXT_GIT_REPO_BASE ?? "/home/git/repos",
-      domain: process.env.NUXT_DOMAIN ?? "example.com",
-      techEmail: process.env.NUXT_TECH_EMAIL ?? "tech@example.com",
+      workspaceBase: process.env.NUXT_WORKSPACE_BASE ?? process.env.WORKSPACE_BASE ?? "/var/apps",
+      gitRepoBase: process.env.NUXT_GIT_REPO_BASE ?? process.env.GIT_REPO_BASE ?? "/home/git/repos",
+      domain: process.env.NUXT_DOMAIN ?? process.env.DOMAIN ?? "example.com",
+      techEmail: process.env.NUXT_TECH_EMAIL ?? process.env.TECH_EMAIL ?? "tech@example.com",
     }
   }
 }
