@@ -76,7 +76,7 @@ onMounted(() => {
       <EmptyRepositories v-else-if="repositories.length === 0" />
 
       <div v-else class="repos-grid">
-        <RepositoryCard v-for="repo in repositories" :key="repo.name" :repository="repo" />
+        <ProjectCard v-for="repo in repositories" :key="repo.name" :project="repo" />
       </div>
     </section>
 

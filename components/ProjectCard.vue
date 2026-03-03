@@ -2,7 +2,7 @@
 import type { Repository } from '~/types'
 
 const props = defineProps<{
-  repository: Repository
+  project: Repository
 }>()
 
 const copySuccess = ref(false)
@@ -12,7 +12,7 @@ const { authFetch } = useAuthFetch()
 
 async function copyGitUrl() {
   try {
-    await navigator.clipboard.writeText(props.repository.gitUrl!)
+    await navigator.clipboard.writeText(props.project.gitUrl!)
     copySuccess.value = true
     setTimeout(() => {
       copySuccess.value = false
@@ -24,14 +24,14 @@ async function copyGitUrl() {
 
 async function toggleService() {
   if (actionLoading.value) return
-  
+
   actionLoading.value = true
   try {
-    const isStopped = !props.repository.dockerStack?.exists || props.repository.dockerStack.running === 0
+    const isStopped = !props.project.dockerStack?.exists || props.project.dockerStack.running === 0
     const endpoint = isStopped ? 'start' : 'stop'
-    
-    await authFetch('POST', `/api/services/${props.repository.name}/${endpoint}`)
-    
+
+    await authFetch('POST', `/api/services/${props.project.name}/${endpoint}`)
+
     // Reload page to update status
     window.location.reload()
   } catch (err) {
@@ -44,26 +44,27 @@ async function toggleService() {
 </script>
 
 <template>
-  <NuxtLink :to="`/services/${repository.name}`" class="repo-card">
-    <div class="repo-content">
-      <div class="repo-header">
-        <h3 class="repo-title">
-          {{ repository.name }}
+  <NuxtLink :to="`/services/${project.name}`" class="project-card">
+    <div class="project-content">
+      <div class="project-header">
+        <h3 class="project-title">
+          {{ project.name }}
         </h3>
-        <div class="repo-actions" @click.prevent>
-          <button v-if="repository.hasStack && repository.dockerStack" @click="toggleService" class="docker-status-btn" :disabled="actionLoading">
-            <span v-if="repository.dockerStack.exists"
-              :class="['status-badge', repository.dockerStack.running === repository.dockerStack.total ? 'status-running' : 'status-partial']"
-              :title="`${repository.dockerStack.running}/${repository.dockerStack.total} containers running - click to stop`">
-              {{ repository.dockerStack.running === repository.dockerStack.total ? '●' : '◐' }}
-              {{ repository.dockerStack.running }}/{{ repository.dockerStack.total }}
+        <div class="project-actions" @click.prevent>
+          <button v-if="project.hasStack && project.dockerStack" @click="toggleService" class="docker-status-btn"
+            :disabled="actionLoading">
+            <span v-if="project.dockerStack.exists"
+              :class="['status-badge', project.dockerStack.running === project.dockerStack.total ? 'status-running' : 'status-partial']"
+              :title="`${project.dockerStack.running}/${project.dockerStack.total} containers running - click to stop`">
+              {{ project.dockerStack.running === project.dockerStack.total ? '●' : '◐' }}
+              {{ project.dockerStack.running }}/{{ project.dockerStack.total }}
             </span>
             <span v-else class="status-badge status-stopped" title="No containers running - click to start">
               ○ stopped
             </span>
           </button>
-          <a v-if="repository.kongRoute" :href="repository.kongRoute" target="_blank" rel="noopener"
-            class="external-link" title="Open app">
+          <a v-if="project.kongRoute" :href="project.kongRoute" target="_blank" rel="noopener" class="external-link"
+            title="Open app" @click.stop>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path
                 d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z" />
@@ -73,24 +74,28 @@ async function toggleService() {
           </a>
         </div>
       </div>
-      <div class="repo-meta" @click.prevent>
+      <div class="project-meta" @click.prevent>
         <div class="git-info">
-          <button v-if="repository.gitRepoExists" @click="copyGitUrl" class="btn-git-copy" :title="copySuccess ? 'Copied!' : 'Copy Git URL'">
+          <button v-if="project.gitRepoExists" @click="copyGitUrl" class="btn-git-copy"
+            :title="copySuccess ? 'Copied!' : 'Copy Git URL'">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path fill="#F05032" d="M15.698 7.287L8.712.302a1.03 1.03 0 0 0-1.457 0L5.632 1.925l1.221 1.221a1.225 1.225 0 0 1 1.55 1.56l1.177 1.177a1.225 1.225 0 1 1-.732.732L7.672 5.438v3.097a1.225 1.225 0 1 1-.98.144V5.317a1.225 1.225 0 0 1-.665-1.605L4.81 2.495.302 6.99a1.03 1.03 0 0 0 0 1.457l6.986 6.986a1.03 1.03 0 0 0 1.457 0l6.953-6.953a1.03 1.03 0 0 0 0-1.457"/>
+              <path fill="#F05032"
+                d="M15.698 7.287L8.712.302a1.03 1.03 0 0 0-1.457 0L5.632 1.925l1.221 1.221a1.225 1.225 0 0 1 1.55 1.56l1.177 1.177a1.225 1.225 0 1 1-.732.732L7.672 5.438v3.097a1.225 1.225 0 1 1-.98.144V5.317a1.225 1.225 0 0 1-.665-1.605L4.81 2.495.302 6.99a1.03 1.03 0 0 0 0 1.457l6.986 6.986a1.03 1.03 0 0 0 1.457 0l6.953-6.953a1.03 1.03 0 0 0 0-1.457" />
             </svg>
             <svg v-if="!copySuccess" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
               <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z" />
               <path d="M2 5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-1H6a3 3 0 0 1-3-3V5H2Z" />
             </svg>
             <svg v-else width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+              <path
+                d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
             </svg>
           </button>
           <span v-else class="git-missing">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-              <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+              <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+              <path
+                d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
             </svg>
             No Git repo
           </span>
@@ -101,7 +106,7 @@ async function toggleService() {
 </template>
 
 <style scoped>
-.repo-card {
+.project-card {
   background: var(--bg-secondary);
   border-radius: 8px;
   padding: 1rem;
@@ -115,29 +120,29 @@ async function toggleService() {
   cursor: pointer;
 }
 
-.repo-card:hover {
+.project-card:hover {
   box-shadow: 0 4px 12px var(--shadow);
   transform: translateY(-2px);
 }
 
-.repo-card:hover .repo-title {
+.project-card:hover .repo-title {
   color: var(--accent-hover);
 }
 
-.repo-content {
+.project-content {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.repo-header {
+.project-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
 }
 
-.repo-title {
+.project-title {
   color: var(--accent);
   font-size: 1rem;
   margin: 0;
@@ -145,13 +150,13 @@ async function toggleService() {
   transition: color 0.2s;
 }
 
-.repo-actions {
+.project-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.repo-meta {
+.project-meta {
   display: flex;
   align-items: center;
   justify-content: flex-end;

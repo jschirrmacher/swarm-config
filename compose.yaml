@@ -60,6 +60,7 @@ services:
       - NUXT_GIT_REPO_BASE=${GIT_REPO_BASE}
       - NUXT_WORKSPACE_BASE=${WORKSPACE_BASE}
       - NUXT_DOMAIN=${DOMAIN}
+      - NUXT_TECH_EMAIL=${TECH_EMAIL}
       - GIT_UID=${GIT_UID:-1000}
       - DOCKER_GID=${DOCKER_GID:-999}
     volumes:
