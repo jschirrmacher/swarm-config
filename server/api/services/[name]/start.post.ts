@@ -1,6 +1,7 @@
 import { execSync } from "child_process"
 import { requireAuth } from "~/server/utils/auth"
 import { isDevMode, getWorkspaceDir } from "~/server/utils/workspace"
+import { getLatestCommitFromRepo } from "~/server/utils/gitRepo"
 
 export default defineEventHandler(async event => {
   const auth = await requireAuth(event)
@@ -12,23 +13,28 @@ export default defineEventHandler(async event => {
   }
 
   try {
+    const workspaceDir = getWorkspaceDir(name, auth.username)
+    const version = getLatestCommitFromRepo(name, auth.username)
+
+    console.log(`Starting service ${name} with VERSION=${version}`)
+
     if (isDevMode()) {
-      const workspaceDir = getWorkspaceDir(name, auth.username)
-      execSync(`docker compose -p ${name} up -d`, { 
-        encoding: 'utf-8',
-        cwd: workspaceDir
+      execSync(`VERSION=${version} docker compose -p ${name} up -d`, {
+        encoding: "utf-8",
+        cwd: workspaceDir,
       })
     } else {
-      const workspaceDir = getWorkspaceDir(name, auth.username)
-      execSync(`docker stack deploy -c ${workspaceDir}/compose.yaml ${name}`, { encoding: 'utf-8' })
+      execSync(`VERSION=${version} docker stack deploy -c ${workspaceDir}/compose.yaml ${name}`, {
+        encoding: "utf-8",
+      })
     }
 
     return { success: true }
   } catch (error: any) {
     console.error("Error starting service:", error)
-    throw createError({ 
-      statusCode: 500, 
-      message: error.message || "Failed to start service" 
+    throw createError({
+      statusCode: 500,
+      message: error.message || "Failed to start service",
     })
   }
 })

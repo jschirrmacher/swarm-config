@@ -44,6 +44,27 @@ export function getGitRemoteFromWorkspace(workspacePath: string) {
   }
 }
 
+export function getLatestCommitFromRepo(projectName: string, owner: string): string {
+  const gitRepoPath = getGitRepoPath(projectName, owner)
+
+  if (!gitRepoExists(gitRepoPath)) {
+    console.warn(`Git repository not found at ${gitRepoPath}, using 'latest' as VERSION`)
+    return "latest"
+  }
+
+  try {
+    const commitId = execSync("git rev-parse --short HEAD", {
+      encoding: "utf-8",
+      cwd: gitRepoPath,
+    }).trim()
+
+    return commitId || "latest"
+  } catch (error) {
+    console.warn(`Failed to get commit ID from ${gitRepoPath}:`, error)
+    return "latest"
+  }
+}
+
 export function getRepoStatus(projectName: string, owner: string) {
   const workspaceDir = getWorkspaceDir(projectName, owner)
 
