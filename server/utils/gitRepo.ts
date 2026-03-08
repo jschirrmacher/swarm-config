@@ -353,50 +353,71 @@ export async function listAllProjects(owner: string) {
   try {
     const projectMap = new Map<string, RepoConfig>()
 
-    // 1. Scan workspace directories
-    const workspaceScanDir = isDevMode() ? config.workspaceBase : join(config.workspaceBase, owner)
-    try {
-      const workspaceEntries = await readdir(workspaceScanDir, { withFileTypes: true })
+    // 1. Scan workspace directories (both flat and owner-based structure)
+    const scanDirs = isDevMode()
+      ? [config.workspaceBase]
+      : [join(config.workspaceBase, owner), config.workspaceBase]
 
-      for (const entry of workspaceEntries) {
-        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-        if (entry.name.startsWith(".")) continue
+    for (const workspaceScanDir of scanDirs) {
+      try {
+        const workspaceEntries = await readdir(workspaceScanDir, { withFileTypes: true })
 
-        const projectDir = join(workspaceScanDir, entry.name)
-        const config = await loadProjectConfig(projectDir, entry.name, owner)
-        projectMap.set(entry.name, config)
+        for (const entry of workspaceEntries) {
+          if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+          if (entry.name.startsWith(".")) continue
+
+          const projectDir = join(workspaceScanDir, entry.name)
+
+          // In flat mode, only include projects that belong to this user or have no owner
+          if (workspaceScanDir === config.workspaceBase && !isDevMode()) {
+            const projectConfig = getProjectConfig(projectDir)
+            if (projectConfig && projectConfig.owner && projectConfig.owner !== owner) {
+              continue
+            }
+          }
+
+          const repoConfig = await loadProjectConfig(projectDir, entry.name, owner)
+          if (!projectMap.has(entry.name)) {
+            projectMap.set(entry.name, repoConfig)
+          }
+        }
+      } catch (error: any) {
+        if (error.code !== "ENOENT") {
+          console.error(`Failed to scan workspace directory ${workspaceScanDir}:`, error.message)
+        }
       }
-    } catch {
-      // Workspace directory doesn't exist yet
     }
 
-    // 2. Scan git repositories
-    const gitScanDir = isDevMode() ? config.gitRepoBase : join(config.gitRepoBase, owner)
-    try {
-      const gitEntries = await readdir(gitScanDir, { withFileTypes: true })
+    // 2. Scan git repositories (both flat and owner-based structure)
+    const gitScanDirs = isDevMode()
+      ? [config.gitRepoBase]
+      : [join(config.gitRepoBase, owner), config.gitRepoBase]
 
-      for (const entry of gitEntries) {
-        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-        if (!entry.name.endsWith(".git")) continue
+    for (const gitScanDir of gitScanDirs) {
+      try {
+        const gitEntries = await readdir(gitScanDir, { withFileTypes: true })
 
-        const projectName = entry.name.replace(/\.git$/, "")
+        for (const entry of gitEntries) {
+          if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+          if (!entry.name.endsWith(".git")) continue
 
-        // Skip hidden directories
-        if (projectName.startsWith(".")) continue
+          const projectName = entry.name.replace(/\.git$/, "")
 
-        // If project already exists from workspace, skip
-        if (projectMap.has(projectName)) continue
+          if (projectName.startsWith(".")) continue
+          if (projectMap.has(projectName)) continue
 
-        // Create minimal config for git-only projects
-        projectMap.set(projectName, {
-          name: projectName,
-          port: 3000,
-          owner,
-          createdAt: new Date().toISOString(),
-        })
+          projectMap.set(projectName, {
+            name: projectName,
+            port: 3000,
+            owner,
+            createdAt: new Date().toISOString(),
+          })
+        }
+      } catch (error: any) {
+        if (error.code !== "ENOENT") {
+          console.error(`Failed to scan git repository directory ${gitScanDir}:`, error.message)
+        }
       }
-    } catch {
-      // Git directory doesn't exist yet
     }
 
     return Array.from(projectMap.values())
