@@ -71,16 +71,16 @@ swarm-config uses Nuxt 3 runtime configuration. Override defaults via environmen
 
 ### Environment Variables
 
-**Production** - Set in `/var/apps/swarm-config/.env`:
+**Production** - Set in `$WORKSPACE_BASE/swarm-config/.env` (defaults shown below):
 
 ```bash
 # Domain for Kong Gateway and Git URLs
 DOMAIN=your-domain.com
 
-# Git repository base path
+# Git repository base path (default: /home/git/repos)
 GIT_REPO_BASE=/home/git/repos
 
-# Application workspace base path
+# Application workspace base path (default: /var/apps)
 WORKSPACE_BASE=/var/apps
 
 # Let's Encrypt email
@@ -119,8 +119,9 @@ myapp/
 
 **Workspace Structure:**
 
-- With owner (from `project.json`): `/var/apps/<owner>/<app>/`
-- Without owner: `/var/apps/<app>/`
+- With owner (from `project.json`): `$WORKSPACE_BASE/<owner>/<app>/`
+- Without owner: `$WORKSPACE_BASE/<app>/`
+- Default `$WORKSPACE_BASE`: `/var/apps`
 
 ## License
 

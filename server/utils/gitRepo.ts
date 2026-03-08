@@ -248,8 +248,9 @@ data
     // Set ownership and permissions (use GIT_UID from environment)
     const gitUid = process.env.GIT_UID || "1000"
     const dockerGid = process.env.DOCKER_GID || "999"
-    await execAsync(`chown -R ${gitUid}:${dockerGid} "${repoPath}"`)
-    await execAsync(`chmod -R g+rwX "${repoPath}"`)
+    await execAsync(
+      `chown -R ${gitUid}:${dockerGid} "${repoPath}" && chmod -R g+rwX "${repoPath}" && find "${repoPath}" -type d -exec chmod g+s {} \\;`,
+    )
 
     // Link post-receive hook (hook is in swarm-config workspace)
     const swarmConfigDir = isDevMode()
@@ -258,8 +259,7 @@ data
 
     const hookSource = join(swarmConfigDir, "hooks", "post-receive")
     const hookDest = join(repoPath, "hooks", "post-receive")
-    await execAsync(`ln -sf "${hookSource}" "${hookDest}"`)
-    await execAsync(`chmod +x "${hookSource}"`)
+    await execAsync(`ln -sf "${hookSource}" "${hookDest}" && chmod +x "${hookSource}"`)
 
     return `${owner}/${name}.git`
   } finally {
@@ -329,22 +329,20 @@ networks:
   // Set ownership using numeric IDs
   const dockerGid = process.env.DOCKER_GID || "999"
   try {
-    // Try to get user's UID from the system
     let uid = process.env.GIT_UID || "1000"
     try {
       const result = await execAsync(`id -u ${owner}`)
       uid = result.stdout.trim()
-    } catch {
-      // Use default if user doesn't exist
-    }
+    } catch {}
 
-    await execAsync(`chown -R ${uid}:${dockerGid} "${workspaceDir}"`)
-    await execAsync(`chmod -R u+rwX,g+rwX "${workspaceDir}"`)
+    await execAsync(
+      `chown -R ${uid}:${dockerGid} "${workspaceDir}" && chmod -R u+rwX,g+rwX "${workspaceDir}" && find "${workspaceDir}" -type d -exec chmod g+s {} \\;`,
+    )
   } catch (error) {
     console.warn(`Could not set ownership for ${workspaceDir}:`, error)
-    // Fallback: at least set group permissions
-    await execAsync(`chgrp -R ${dockerGid} "${workspaceDir}"`)
-    await execAsync(`chmod -R g+rwX "${workspaceDir}"`)
+    await execAsync(
+      `chgrp -R ${dockerGid} "${workspaceDir}" && chmod -R g+rwX "${workspaceDir}" && find "${workspaceDir}" -type d -exec chmod g+s {} \\;`,
+    )
   }
 
   return workspaceDir

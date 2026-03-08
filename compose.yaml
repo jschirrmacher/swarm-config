@@ -57,6 +57,9 @@ services:
     env_file:
       - .env
     environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
       - NUXT_GIT_REPO_BASE=${GIT_REPO_BASE}
       - NUXT_WORKSPACE_BASE=${WORKSPACE_BASE}
       - NUXT_DOMAIN=${DOMAIN}

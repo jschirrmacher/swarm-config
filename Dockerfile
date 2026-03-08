@@ -14,12 +14,6 @@ RUN apk add --no-cache git docker-cli openssh-keygen
 WORKDIR /app
 COPY --from=builder /app/.output /app/.output
 
-ENV NODE_ENV=production \
-  PORT=3000 \
-  HOST=0.0.0.0
-
-USER root
-
 EXPOSE 3000
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
