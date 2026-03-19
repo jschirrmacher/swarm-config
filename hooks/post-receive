@@ -72,6 +72,12 @@ mkdir -p "$APP_DIR"
 DOCKER_GID=${DOCKER_GID:-999}
 chgrp docker "$APP_DIR" 2>/dev/null || chgrp "$DOCKER_GID" "$APP_DIR" 2>/dev/null || true
 chmod 2775 "$APP_DIR" 2>/dev/null || true
+
+# Ensure data directory exists with correct permissions
+mkdir -p "$APP_DIR/data"
+chgrp docker "$APP_DIR/data" 2>/dev/null || chgrp "$DOCKER_GID" "$APP_DIR/data" 2>/dev/null || true
+chmod 2775 "$APP_DIR/data" 2>/dev/null || true
+
 cp compose.yaml "$APP_DIR/compose.yaml"
 [ -f project.json ] && cp project.json "$APP_DIR/project.json"
 
@@ -113,6 +119,9 @@ if [ -f ".env" ]; then
   source .env
   set +a
 fi
+
+# Ensure DOCKER_GID is set (fallback to default if not in .env)
+export DOCKER_GID=${DOCKER_GID:-999}
 
 if docker stack deploy --with-registry-auth --resolve-image always -c compose.yaml "$APPNAME"; then
   echo "✅ Stack deployed successfully"

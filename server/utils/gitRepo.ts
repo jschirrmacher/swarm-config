@@ -184,6 +184,7 @@ CMD ["node", "index.js"]
     const composeContent = `services:
   ${name}:
     image: ${name}:\${VERSION:-latest}
+    user: "1000:\${DOCKER_GID:-999}"  # Run as UID 1000 with docker group for data access
     environment:
       - NODE_ENV=production
       - PORT=${port}
@@ -272,8 +273,8 @@ export async function createWorkspace(name: string, owner: string, repoConfig: R
   const workspaceDir = getWorkspaceDir(name, owner)
 
   // Create workspace directory structure
-  await mkdir(workspaceDir, { recursive: true, mode: 0o755 })
-  await mkdir(join(workspaceDir, "data"), { recursive: true, mode: 0o755 })
+  await mkdir(workspaceDir, { recursive: true, mode: 0o775 })
+  await mkdir(join(workspaceDir, "data"), { recursive: true, mode: 0o775 })
 
   // Create .env file
   const envContent = `# Environment variables for ${name}
@@ -286,6 +287,7 @@ PORT=${repoConfig.port}
   const composeContent = `services:
   ${name}:
     image: ${name}:\${VERSION:-latest}
+    user: "1000:\${DOCKER_GID:-999}"  # Run as UID 1000 with docker group for data access
     environment:
       - NODE_ENV=production
       - PORT=${repoConfig.port}
