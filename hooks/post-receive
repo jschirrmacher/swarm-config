@@ -42,12 +42,14 @@ echo "📋 Files in directory:"
 ls -la
 
 # Check if Dockerfile exists and build if present
+HAS_DOCKERFILE=false
 if [ -f "Dockerfile" ]; then
+  HAS_DOCKERFILE=true
   echo "🔨 Building Docker image..."
   # Disable BuildKit git detection for cloned repos
   export DOCKER_BUILDKIT=1
-  if docker build --no-cache -t "${APPNAME}:${VERSION}" . 2>&1; then
-    echo "✅ Build successful"
+  if docker build --no-cache -t "${APPNAME}:${VERSION}" -t "${APPNAME}:latest" . 2>&1; then
+    echo "✅ Build successful (tagged as ${APPNAME}:${VERSION} and ${APPNAME}:latest)"
   else
     echo "⚠️  Build failed - will use existing or pre-built images"
   fi
@@ -123,7 +125,12 @@ fi
 # Ensure DOCKER_GID is set (fallback to default if not in .env)
 export DOCKER_GID=${DOCKER_GID:-999}
 
-if docker stack deploy --with-registry-auth --resolve-image always -c compose.yaml "$APPNAME"; then
+# Use 'changed' strategy to:
+# - Use locally built images when available (newer)
+# - Pull external images (postgres, redis, etc.) when needed
+echo "📦 Deploying with image resolution strategy: changed"
+
+if docker stack deploy --with-registry-auth --resolve-image changed -c compose.yaml "$APPNAME"; then
   echo "✅ Stack deployed successfully"
   
   # Force update all services to pull latest images and restart
