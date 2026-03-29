@@ -114,40 +114,57 @@ function generateKongConfigFromProjectJson(
 
   try {
     const hostname = metadata.hostname || `${projectName}.${domain}`
-    const serviceName = `${owner}_${projectName}_${projectName}`
-    const containerName = metadata.serviceName || `${projectName}_${projectName}`
-    
-    const plugins = [...(metadata.plugins || [])]
-    
-    // Add request-size-limiting plugin
-    // Default: 100MB, 0 = unlimited, or custom value in MB
-    const uploadSize = metadata.maxUploadSize ?? 100
-    
-    plugins.push({
-      name: "request-size-limiting",
-      config: {
-        allowed_payload_size: uploadSize
+    const defaultServiceName = `${owner}_${projectName}_${projectName}`
+    const defaultContainerName = metadata.serviceName || `${projectName}_${projectName}`
+    const defaultPort = metadata.port || 3000
+    const routes = metadata.routes || [{ paths: ["/"], stripPath: false, preserveHost: true }]
+
+    const serviceMap = new Map<string, { url: string; routes: any[]; plugins: any[] }>()
+
+    routes.forEach((route: any, idx: number) => {
+      const routeServiceName = route.serviceName
+        ? `${owner}_${projectName}_${route.serviceName}`
+        : defaultServiceName
+      const containerName = route.serviceName ?? defaultContainerName
+      const port = route.port ?? defaultPort
+
+      if (!serviceMap.has(routeServiceName)) {
+        const isDefault = routeServiceName === defaultServiceName
+        serviceMap.set(routeServiceName, {
+          url: `http://${containerName}:${port}`,
+          routes: [],
+          plugins: isDefault ? [...(metadata.plugins || [])] : [],
+        })
+      }
+
+      serviceMap.get(routeServiceName)!.routes.push({
+        name: `${routeServiceName}_${idx}`,
+        hosts: [hostname],
+        paths: route.paths || ["/"],
+        protocols: ["https"],
+        preserve_host: route.preserveHost ?? true,
+        strip_path: route.stripPath ?? false,
+      })
+
+      if (route.plugins) {
+        serviceMap.get(routeServiceName)!.plugins.push(...route.plugins)
       }
     })
-    
-    const service = {
-      name: serviceName,
-      url: `http://${containerName}:${metadata.port || 3000}`,
-      routes: (metadata.routes || [{ paths: ["/"], stripPath: false, preserveHost: true }]).map(
-        (route: any, idx: number) => ({
-          name: `${serviceName}_${idx}`,
-          hosts: [hostname],
-          paths: route.paths || ["/"],
-          protocols: ["https"],
-          preserve_host: route.preserveHost ?? true,
-          strip_path: route.stripPath ?? false,
-        }),
-      ),
-      plugins,
-    }
+
+    const services = [...serviceMap.entries()].map(([name, svc]) => {
+      const plugins = [...svc.plugins]
+      const uploadSize = metadata.maxUploadSize ?? 100
+      if (!plugins.some(p => p.name === "request-size-limiting")) {
+        plugins.push({
+          name: "request-size-limiting",
+          config: { allowed_payload_size: uploadSize },
+        })
+      }
+      return { name, url: svc.url, routes: svc.routes, plugins }
+    })
 
     return {
-      services: [service],
+      services,
       routes: [],
       plugins: [],
     }

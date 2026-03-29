@@ -35,6 +35,9 @@ export interface ProjectConfig {
     paths: string[]
     stripPath?: boolean
     preserveHost?: boolean
+    serviceName?: string
+    port?: number
+    plugins?: any[]
   }>
   plugins?: any[]
   env?: Record<string, string>
