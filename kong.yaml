@@ -42,3 +42,6 @@ plugins:
 
   # Bot Detection to identify and reject bot traffic
   - name: bot-detection
+    config:
+      allow:
+        - Nextcloud Server Crawler
