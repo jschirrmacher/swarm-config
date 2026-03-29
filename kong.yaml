@@ -44,4 +44,4 @@ plugins:
   - name: bot-detection
     config:
       allow:
-        - Nextcloud Server Crawler
+        - Nextcloud-Server-Crawler
