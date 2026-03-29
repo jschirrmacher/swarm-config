@@ -24,9 +24,12 @@ export default defineEventHandler(async event => {
         cwd: workspaceDir,
       })
     } else {
-      execSync(`VERSION=${version} docker stack deploy -c ${workspaceDir}/compose.yaml ${name}`, {
-        encoding: "utf-8",
-      })
+      execSync(
+        `VERSION=${version} docker stack deploy --detach=true -c ${workspaceDir}/compose.yaml ${name}`,
+        {
+          encoding: "utf-8",
+        },
+      )
     }
 
     return { success: true }

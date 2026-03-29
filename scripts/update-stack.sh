@@ -37,6 +37,11 @@ fi
 echo "   Domain: ${DOMAIN}"
 echo ""
 
+echo "→ Pulling latest changes..."
+git pull
+echo "✓ Repository updated"
+echo ""
+
 COMMIT_ID=$(git rev-parse HEAD | cut -c1-8)
 echo "📋 Commit ID: $COMMIT_ID"
 echo ""
@@ -57,6 +62,12 @@ echo ""
 
 echo "⏳ Waiting for services to stabilize (10s)..."
 sleep 10
+
+echo "→ Regenerating Kong configuration..."
+npm run kong:generate
+npm run kong:reload
+echo "✓ Kong configuration updated"
+echo ""
 
 echo ""
 echo "✅ Stack update complete!"
