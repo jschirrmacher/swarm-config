@@ -45,3 +45,10 @@ plugins:
     config:
       allow:
         - Nextcloud-Server-Crawler
+
+  # HSTS Header for all services
+  - name: response-transformer
+    config:
+      add:
+        headers:
+          - "Strict-Transport-Security: max-age=15552000; includeSubDomains"
