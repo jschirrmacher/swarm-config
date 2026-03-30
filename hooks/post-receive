@@ -130,7 +130,7 @@ export DOCKER_GID=${DOCKER_GID:-999}
 # - Pull external images (postgres, redis, etc.) when needed
 echo "📦 Deploying with image resolution strategy: changed"
 
-if docker stack deploy --with-registry-auth --resolve-image changed -c compose.yaml "$APPNAME"; then
+if docker stack deploy --detach=true --with-registry-auth --resolve-image changed -c compose.yaml "$APPNAME"; then
   echo "✅ Stack deployed successfully"
   
   # Force update all services to pull latest images and restart
@@ -146,15 +146,15 @@ if docker stack deploy --with-registry-auth --resolve-image changed -c compose.y
   fi
   
   # Execute post-deploy hook if it exists
-  if [ -f "post-deploy.sh" ]; then
+  if [ -f "$WORK_DIR/post-deploy.sh" ]; then
     echo ""
     echo "🎬 Executing post-deploy hook..."
     
     # Ensure script is executable
-    chmod +x post-deploy.sh
+    chmod +x "$WORK_DIR/post-deploy.sh"
     
     # Copy to APP_DIR so it can find other scripts
-    cp post-deploy.sh "$APP_DIR/post-deploy.sh" 2>/dev/null || true
+    cp "$WORK_DIR/post-deploy.sh" "$APP_DIR/post-deploy.sh" 2>/dev/null || true
     
     # Run in background so deployment doesn't block
     cd "$APP_DIR" && nohup ./post-deploy.sh > post-deploy.log 2>&1 &
