@@ -113,7 +113,9 @@ function generateKongConfigFromProjectJson(
   }
 
   try {
-    const hostname = metadata.hostname || `${projectName}.${domain}`
+    const hostname = metadata.hostname
+      ? metadata.hostname.includes(".") ? metadata.hostname : `${metadata.hostname}.${domain}`
+      : `${projectName}.${domain}`
     const defaultServiceName = `${owner}_${projectName}_${projectName}`
     const defaultContainerName = metadata.serviceName || `${projectName}_${projectName}`
     const defaultPort = metadata.port || 3000
@@ -141,7 +143,8 @@ function generateKongConfigFromProjectJson(
         name: `${routeServiceName}_${idx}`,
         hosts: [hostname],
         paths: route.paths || ["/"],
-        protocols: ["https"],
+        protocols: ["https", "http"],
+        https_redirect_status_code: 301,
         preserve_host: route.preserveHost ?? true,
         strip_path: route.stripPath ?? false,
       })
@@ -224,31 +227,6 @@ export async function generateKongConfig() {
     plugins: [],
   }
 
-  const httpRedirectService = {
-    name: "http-to-https-redirect",
-    url: "http://127.0.0.1:65535",
-    routes: [
-      {
-        name: "http-to-https-redirect",
-        protocols: ["http"],
-        paths: ["/"],
-        hosts: getDomains(),
-        preserve_host: true,
-        strip_path: false,
-      },
-    ],
-    plugins: [
-      {
-        name: "pre-function",
-        config: {
-          access: [
-            'kong.response.exit(301, "", {["Location"] = "https://" .. kong.request.get_host() .. kong.request.get_path_with_query()})',
-          ],
-        },
-      },
-    ],
-  }
-
   const extractedServices = allServices.flatMap(config => {
     if (!config.services || !Array.isArray(config.services)) {
       return []
@@ -285,7 +263,7 @@ export async function generateKongConfig() {
     _format_version: "3.0",
     _transform: true,
 
-    services: [...extractedServices, acmeDummyService, httpRedirectService],
+    services: [...extractedServices, acmeDummyService],
     plugins: [...processPlugins(allPlugins)],
     consumers: [...allServices.flatMap(s => s.consumers ?? [])],
   }

@@ -1,32 +1,6 @@
 # swarm-config Kong Gateway Configuration
+# Global plugins only - service routing is defined in project.json
 
-services:
-  - name: swarm-config_ui
-    url: http://swarm-config_ui:3000
-    routes:
-      - name: swarm-config-base
-        hosts:
-          - config.${DOMAIN}
-        paths:
-          - /
-        protocols:
-          - https
-        preserve_host: true
-        strip_path: false
-
-      - name: swarm-config-auth
-        hosts:
-          - config.${DOMAIN}
-        paths:
-          - /api/auth/login
-        protocols:
-          - https
-        preserve_host: true
-        strip_path: false
-        plugins:
-          - name: basic-auth
-
-# Global Plugins for all services
 plugins:
   # ACME Plugin for automatic SSL/TLS certificate management via Let's Encrypt
   - name: acme
@@ -52,3 +26,10 @@ plugins:
       add:
         headers:
           - "Strict-Transport-Security: max-age=15552000; includeSubDomains"
+
+  # Default upload size limit
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10
+      size_unit: megabytes
+      require_content_length: false

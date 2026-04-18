@@ -1,0 +1,19 @@
+{
+  "name": "swarm-config",
+  "hostname": "config",
+  "serviceName": "swarm-config_ui",
+  "port": 3000,
+  "routes": [
+    {
+      "paths": ["/"],
+      "stripPath": false,
+      "preserveHost": true
+    },
+    {
+      "paths": ["/api/auth/login"],
+      "stripPath": false,
+      "preserveHost": true,
+      "plugins": [{ "name": "basic-auth" }]
+    }
+  ]
+}
