@@ -224,6 +224,31 @@ export async function generateKongConfig() {
     plugins: [],
   }
 
+  const httpRedirectService = {
+    name: "http-to-https-redirect",
+    url: "http://127.0.0.1:65535",
+    routes: [
+      {
+        name: "http-to-https-redirect",
+        protocols: ["http"],
+        paths: ["/"],
+        hosts: getDomains(),
+        preserve_host: true,
+        strip_path: false,
+      },
+    ],
+    plugins: [
+      {
+        name: "pre-function",
+        config: {
+          access: [
+            'kong.response.exit(301, "", {["Location"] = "https://" .. kong.request.get_host() .. kong.request.get_path_with_query()})',
+          ],
+        },
+      },
+    ],
+  }
+
   const extractedServices = allServices.flatMap(config => {
     if (!config.services || !Array.isArray(config.services)) {
       return []
@@ -260,7 +285,7 @@ export async function generateKongConfig() {
     _format_version: "3.0",
     _transform: true,
 
-    services: [...extractedServices, acmeDummyService],
+    services: [...extractedServices, acmeDummyService, httpRedirectService],
     plugins: [...processPlugins(allPlugins)],
     consumers: [...allServices.flatMap(s => s.consumers ?? [])],
   }
