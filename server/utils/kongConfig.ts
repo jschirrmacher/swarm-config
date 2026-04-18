@@ -115,7 +115,7 @@ function generateKongConfigFromProjectJson(
   try {
     const hostname = metadata.hostname
       ? metadata.hostname.includes(".") ? metadata.hostname : `${metadata.hostname}.${domain}`
-      : `${projectName}.${domain}`
+      : projectName.endsWith(`.${domain}`) ? projectName : `${projectName}.${domain}`
     const defaultServiceName = `${owner}_${projectName}_${projectName}`
     const defaultContainerName = metadata.serviceName || `${projectName}_${projectName}`
     const defaultPort = metadata.port || 3000
@@ -139,19 +139,21 @@ function generateKongConfigFromProjectJson(
         })
       }
 
-      serviceMap.get(routeServiceName)!.routes.push({
+      const routeObj: Record<string, unknown> = {
         name: `${routeServiceName}_${idx}`,
         hosts: [hostname],
         paths: route.paths || ["/"],
-        protocols: ["https", "http"],
+        protocols: ["https"],
         https_redirect_status_code: 301,
         preserve_host: route.preserveHost ?? true,
         strip_path: route.stripPath ?? false,
-      })
-
-      if (route.plugins) {
-        serviceMap.get(routeServiceName)!.plugins.push(...route.plugins)
       }
+
+      if (route.plugins?.length) {
+        routeObj.plugins = route.plugins
+      }
+
+      serviceMap.get(routeServiceName)!.routes.push(routeObj)
     })
 
     const services = [...serviceMap.entries()].map(([name, svc]) => {
