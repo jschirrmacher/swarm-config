@@ -61,12 +61,20 @@ function loadProjectServices() {
       if (existsSync(join(entryPath, "project.json"))) {
         const config = generateKongConfigFromProjectJson(entryPath, entry.name, entry.name, domain)
         if (config) configs.push(config)
-        continue
-      } else if (existsSync(join(entryPath, "kong.yaml"))) {
+      }
+      if (existsSync(join(entryPath, "kong.yaml"))) {
         const config = loadKongYaml(join(entryPath, "kong.yaml"), entry.name)
-        if (config) configs.push(config)
+        if (config) {
+          if (existsSync(join(entryPath, "project.json"))) {
+            // project.json handles services – only take plugins/consumers from kong.yaml
+            configs.push({ services: [], routes: [], plugins: config.plugins ?? [], consumers: config.consumers ?? [] })
+          } else {
+            configs.push(config)
+          }
+        }
         continue
       }
+      if (existsSync(join(entryPath, "project.json"))) continue
 
       try {
         const subEntries = readdirSync(entryPath, { withFileTypes: true })
